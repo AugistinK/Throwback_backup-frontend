@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import wallAPI from '../../../utils/wallAPI';
+import wallAPI from '../../../../utils//wallAPI';
 import styles from './wall.module.css';
 import { useAuth } from '../../../../contexts/AuthContext';
 
