@@ -32,7 +32,7 @@ export default function Profile() {
   const [memoriesError, setMemoriesError] = useState(null);
 
   // Corrigé: trim + sans slash final
-  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com').trim().replace(/\/+$/,'');
+  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com').trim().replace(/\/+$/,'');
 
   const getImageUrl = (path) => {
     if (!path) return '/images/default-avatar.png';

@@ -11,7 +11,7 @@ const AdminShortDetailModal = ({ isOpen, onClose, short }) => {
       
       // Si c'est un chemin local (/uploads/...), construire l'URL complète
       if (url && url.startsWith('/uploads/')) {
-        const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+        const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
         return `${apiBaseUrl}${url}`;
       }
       

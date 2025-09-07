@@ -19,7 +19,7 @@ const LiveStreamDetailModal = ({
   const [localLivestream, setLocalLivestream] = useState(null);
   
   // Utiliser l'URL de base passée en prop ou l'URL par défaut
-  const baseUrl = apiBaseUrl || process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+  const baseUrl = apiBaseUrl || process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
   
   // Réinitialiser les états lorsque le livestream change
   useEffect(() => {

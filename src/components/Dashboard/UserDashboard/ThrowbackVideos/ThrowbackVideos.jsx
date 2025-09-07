@@ -25,7 +25,7 @@ const ThrowbackVideos = () => {
   });
 
   // base URL backend
-  const baseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+  const baseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
   // Reset de pagination à chaque changement de filtres
   useEffect(() => {

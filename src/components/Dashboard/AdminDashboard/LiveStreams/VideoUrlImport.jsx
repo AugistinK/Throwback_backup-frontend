@@ -10,7 +10,7 @@ const VideoUrlImport = ({ onVideoSelect, apiBaseUrl }) => {
   const [importedVideos, setImportedVideos] = useState([]);
 
   // Utiliser l'URL de base passée en prop ou l'URL par défaut
-  const baseUrl = apiBaseUrl || process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+  const baseUrl = apiBaseUrl || process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
   // Déterminer le type de plateforme à partir de l'URL
   const getVideoSourceType = (url) => {

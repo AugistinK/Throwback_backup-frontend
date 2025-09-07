@@ -13,7 +13,7 @@ axios.interceptors.request.use(
   config => {
     // Add base URL if not already done
     if (config.url && !config.url.startsWith('http')) {
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
       config.url = `${apiBaseUrl}${config.url}`;
     }
 
@@ -59,7 +59,7 @@ function getFullVideoUrl(path) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
   // Always use a base URL, never an empty string
-  const backendUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+  const backendUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
   const fullUrl = `${backendUrl}${normalizedPath}`;
 
   return fullUrl;
@@ -139,7 +139,7 @@ export default function Shorts() {
     try {
       setIsLoadingShorts(true);
 
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
       let attempts = 0;
       const maxAttempts = 3;
@@ -235,7 +235,7 @@ export default function Shorts() {
       setIsLoadingMore(true);
       const nextPage = page + 1;
 
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
       const response = await axios.get(`${apiBaseUrl}/api/videos`, {
         params: {
@@ -286,7 +286,7 @@ export default function Shorts() {
     if (!shortId) return;
 
     try {
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
       const response = await axios.get(`${apiBaseUrl}/api/videos/${shortId}/memories`, {
         timeout: 15000,
@@ -332,7 +332,7 @@ export default function Shorts() {
         return;
       }
 
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
       await axios.post(`${apiBaseUrl}/api/videos/${activeShortId}/memories`,
         { contenu: commentInput },
@@ -667,7 +667,7 @@ export default function Shorts() {
         return;
       }
 
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
       const response = await axios.post(`${apiBaseUrl}/api/videos/shorts`, data, {
         headers: {
@@ -751,7 +751,7 @@ export default function Shorts() {
         return;
       }
 
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
       const response = await axios.post(`${apiBaseUrl}/api/videos/${shortId}/like`, {}, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -825,7 +825,7 @@ export default function Shorts() {
         return;
       }
 
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
       try {
         await axios.post(`${apiBaseUrl}/api/videos/${shortId}/share`, {}, {

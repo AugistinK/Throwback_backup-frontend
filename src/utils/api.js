@@ -5,7 +5,7 @@ import playlistAPI from './playlistAPI';
 import searchAPI from './searchAPI';
 
 // Configuration de base (⚠️ espace en trop supprimé à la fin de l'URL)
-const BASE_URL = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+const BASE_URL = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
 // Créer une instance axios avec configuration par défaut
 const api = axios.create({

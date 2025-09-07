@@ -67,7 +67,7 @@ const ProfileTabs = () => {
   const getImageUrl = (path) => {
     if (!path) return '/images/default-avatar.png';
     if (path.startsWith('http')) return path;
-    const backend = (process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com').trim().replace(/\/+$/,'');
+    const backend = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com').trim().replace(/\/+$/,'');
     const normalized = path.startsWith('/') ? path : `/${path}`;
     const full = `${backend}${normalized}`.replace(/\s+/g, '');
     return full;

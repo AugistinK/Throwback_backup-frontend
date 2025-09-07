@@ -13,7 +13,7 @@ import CompilationBuilder from './CompilationBuilder';
 import LiveStreamScheduler from './LiveStreamScheduler';
 
 // Configuration des URLs
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
 const AdminLiveThrowback = () => {
   // État principal

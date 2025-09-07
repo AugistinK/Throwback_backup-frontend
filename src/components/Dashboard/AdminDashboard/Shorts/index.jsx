@@ -32,7 +32,7 @@ const Shorts = () => {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     
     // Toujours utiliser une URL de base
-    const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com';
+    const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
     const fullUrl = `${apiBaseUrl}${normalizedPath}`;
     
     return fullUrl;
