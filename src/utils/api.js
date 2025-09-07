@@ -3,6 +3,7 @@ import axios from 'axios';
 import podcastAPI from './podcastAPI';
 import playlistAPI from './playlistAPI';
 import searchAPI from './searchAPI';
+import wallAPI from './wallAPI';
 
 // Configuration de base (⚠️ espace en trop supprimé à la fin de l'URL)
 const BASE_URL = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
@@ -241,4 +242,5 @@ export { videoAPI };
 export { podcastAPI };
 export { playlistAPI };
 export { searchAPI };
+export { wallAPI};
 export default api;
