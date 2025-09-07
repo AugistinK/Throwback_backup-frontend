@@ -1,0 +1,400 @@
+/* This file contains the sidebar style for the user dashoard */
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  background: #8b0000;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 110;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  overscroll-behavior: contain; 
+  -webkit-overflow-scrolling: touch; 
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* iOS specific fixes */
+.iosFix {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Amélioration du scroll */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+/* Collapsed state */
+.collapsed {
+  width: 64px;
+}
+
+.collapsed .label,
+.collapsed .sectionTitle span,
+.collapsed .copyright {
+  display: none;
+}
+
+.collapsed .navItem {
+  justify-content: center;
+}
+
+.collapsed .icon {
+  margin-right: 0;
+}
+
+.collapsed .sectionTitle {
+  height: 16px;
+}
+
+.collapsed .toggleBtn {
+  left: 16px;
+}
+
+/* Header section */
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 56px; /* Même hauteur que le header */
+}
+
+.logoWrap {
+  text-align: center;
+  flex: 1;
+  cursor: pointer; /* Indication que le logo est cliquable */
+  -webkit-tap-highlight-color: rgba(0,0,0,0); /* Supprime l'effet de tap sur iOS */
+}
+
+.logo {
+  height: 40px; /* Valeur fixe au lieu de pourcentage */
+  width: auto; /* Maintient le ratio */
+  max-width: 80%; /* Empêche le logo d'être trop large */
+  transition: all 0.3s ease;
+}
+
+.closeBtn {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  -webkit-tap-highlight-color: rgba(0,0,0,0); /* Supprime l'effet de tap sur iOS */
+}
+
+.closeBtn:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Navigation section */
+.nav {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+}
+
+.sectionTitle {
+  padding: 0 20px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  height: 32px;
+}
+
+/* Wrapper pour les éléments de navigation pour améliorer la zone cliquable */
+.navItemWrapper {
+  margin: 2px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: rgba(0,0,0,0); /* Supprime l'effet de tap sur iOS */
+  transition: background-color 0.2s ease;
+}
+
+.navItemWrapper:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.activeWrapper {
+  background: white;
+}
+
+.activeWrapper:hover {
+  background: white;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  -webkit-tap-highlight-color: transparent; /* Supprime le highlight au tap sur mobile */
+  touch-action: manipulation; /* Optimisation tactile */
+  pointer-events: none; /* Important pour iOS - permet au parent de recevoir les clics */
+}
+
+.icon {
+  margin-right: 16px;
+  width: 20px;
+  text-align: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  color: black;
+}
+
+.active {
+  color: #8b0000;
+  font-weight: 600;
+}
+
+.active .icon {
+  color: #8b0000;
+}
+
+/* Styles pour les éléments en développement */
+.inDevelopment {
+  opacity: 0.7;
+  position: relative;
+}
+
+.inDevelopmentWrapper {
+  opacity: 0.7;
+}
+
+.inDevelopment::after {
+  content: "Coming soon";
+  position: absolute;
+  right: 10px;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 8px;
+  color: white;
+  pointer-events: none;
+}
+
+/* Pour les écrans plus petits où il y a moins d'espace */
+@media (max-width: 480px) {
+  .inDevelopment::after {
+    position: static;
+    margin-left: 8px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-top: -2px;
+    font-size: 8px;
+  }
+}
+
+/* En mode collapsed, cacher le badge "Coming soon" */
+.collapsed .inDevelopment::after {
+  display: none;
+}
+
+/* Library section */
+.librarySection {
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.libraryItemWrapper {
+  cursor: pointer;
+}
+
+.libraryItem {
+  padding: 10px 20px;
+  font-size: 13px;
+}
+
+/* Toggle button */
+.toggleBtn {
+  position: absolute;
+  bottom: 16px;
+  left: 200px;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  -webkit-tap-highlight-color: rgba(0,0,0,0); /* Supprime l'effet de tap sur iOS */
+}
+
+.toggleBtn:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Footer */
+.sidebarFooter {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto;
+}
+
+/* Indicateur visuel pour l'élément actif */
+.activeIndicator {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background-color: white;
+  border-radius: 2px 0 0 2px;
+  animation: fadeInRight 0.3s ease-out;
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Assurez-vous que navItem est en position relative */
+.navItem {
+  position: relative;
+  /* Autres styles existants */
+}
+
+
+.copyright {
+  margin: 0;
+}
+
+/* Mobile overlay */
+.overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 105;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  transition: opacity 0.3s ease;
+  opacity: 0;
+  animation: fadeIn 0.3s forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .open {
+    transform: translateX(0);
+  }
+  
+  .closeBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .overlay {
+    display: block;
+  }
+  
+  .toggleBtn {
+    display: none;
+  }
+  
+  /* Améliorer les zones tactiles sur mobile */
+  .navItem {
+    padding: 14px 20px;
+    min-height: 44px; /* Recommandation d'accessibilité */
+  }
+  
+  /* Augmenter la zone tactile pour iOS */
+  .navItemWrapper {
+    min-height: 44px;
+  }
+}
+
+/* Additional mobile styles for a more app-like experience */
+@media (max-width: 480px) {
+  .sidebar {
+    width: 85%; 
+    max-width: 300px; 
+    border-radius: 0 16px 16px 0;
+  }
+  
+  .sidebarHeader {
+    padding: 20px 16px;
+  }
+  
+  .navItem {
+    padding: 14px 20px;
+    font-size: 16px;
+  }
+  
+  .navItemWrapper {
+    margin: 2px 12px;
+  }
+  
+  .sectionTitle {
+    padding: 0 24px;
+    margin-top: 8px;
+  }
+  
+  .icon {
+    font-size: 18px;
+  }
+  
+  /* Augmenter la taille des zones tactiles */
+  .closeBtn {
+    width: 44px;
+    height: 44px;
+  }
+}

@@ -1,0 +1,169 @@
+.filtersContainer {
+  width: 100%;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 10;
+  background-color: #f8f8f8;
+  border-radius: 6px;
+  padding: 12px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.filtersContent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterLabel {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.selectWrapper {
+  position: relative;
+  min-width: 160px;
+}
+
+.selectWrapper::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #666;
+  pointer-events: none;
+}
+
+.filterSelect {
+  width: 100%;
+  padding: 8px 12px;
+  padding-right: 30px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+  color: #333;
+  appearance: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filterSelect:hover {
+  border-color: #b31217;
+}
+
+.filterSelect:focus {
+  outline: none;
+  border-color: #b31217;
+  box-shadow: 0 0 0 2px rgba(179, 18, 23, 0.2);
+}
+
+.videoCount {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* Bouton de réinitialisation des filtres */
+.resetButton {
+  font-size: 12px;
+  padding: 4px 8px;
+  background-color: #b31217;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resetButton:hover {
+  background-color: #8a0e12;
+}
+
+
+@media (max-width: 768px) {
+  .filtersContainer {
+    position: sticky;
+    top: 0;                 
+    z-index: 20;
+    border-radius: 0;
+    box-shadow: 0 1px 0 rgba(0,0,0,.06);
+  }
+
+  .filterSelect {
+    height: 44px;           
+    font-size: 15px;
+  }
+}
+
+
+/* Styles responsifs */
+@media (max-width: 992px) {
+  .filtersContent {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .filterGroup {
+    flex: 1;
+    min-width: 160px;
+  }
+  
+  .videoCount {
+    margin-left: 0;
+    width: 100%;
+    text-align: right;
+    align-items: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .filtersContent {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filterGroup {
+    width: 100%;
+  }
+  
+  .selectWrapper {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .videoCount {
+    text-align: left;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .filtersContainer {
+    padding: 10px;
+  }
+  
+  .filterLabel {
+    width: 70px;
+  }
+}

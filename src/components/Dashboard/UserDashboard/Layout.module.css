@@ -1,0 +1,151 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #f9f9f9;
+  position: relative;
+  overflow-x: hidden; /* Empêcher le scroll horizontal */
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  -webkit-overflow-scrolling: touch; /* Amélioration du scroll sur iOS */
+  will-change: margin-left; /* Optimisation des performances */
+}
+
+.withSidebar {
+  margin-left: 240px;
+}
+
+.withCollapsedSidebar {
+  margin-left: 64px;
+}
+
+.mainContent {
+  flex: 1;
+  padding: 24px;
+  transition: padding 0.3s ease;
+  animation: fadeIn 0.3s ease;
+  max-width: 1600px; /* Limiter la largeur sur grands écrans */
+  width: 100%;
+  margin: 0 auto; /* Centrer le contenu */
+  position: relative;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0.8; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Bouton flottant pour mobile - redesign */
+.floatingMenuButton {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #8b0000;
+  border: none;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: 0 4px 15px rgba(139, 0, 0, 0.4);
+  z-index: 100;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transform: translateZ(0); /* Optimisation des performances */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.floatingMenuButton:active {
+  transform: scale(0.95) translateZ(0);
+  box-shadow: 0 2px 8px rgba(139, 0, 0, 0.3);
+}
+
+.floatingMenuIcon {
+  width: 20px;
+  height: 2px;
+  background-color: white;
+  border-radius: 1px;
+  transition: transform 0.2s ease;
+}
+
+/* Loading spinner amélioré */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100%;
+  background: linear-gradient(180deg, #b31217 0%, #430000 100%);
+  color: white;
+}
+
+.loadingSpinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Media queries optimisés */
+@media (max-width: 1024px) {
+  .mainContent {
+    padding: 20px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0 !important;
+  }
+  
+  .mainContent {
+    padding: 16px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mainContent {
+    padding: 12px 10px;
+  }
+  
+  .floatingMenuButton {
+    bottom: 20px;
+    left: 20px;
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* Optimisations pour grands écrans */
+@media (min-width: 1600px) {
+  .mainContent {
+    padding: 32px;
+  }
+}
+
+/* Optimisations pour les appareils à haute densité de pixels */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .floatingMenuButton {
+    box-shadow: 0 4px 20px rgba(139, 0, 0, 0.35);
+  }
+}
