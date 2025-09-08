@@ -9,8 +9,8 @@ import playlistAPI from '../../../../utils/playlistAPI';
 import { useAuth } from '../../../../contexts/AuthContext';
 import LoadingSpinner from '../../../Common/LoadingSpinner';
 import EmptyState from '../../../Common/EmptyState';
-import ConfirmModal from '../../..//Common/ConfirmModal';
-import Toast from '../../..//Common/Toast';
+import ConfirmModal from '../../../Common/ConfirmModal';
+import Toast from '../../../Common/Toast';
 import styles from './UserPlaylists.module.css';
 
 const UserPlaylists = () => {

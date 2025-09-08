@@ -30,7 +30,7 @@ import LiveThrowback from './components/Dashboard/UserDashboard/LiveThrowback/Li
 import UserPlaylists from './components/Dashboard/UserDashboard/Playlists';
 import UserPlaylistDetail from './components/Dashboard/UserDashboard/Playlists/UserPlaylistDetail';
 import PlaylistForm from './components/Dashboard/UserDashboard/Playlists/PlaylistForm';
-import Wall from './components/Dashboard/UserDashboard/Wall/Wall';
+import ThrowbackWall from './components/Dashboard/UserDashboard/Wall/ThrowbackWall';
 import PlaylistPlayer from './components/Dashboard/UserDashboard/Playlists/PlaylistPlayer';
 import Search from './components/Dashboard/UserDashboard/Search/Search';
 import HelpAndSupport from './components/Profile/HelpAndSupport';
@@ -124,7 +124,8 @@ function App() {
             <Route path="playlists/new" element={<PlaylistForm />} />
             <Route path="playlists/:id/edit" element={<PlaylistForm />} />
             <Route path="playlists/:id/play" element={<PlaylistPlayer />} />
-            <Route path="wall" element={<Wall />} />
+          
+            <Route path="wall" element={<ThrowbackWall />} />
             <Route path="search" element={<Search />} />
             <Route path="help-support" element={<HelpAndSupport />} />
 

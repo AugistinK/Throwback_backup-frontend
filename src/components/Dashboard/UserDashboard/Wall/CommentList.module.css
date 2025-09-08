@@ -1,0 +1,76 @@
+.commentListContainer {
+  padding: 15px;
+  border-top: 1px solid #eaeaea;
+  margin-top: 10px;
+}
+
+.commentList {
+  margin-top: 15px;
+}
+
+.emptyComments {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 20px 0;
+}
+
+.loadingComments {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 15px 0;
+  color: #666;
+}
+
+.loadMoreButton {
+  width: 100%;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background-color 0.2s;
+}
+
+.loadMoreButton:hover {
+  background-color: #e0e0e0;
+}
+
+.replyForm {
+  margin: 10px 0 10px 40px;
+}
+
+.replyList {
+  margin-top: 10px;
+  margin-left: 40px;
+  padding-left: 10px;
+  border-left: 2px solid #eaeaea;
+}
+
+.showRepliesButton {
+  background: none;
+  border: none;
+  color: #8b0000;
+  font-size: 12px;
+  margin-left: 40px;
+  padding: 5px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.showRepliesButton:hover {
+  text-decoration: underline;
+}
+
+.replyCount {
+  font-size: 12px;
+  color: #666;
+  margin-left: 5px;
+}

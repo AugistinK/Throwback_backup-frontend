@@ -1,0 +1,68 @@
+.commentForm {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.userAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.inputContainer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  padding: 0 10px 0 15px;
+  transition: border-color 0.2s;
+  background-color: #f9f9f9;
+}
+
+.inputContainer:focus-within {
+  border-color: #8b0000;
+  background-color: white;
+}
+
+.commentInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 10px 0;
+  font-size: 14px;
+  resize: none;
+}
+
+.submitButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: #8b0000;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.submitButton:hover {
+  color: #730000;
+}
+
+.submitButton:disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.errorMessage {
+  color: #d32f2f;
+  font-size: 12px;
+  margin-top: 5px;
+  margin-left: 42px;
+}

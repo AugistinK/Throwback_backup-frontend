@@ -1,0 +1,312 @@
+.postItem {
+  background-color: white;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.postHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.userAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.userDetails {
+  display: flex;
+  flex-direction: column;
+}
+
+.userName {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.postMetadata {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-size: 13px;
+}
+
+.postDate {
+  color: #888;
+}
+
+.postVisibility {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.postActions {
+  position: relative;
+}
+
+.actionButton {
+  border: none;
+  background: none;
+  color: #666;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.actionButton:hover {
+  background-color: #f5f5f5;
+}
+
+.actionsDropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 180px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.actionsDropdown button {
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.actionsDropdown button:hover {
+  background-color: #f5f5f5;
+}
+
+.postContent {
+  padding: 16px;
+}
+
+.contentText {
+  font-size: 16px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.hashtag {
+  color: #8b0000;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.hashtag:hover {
+  text-decoration: underline;
+}
+
+.mediaContainer {
+  margin-top: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.postImage {
+  width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.postVideo {
+  width: 100%;
+  max-height: 500px;
+  border-radius: 8px;
+}
+
+.postAudio {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.errorMessage {
+  color: #d32f2f;
+  font-size: 14px;
+  padding: 0 16px;
+  margin-bottom: 10px;
+}
+
+.postStats {
+  padding: 0 16px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #666;
+  font-size: 14px;
+}
+
+.liked {
+  color: #8b0000;
+}
+
+.postInteraction {
+  display: flex;
+  border-top: 1px solid #f5f5f5;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.interactionButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border: none;
+  background: none;
+  color: #666;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.interactionButton:hover {
+  background-color: #f5f5f5;
+}
+
+.likedButton {
+  color: #8b0000;
+}
+
+.editForm {
+  margin-bottom: 16px;
+}
+
+.editControls {
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.visibilityButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 20px;
+  background-color: #f5f5f5;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.visibilityButton:hover {
+  background-color: #e8e8e8;
+}
+
+.editTextarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.editTextarea:focus {
+  border-color: #8b0000;
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.cancelButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  background-color: #f5f5f5;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancelButton:hover {
+  background-color: #e8e8e8;
+}
+
+.saveButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  background-color: #8b0000;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.saveButton:hover {
+  background-color: #730000;
+}
+
+.saveButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .interactionButton span {
+    display: none;
+  }
+  
+  .interactionButton {
+    padding: 12px 8px;
+  }
+  
+  .userName {
+    font-size: 14px;
+  }
+  
+  .userAvatar {
+    width: 40px;
+    height: 40px;
+  }
+}
