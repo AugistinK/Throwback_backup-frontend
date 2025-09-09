@@ -140,9 +140,9 @@ const ThrowbackWall = () => {
           />
         </div>
         
-        {/* <div className={styles.sidebar}>
+        <div className={styles.sidebar}>
           <WallSidebar onRefresh={refreshPosts} />
-        </div> */}
+        </div>
       </div>
     </div>
   );
