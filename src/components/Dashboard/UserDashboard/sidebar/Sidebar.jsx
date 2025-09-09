@@ -13,10 +13,10 @@ import {
   faTimes,
   faChevronLeft,
   faChevronRight,
-  faBookmark,
+ 
   faHeart,
-  faSearch,
-  faUserFriends,
+
+ 
    faQuestionCircle
 } from '@fortawesome/free-solid-svg-icons';
 
@@ -46,8 +46,7 @@ const navItems = [
   { 
     label: 'ThrowBack Wall', 
     to: '/dashboard/wall', 
-    icon: faStream,
-    inDevelopment: true
+    icon: faStream
   },
   { 
     label: 'ThrowBack Chat', 
