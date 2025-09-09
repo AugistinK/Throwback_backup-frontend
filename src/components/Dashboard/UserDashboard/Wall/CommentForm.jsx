@@ -5,7 +5,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
 import styles from './CommentForm.module.css';
 
-const CommentForm = ({ postId, parentId = null, onCommentAdded, className = '' }) => {
+const CommentForm = ({ postId, videoId, parentId = null, onCommentAdded, className = '' }) => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -23,10 +23,24 @@ const CommentForm = ({ postId, parentId = null, onCommentAdded, className = '' }
       setLoading(true);
       setError(null);
       
-      const response = await api.post(`/api/posts/${postId}/comments`, {
-        contenu: content,
-        parentId: parentId
-      });
+      let response;
+      
+      // Détermine l'API à utiliser selon le contexte (post ou vidéo)
+      if (postId) {
+        // Si c'est un post du ThrowBack Wall
+        response = await api.post(`/api/posts/${postId}/comments`, {
+          contenu: content,
+          parentId: parentId
+        });
+      } else if (videoId) {
+        // Si c'est une vidéo
+        response = await api.post(`/api/public/videos/${videoId}/comments`, {
+          contenu: content,
+          parent_comment: parentId
+        });
+      } else {
+        throw new Error('Un ID de post ou de vidéo est requis');
+      }
       
       setContent('');
       

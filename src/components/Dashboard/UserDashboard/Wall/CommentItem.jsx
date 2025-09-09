@@ -71,33 +71,35 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
     }
   };
 
-  // Fonction pour liker/unliker un commentaire
-  const handleLikeClick = async () => {
-    try {
-      setLoading(true);
-      
-      const response = await api.post(`/api/comments/${comment._id}/like`);
-      
-      setLiked(response.data.liked);
-      setLikeCount(response.data.likeCount);
-      
-      // Mettre à jour le commentaire
-      if (onUpdateComment) {
-        const updatedComment = {
-          ...comment,
-          likes: response.data.liked 
-            ? [...(comment.likes || []), user.id]
-            : (comment.likes || []).filter(id => id !== user.id)
-        };
-        onUpdateComment(updatedComment);
-      }
-    } catch (err) {
-      console.error('Erreur lors du like/unlike:', err);
-      setError('Une erreur est survenue');
-    } finally {
-      setLoading(false);
+const handleLikeClick = async () => {
+  try {
+    setLoading(true);
+    
+    const response = await api.post(`/api/comments/${comment._id}/like`);
+    
+    setLiked(response.data.data.liked);
+    setLikeCount(response.data.data.likes);
+    
+    // Mettre à jour le commentaire
+    if (onUpdateComment) {
+      const updatedComment = {
+        ...comment,
+        likes: response.data.data.likes,
+        dislikes: response.data.data.dislikes,
+        userInteraction: {
+          liked: response.data.data.liked,
+          disliked: response.data.data.disliked
+        }
+      };
+      onUpdateComment(updatedComment);
     }
-  };
+  } catch (err) {
+    console.error('Erreur lors du like/unlike:', err);
+    setError('Une erreur est survenue');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Fonction pour supprimer un commentaire
   const handleDeleteClick = async () => {
