@@ -1,107 +1,160 @@
-import React, { useState, useRef } from 'react';
+// components/Dashboard/UserDashboard/Wall/CommentItem.jsx
+import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faHeart, 
   faReply, 
-  faEllipsisV,
-  faEdit,
+  faEdit, 
   faTrash,
+  faThumbsDown,
   faFlag,
-  faChevronDown,
-  faChevronUp
+  faEllipsisV
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
-import CommentForm from './CommentForm';
 import api from '../../../../utils/api';
+import CommentForm from './CommentForm';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { fr } from 'date-fns/locale';
 import styles from './CommentItem.module.css';
 
 const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
-  const [liked, setLiked] = useState(comment.likes?.includes(user?.id));
-  const [likeCount, setLikeCount] = useState(comment.likes?.length || 0);
-  const [isReplying, setIsReplying] = useState(false);
+  const [showReplyForm, setShowReplyForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(comment.contenu);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
-  const [replies, setReplies] = useState([]);
+  const [replies, setReplies] = useState(comment.replies || []);
   const [loading, setLoading] = useState(false);
-  const [repliesLoaded, setRepliesLoaded] = useState(false);
-  const [replyCount, setReplyCount] = useState(0);
   const [error, setError] = useState(null);
-  const dropdownRef = useRef(null);
   const { user } = useAuth();
+  
+  // Safely get comment ID
+  const commentId = comment._id || comment.id;
+  
+  // Safely extract liked status
+  const isLiked = comment.userInteraction?.liked || false;
+  const isDisliked = comment.userInteraction?.disliked || false;
+  
+  // Get like/dislike counts safely
+  const likeCount = comment.likes || 0;
+  const dislikeCount = comment.dislikes || 0;
+  
+  // Format creation date safely
+  const creationDate = comment.creation_date || comment.createdAt || new Date();
+  const formattedDate = formatDistanceToNow(new Date(creationDate), {
+    addSuffix: true,
+    locale: fr
+  });
 
-  // Fermer le dropdown au clic en dehors
-  React.useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowDropdown(false);
+  // Handle like/unlike with improved error handling
+  const handleLikeClick = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.post(`/api/comments/${commentId}/like`);
+      
+      if (response.data && response.data.data) {
+        // Update local comment state
+        const updatedComment = {
+          ...comment,
+          userInteraction: {
+            ...comment.userInteraction,
+            liked: response.data.data.liked,
+            disliked: response.data.data.disliked
+          },
+          likes: response.data.data.likes,
+          dislikes: response.data.data.dislikes
+        };
+        
+        // Notify parent component
+        if (onUpdateComment) {
+          onUpdateComment(updatedComment);
+        }
       }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [dropdownRef]);
-
-  // Charger les réponses
-  const loadReplies = async () => {
-    if (repliesLoaded) {
-      setShowReplies(!showReplies);
-      return;
+    } catch (err) {
+      console.error('Error liking comment:', err);
+      setError('Une erreur est survenue');
+    } finally {
+      setLoading(false);
     }
+  };
+  
+  // Handle dislike with improved error handling
+  const handleDislikeClick = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.post(`/api/comments/${commentId}/dislike`);
+      
+      if (response.data && response.data.data) {
+        // Update local comment state
+        const updatedComment = {
+          ...comment,
+          userInteraction: {
+            ...comment.userInteraction,
+            liked: response.data.data.liked,
+            disliked: response.data.data.disliked
+          },
+          likes: response.data.data.likes,
+          dislikes: response.data.data.dislikes
+        };
+        
+        // Notify parent component
+        if (onUpdateComment) {
+          onUpdateComment(updatedComment);
+        }
+      }
+    } catch (err) {
+      console.error('Error disliking comment:', err);
+      setError('Une erreur est survenue');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Load more replies with error handling
+  const loadReplies = async () => {
+    if (!commentId) return;
     
     try {
       setLoading(true);
+      setError(null);
       
-      const response = await api.get(`/api/comments/${comment._id}/replies`);
+      const response = await api.get(`/api/comments/${commentId}/replies`);
       
-      setReplies(response.data.data);
-      setReplyCount(response.data.data.length);
-      setRepliesLoaded(true);
-      setShowReplies(true);
+      if (response.data && (response.data.data || Array.isArray(response.data))) {
+        const loadedReplies = response.data.data || response.data;
+        setReplies(loadedReplies);
+        setShowReplies(true);
+      }
     } catch (err) {
-      console.error('Erreur lors du chargement des réponses:', err);
+      console.error('Error loading replies:', err);
       setError('Impossible de charger les réponses');
     } finally {
       setLoading(false);
     }
   };
-
-const handleLikeClick = async () => {
-  try {
-    setLoading(true);
+  
+  // Add reply handler
+  const handleAddReply = (newReply) => {
+    setReplies(prev => [newReply, ...prev]);
+    setShowReplyForm(false);
+    setShowReplies(true);
     
-    const response = await api.post(`/api/comments/${comment._id}/like`);
+    // Update total replies count in parent comment
+    const updatedComment = {
+      ...comment,
+      totalReplies: (comment.totalReplies || 0) + 1,
+      hasMoreReplies: true
+    };
     
-    setLiked(response.data.data.liked);
-    setLikeCount(response.data.data.likes);
-    
-    // Mettre à jour le commentaire
     if (onUpdateComment) {
-      const updatedComment = {
-        ...comment,
-        likes: response.data.data.likes,
-        dislikes: response.data.data.dislikes,
-        userInteraction: {
-          liked: response.data.data.liked,
-          disliked: response.data.data.disliked
-        }
-      };
       onUpdateComment(updatedComment);
     }
-  } catch (err) {
-    console.error('Erreur lors du like/unlike:', err);
-    setError('Une erreur est survenue');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // Fonction pour supprimer un commentaire
+  };
+  
+  // Delete comment handler
   const handleDeleteClick = async () => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce commentaire?')) {
       return;
@@ -109,103 +162,56 @@ const handleLikeClick = async () => {
     
     try {
       setLoading(true);
+      setError(null);
       setShowDropdown(false);
       
-      await api.delete(`/api/comments/${comment._id}`);
+      await api.delete(`/api/comments/${commentId}`);
       
+      // Notify parent component
       if (onDeleteComment) {
-        onDeleteComment(comment._id);
+        onDeleteComment(commentId);
       }
     } catch (err) {
-      console.error('Erreur lors de la suppression:', err);
-      setError('Une erreur est survenue lors de la suppression');
-    } finally {
+      console.error('Error deleting comment:', err);
+      setError('Impossible de supprimer le commentaire');
       setLoading(false);
     }
   };
-
-  // Fonction pour mettre à jour un commentaire
-  const handleUpdateClick = async () => {
-    try {
-      setLoading(true);
-      
-      const response = await api.put(`/api/comments/${comment._id}`, {
-        contenu: editContent
-      });
-      
-      setIsEditing(false);
-      
-      if (onUpdateComment) {
-        onUpdateComment(response.data.data);
-      }
-    } catch (err) {
-      console.error('Erreur lors de la mise à jour:', err);
-      setError('Une erreur est survenue lors de la mise à jour');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fonction pour signaler un commentaire
+  
+  // Report comment handler
   const handleReportClick = async () => {
     try {
-      const raison = prompt('Veuillez indiquer la raison du signalement:');
-      
-      if (!raison) return;
-      
-      setLoading(true);
       setShowDropdown(false);
       
-      await api.post(`/api/comments/${comment._id}/report`, { raison });
+      const reason = prompt('Veuillez indiquer la raison du signalement:');
+      if (!reason) return;
       
-      alert('Commentaire signalé avec succès. Notre équipe de modération va examiner ce contenu.');
+      setLoading(true);
+      setError(null);
+      
+      await api.post(`/api/comments/${commentId}/report`, { raison: reason });
+      
+      alert('Commentaire signalé avec succès');
     } catch (err) {
-      console.error('Erreur lors du signalement:', err);
-      setError('Une erreur est survenue lors du signalement');
+      console.error('Error reporting comment:', err);
+      setError('Impossible de signaler le commentaire');
     } finally {
       setLoading(false);
     }
   };
-
-  // Fonction pour ajouter une réponse
-  const handleAddReply = (newReply) => {
-    setReplies(prev => [newReply, ...prev]);
-    setReplyCount(prev => prev + 1);
-    setIsReplying(false);
-    
-    // Si les réponses n'étaient pas affichées, les afficher
-    if (!showReplies) {
-      setShowReplies(true);
-    }
-  };
-
-  // Fonction pour mettre à jour une réponse
-  const handleUpdateReply = (updatedReply) => {
-    setReplies(prev => 
-      prev.map(reply => 
-        reply._id === updatedReply._id ? updatedReply : reply
-      )
-    );
-  };
-
-  // Fonction pour supprimer une réponse
-  const handleDeleteReply = (replyId) => {
-    setReplies(prev => prev.filter(reply => reply._id !== replyId));
-    setReplyCount(prev => prev - 1);
-  };
-
-  // Formater la date
-  const formattedDate = formatDistanceToNow(new Date(comment.createdAt), {
-    addSuffix: true,
-    locale: fr
-  });
+  
+  // Determine if user can edit/delete
+  const isAuthor = user && comment.auteur && 
+                  (comment.auteur._id === user.id || comment.auteur.id === user.id);
+  const isAdmin = user && user.role && ['admin', 'superadmin'].includes(user.role);
+  const canModify = isAuthor || isAdmin;
 
   return (
     <div className={styles.commentItem}>
       <div className={styles.commentHeader}>
         <img 
           src={comment.auteur?.photo_profil || '/images/default-avatar.jpg'} 
-          alt={comment.auteur?.prenom} 
+          alt={comment.auteur?.prenom || 'User'} 
           className={styles.userAvatar}
         />
         
@@ -218,33 +224,11 @@ const handleLikeClick = async () => {
           </div>
           
           {isEditing ? (
-            <div className={styles.editForm}>
-              <textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className={styles.editTextarea}
-                rows={2}
-              />
-              
-              <div className={styles.editActions}>
-                <button 
-                  className={styles.cancelButton}
-                  onClick={() => {
-                    setIsEditing(false);
-                    setEditContent(comment.contenu);
-                  }}
-                >
-                  Annuler
-                </button>
-                <button 
-                  className={styles.saveButton}
-                  onClick={handleUpdateClick}
-                  disabled={loading || !editContent.trim()}
-                >
-                  Enregistrer
-                </button>
-              </div>
-            </div>
+            <textarea
+              className={styles.editInput}
+              defaultValue={comment.contenu}
+              rows={3}
+            />
           ) : (
             <div className={styles.commentText}>
               {comment.contenu}
@@ -253,36 +237,71 @@ const handleLikeClick = async () => {
           
           <div className={styles.commentActions}>
             <button 
-              className={`${styles.actionButton} ${liked ? styles.liked : ''}`}
+              className={`${styles.actionButton} ${isLiked ? styles.liked : ''}`}
               onClick={handleLikeClick}
               disabled={loading}
             >
               <FontAwesomeIcon icon={faHeart} />
-              <span>{likeCount > 0 ? likeCount : ''}</span>
+              <span>{likeCount}</span>
+            </button>
+            
+            <button 
+              className={`${styles.actionButton} ${isDisliked ? styles.disliked : ''}`}
+              onClick={handleDislikeClick}
+              disabled={loading}
+            >
+              <FontAwesomeIcon icon={faThumbsDown} />
+              <span>{dislikeCount}</span>
             </button>
             
             <button 
               className={styles.actionButton}
-              onClick={() => setIsReplying(!isReplying)}
+              onClick={() => setShowReplyForm(!showReplyForm)}
+              disabled={loading}
             >
               <FontAwesomeIcon icon={faReply} />
               <span>Répondre</span>
             </button>
+            
+            {comment.totalReplies > 0 && !showReplies && (
+              <button 
+                className={styles.actionButton}
+                onClick={loadReplies}
+                disabled={loading}
+              >
+                <span>Voir les {comment.totalReplies} réponses</span>
+              </button>
+            )}
+            
+            {showReplies && comment.totalReplies > 0 && (
+              <button 
+                className={styles.actionButton}
+                onClick={() => setShowReplies(false)}
+              >
+                <span>Masquer les réponses</span>
+              </button>
+            )}
           </div>
+          
+          {error && (
+            <div className={styles.errorMessage}>
+              {error}
+            </div>
+          )}
         </div>
         
-        <div className={styles.commentMenu} ref={dropdownRef}>
-          <button 
-            className={styles.menuButton}
-            onClick={() => setShowDropdown(!showDropdown)}
-          >
-            <FontAwesomeIcon icon={faEllipsisV} />
-          </button>
-          
-          {showDropdown && (
-            <div className={styles.menuDropdown}>
-              {comment.auteur?._id === user?.id && (
-                <>
+        {canModify && (
+          <div className={styles.dropdownContainer}>
+            <button 
+              className={styles.moreButton}
+              onClick={() => setShowDropdown(!showDropdown)}
+            >
+              <FontAwesomeIcon icon={faEllipsisV} />
+            </button>
+            
+            {showDropdown && (
+              <div className={styles.dropdown}>
+                {isAuthor && (
                   <button onClick={() => {
                     setIsEditing(true);
                     setShowDropdown(false);
@@ -290,55 +309,67 @@ const handleLikeClick = async () => {
                     <FontAwesomeIcon icon={faEdit} />
                     <span>Modifier</span>
                   </button>
+                )}
+                
+                {canModify && (
                   <button onClick={handleDeleteClick}>
                     <FontAwesomeIcon icon={faTrash} />
                     <span>Supprimer</span>
                   </button>
-                </>
-              )}
-              <button onClick={handleReportClick}>
-                <FontAwesomeIcon icon={faFlag} />
-                <span>Signaler</span>
-              </button>
-            </div>
-          )}
-        </div>
+                )}
+                
+                {!isAuthor && (
+                  <button onClick={handleReportClick}>
+                    <FontAwesomeIcon icon={faFlag} />
+                    <span>Signaler</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
-      {error && <div className={styles.errorMessage}>{error}</div>}
-      
-      {isReplying && (
+      {showReplyForm && (
         <div className={styles.replyForm}>
           <CommentForm 
-            postId={postId} 
-            parentId={comment._id}
+            postId={postId}
+            parentId={commentId}
             onCommentAdded={handleAddReply}
+            onCancel={() => setShowReplyForm(false)}
+            onError={setError}
           />
         </div>
       )}
       
-      {replyCount > 0 && !loading && (
-        <button 
-          className={styles.showRepliesButton}
-          onClick={loadReplies}
-        >
-          <FontAwesomeIcon icon={showReplies ? faChevronUp : faChevronDown} />
-          <span>
-            {showReplies ? 'Masquer' : 'Afficher'} {replyCount} {replyCount > 1 ? 'réponses' : 'réponse'}
-          </span>
-        </button>
-      )}
-      
       {showReplies && replies.length > 0 && (
-        <div className={styles.replyList}>
+        <div className={styles.repliesList}>
           {replies.map(reply => (
-            <CommentItem 
-              key={reply._id} 
-              comment={reply}
-              postId={postId}
-              onUpdateComment={handleUpdateReply}
-              onDeleteComment={handleDeleteReply}
-            />
+            <div key={reply._id || reply.id} className={styles.replyItem}>
+              <img 
+                src={reply.auteur?.photo_profil || '/images/default-avatar.jpg'} 
+                alt={reply.auteur?.prenom || 'User'} 
+                className={styles.replyAvatar}
+              />
+              
+              <div className={styles.replyContent}>
+                <div className={styles.replyMeta}>
+                  <span className={styles.replyUserName}>
+                    {reply.auteur?.prenom} {reply.auteur?.nom}
+                  </span>
+                  <span className={styles.replyDate}>
+                    {formatDistanceToNow(new Date(reply.creation_date || reply.createdAt), {
+                      addSuffix: true,
+                      locale: fr
+                    })}
+                  </span>
+                </div>
+                
+                <div className={styles.replyText}>
+                  {reply.contenu}
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       )}

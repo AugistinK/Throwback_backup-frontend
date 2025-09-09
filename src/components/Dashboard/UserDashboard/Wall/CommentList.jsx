@@ -13,7 +13,7 @@ const CommentList = ({ postId, onCommentCountChange }) => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // Charger les commentaires
+  // Load comments with improved error handling
   const loadComments = async (pageNum = 1) => {
     try {
       setLoading(true);
@@ -22,8 +22,17 @@ const CommentList = ({ postId, onCommentCountChange }) => {
         params: { page: pageNum, limit: 10 }
       });
       
-      const newComments = response.data.data;
-      const pagination = response.data.pagination;
+      // More robust data handling - support multiple response formats
+      const newComments = response.data.data || 
+                         (Array.isArray(response.data) ? response.data : []);
+      
+      // Handle pagination data safely
+      const pagination = response.data.pagination || { 
+        page: pageNum, 
+        limit: 10,
+        total: newComments.length,
+        totalPages: Math.ceil(newComments.length / 10)
+      };
       
       if (pageNum === 1) {
         setComments(newComments);
@@ -34,58 +43,107 @@ const CommentList = ({ postId, onCommentCountChange }) => {
       setHasMore(pagination.page < pagination.totalPages);
       setPage(pagination.page);
       
-      // Mettre à jour le compteur de commentaires
+      // Update comment counter if callback provided
       if (onCommentCountChange) {
-        onCommentCountChange(pagination.total);
+        onCommentCountChange(pagination.total || newComments.length);
       }
+      
+      // Clear any previous errors on successful load
+      setError(null);
     } catch (err) {
-      console.error('Erreur lors du chargement des commentaires:', err);
-      setError('Impossible de charger les commentaires');
+      console.error('Error loading comments:', err);
+      setError('Impossible de charger les commentaires. Veuillez réessayer plus tard.');
+      
+      // Set empty array on first page error to avoid undefined issues
+      if (pageNum === 1) {
+        setComments([]);
+        setHasMore(false);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Charger les commentaires au montage
+  // Load comments on component mount or when postId changes
   useEffect(() => {
-    loadComments();
+    if (postId) {
+      loadComments(1);
+    }
   }, [postId]);
 
-  // Fonction pour ajouter un nouveau commentaire
+  // Add new comment handler with error prevention
   const handleAddComment = (newComment) => {
-    setComments(prev => [newComment, ...prev]);
-    
-    // Mettre à jour le compteur
-    if (onCommentCountChange) {
-      onCommentCountChange(prev => prev + 1);
+    // Validate newComment before adding to prevent UI errors
+    if (newComment && (newComment._id || newComment.id)) {
+      setComments(prev => [newComment, ...prev]);
+      
+      // Update counter
+      if (onCommentCountChange) {
+        onCommentCountChange(prev => (typeof prev === 'number' ? prev + 1 : 1));
+      }
     }
   };
 
-  // Fonction pour mettre à jour un commentaire
+  // Update comment handler with improved validation
   const handleUpdateComment = (updatedComment) => {
+    if (!updatedComment || (!updatedComment._id && !updatedComment.id)) {
+      console.error('Invalid comment update received');
+      return;
+    }
+    
+    const commentId = updatedComment._id || updatedComment.id;
+    
     setComments(prev => 
-      prev.map(comment => 
-        comment._id === updatedComment._id ? updatedComment : comment
-      )
+      prev.map(comment => {
+        const currentId = comment._id || comment.id;
+        return currentId === commentId ? updatedComment : comment;
+      })
     );
   };
 
-  // Fonction pour supprimer un commentaire
+  // Delete comment handler
   const handleDeleteComment = (commentId) => {
-    setComments(prev => prev.filter(comment => comment._id !== commentId));
+    if (!commentId) return;
     
-    // Mettre à jour le compteur
+    setComments(prev => prev.filter(comment => {
+      const currentId = comment._id || comment.id;
+      return currentId !== commentId;
+    }));
+    
+    // Update counter
     if (onCommentCountChange) {
-      onCommentCountChange(prev => prev - 1);
+      onCommentCountChange(prev => {
+        const newCount = typeof prev === 'number' ? prev - 1 : 0;
+        return Math.max(0, newCount); // Prevent negative counts
+      });
     }
+  };
+
+  // Add refresh function
+  const refreshComments = () => {
+    setPage(1);
+    loadComments(1);
   };
 
   return (
     <div className={styles.commentListContainer}>
       <CommentForm 
         postId={postId} 
-        onCommentAdded={handleAddComment} 
+        onCommentAdded={handleAddComment}
+        onError={(errorMsg) => setError(errorMsg)} 
       />
+      
+      {error && (
+        <div className={styles.errorMessage}>
+          {error}
+          <button 
+            className={styles.retryButton}
+            onClick={refreshComments}
+          >
+            Réessayer
+          </button>
+        </div>
+      )}
       
       <div className={styles.commentList}>
         {comments.length === 0 && !loading ? (
@@ -96,7 +154,7 @@ const CommentList = ({ postId, onCommentCountChange }) => {
           <>
             {comments.map(comment => (
               <CommentItem 
-                key={comment._id} 
+                key={comment._id || comment.id || `comment-${Math.random()}`} 
                 comment={comment}
                 postId={postId}
                 onUpdateComment={handleUpdateComment}

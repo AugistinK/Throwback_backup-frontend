@@ -1,80 +1,96 @@
+// components/Dashboard/UserDashboard/Wall/CommentForm.jsx
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPaperPlane } from '@fortawesome/free-solid-svg-icons';
+import { faPaperPlane, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
 import styles from './CommentForm.module.css';
 
-const CommentForm = ({ postId, videoId, parentId = null, onCommentAdded, className = '' }) => {
+const CommentForm = ({ postId, parentId, onCommentAdded, onCancel, onError }) => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [localError, setLocalError] = useState(null);
   const { user } = useAuth();
 
+  // Handle form submission with improved error handling
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Form validation
     if (!content.trim()) {
-      setError('Le commentaire ne peut pas être vide');
+      const errorMsg = 'Veuillez entrer un commentaire';
+      setLocalError(errorMsg);
+      if (onError) onError(errorMsg);
+      return;
+    }
+    
+    if (content.length > 500) {
+      const errorMsg = 'Le commentaire ne peut pas dépasser 500 caractères';
+      setLocalError(errorMsg);
+      if (onError) onError(errorMsg);
       return;
     }
     
     try {
       setLoading(true);
-      setError(null);
+      setLocalError(null);
       
-      let response;
+      // Submit to API with proper error handling
+      const response = await api.post(`/api/posts/${postId}/comments`, {
+        contenu: content,
+        parentId: parentId || null
+      });
       
-      // Détermine l'API à utiliser selon le contexte (post ou vidéo)
-      if (postId) {
-        // Si c'est un post du ThrowBack Wall
-        response = await api.post(`/api/posts/${postId}/comments`, {
-          contenu: content,
-          parentId: parentId
-        });
-      } else if (videoId) {
-        // Si c'est une vidéo
-        response = await api.post(`/api/public/videos/${videoId}/comments`, {
-          contenu: content,
-          parent_comment: parentId
-        });
+      // Check for successful response with data
+      if (response.data && (response.data.success || response.data.data)) {
+        const newComment = response.data.data || response.data;
+        
+        // Clear form
+        setContent('');
+        
+        // Notify parent component
+        if (onCommentAdded) {
+          onCommentAdded(newComment);
+        }
+        
+        // Close form if it's a reply
+        if (onCancel && parentId) {
+          onCancel();
+        }
       } else {
-        throw new Error('Un ID de post ou de vidéo est requis');
-      }
-      
-      setContent('');
-      
-      // Notifier le parent
-      if (onCommentAdded) {
-        onCommentAdded(response.data.data);
+        throw new Error('Réponse invalide du serveur');
       }
     } catch (err) {
-      console.error('Erreur lors de l\'ajout du commentaire:', err);
-      setError(err.response?.data?.message || 'Une erreur est survenue');
+      console.error('Error submitting comment:', err);
+      const errorMsg = err.response?.data?.message || 
+                      'Une erreur est survenue lors de l\'envoi du commentaire';
+      
+      setLocalError(errorMsg);
+      if (onError) onError(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form 
-      className={`${styles.commentForm} ${className}`} 
-      onSubmit={handleSubmit}
-    >
-      <img 
-        src={user?.photo_profil || '/images/default-avatar.jpg'} 
-        alt={user?.prenom} 
-        className={styles.userAvatar}
-      />
-      
-      <div className={styles.inputContainer}>
+    <form onSubmit={handleSubmit} className={styles.commentForm}>
+      <div className={styles.formContent}>
+        <img 
+          src={user?.photo_profil || '/images/default-avatar.jpg'} 
+          alt={user?.prenom || 'User'} 
+          className={styles.userAvatar}
+        />
+        
         <textarea
-          placeholder={parentId ? "Ajouter une réponse..." : "Ajouter un commentaire..."}
+          placeholder="Écrivez un commentaire..."
           value={content}
-          onChange={(e) => setContent(e.target.value)}
-          disabled={loading}
+          onChange={(e) => {
+            setContent(e.target.value);
+            if (localError) setLocalError(null);
+          }}
           className={styles.commentInput}
-          rows={1}
+          disabled={loading}
+          rows={2}
         />
         
         <button 
@@ -82,11 +98,29 @@ const CommentForm = ({ postId, videoId, parentId = null, onCommentAdded, classNa
           className={styles.submitButton}
           disabled={loading || !content.trim()}
         >
-          <FontAwesomeIcon icon={faPaperPlane} />
+          {loading ? (
+            <FontAwesomeIcon icon={faSpinner} spin />
+          ) : (
+            <FontAwesomeIcon icon={faPaperPlane} />
+          )}
         </button>
       </div>
       
-      {error && <div className={styles.errorMessage}>{error}</div>}
+      {localError && (
+        <div className={styles.errorMessage}>
+          {localError}
+        </div>
+      )}
+      
+      {parentId && onCancel && (
+        <button 
+          type="button" 
+          className={styles.cancelButton}
+          onClick={onCancel}
+        >
+          Annuler
+        </button>
+      )}
     </form>
   );
 };
