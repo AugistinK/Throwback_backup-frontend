@@ -121,7 +121,7 @@ const WallSidebar = ({ onRefresh }) => {
 
   return (
     <div className={styles.sidebar}>
-      <div className={styles.sidebarHeader}>
+      {/* <div className={styles.sidebarHeader}>
         <h2>ThrowBack Wall</h2>
         <button 
           className={styles.refreshButton}
@@ -130,9 +130,9 @@ const WallSidebar = ({ onRefresh }) => {
         >
           <FontAwesomeIcon icon={faSync} spin={loading} />
         </button>
-      </div>
+      </div> */}
       
-      <div className={styles.sidebarSection}>
+      {/* <div className={styles.sidebarSection}>
         <h3>
           <FontAwesomeIcon icon={faChartLine} />
           <span>Tendances</span>
@@ -155,7 +155,7 @@ const WallSidebar = ({ onRefresh }) => {
             ))}
           </div>
         )}
-      </div>
+      </div> */}
       
       <div className={styles.sidebarSection}>
         <h3>

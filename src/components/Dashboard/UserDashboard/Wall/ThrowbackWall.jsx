@@ -112,12 +112,12 @@ const ThrowbackWall = () => {
             >
               Tous les posts
             </button>
-            <button 
+            {/* <button 
               className={`${styles.filterButton} ${currentFilter === 'trending' ? styles.active : ''}`}
               onClick={() => changeFilter('trending')}
             >
               Tendances
-            </button>
+            </button> */}
             {user && (
               <button 
                 className={`${styles.filterButton} ${currentFilter === 'personal' ? styles.active : ''}`}
