@@ -1,7 +1,11 @@
 .commentForm {
+  margin-bottom: 10px;
+}
+
+.formContent {
   display: flex;
   gap: 10px;
-  margin-bottom: 15px;
+  align-items: flex-start;
 }
 
 .userAvatar {
@@ -11,58 +15,85 @@
   object-fit: cover;
 }
 
-.inputContainer {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  border: 1px solid #e0e0e0;
-  border-radius: 20px;
-  padding: 0 10px 0 15px;
-  transition: border-color 0.2s;
-  background-color: #f9f9f9;
-}
-
-.inputContainer:focus-within {
-  border-color: #8b0000;
-  background-color: white;
-}
-
 .commentInput {
   flex: 1;
-  border: none;
-  outline: none;
-  background: transparent;
-  padding: 10px 0;
-  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
   resize: none;
+  font-family: inherit;
+  font-size: 0.95rem;
+  background: #f0f0f0;
+}
+
+.commentInput:focus {
+  outline: none;
+  background: #fff;
+  border-color: #b31217;
 }
 
 .submitButton {
+  background: #b31217;
+  color: white;
+  border: none;
   width: 32px;
   height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  background: none;
-  color: #8b0000;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: all 0.2s;
 }
 
 .submitButton:hover {
-  color: #730000;
+  background: #8f0e12;
 }
 
 .submitButton:disabled {
-  color: #ccc;
+  background: #ddd;
   cursor: not-allowed;
 }
 
 .errorMessage {
-  color: #d32f2f;
-  font-size: 12px;
-  margin-top: 5px;
-  margin-left: 42px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background-color: #ffebee;
+  color: #721c24;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.cancelButton {
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: #f5f5f5;
+  color: #666;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.cancelButton:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+@media (max-width: 768px) {
+  .userAvatar {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .commentInput {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+  }
+  
+  .submitButton {
+    width: 28px;
+    height: 28px;
+  }
 }
