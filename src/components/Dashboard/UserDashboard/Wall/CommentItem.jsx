@@ -8,11 +8,16 @@ import {
   faTrash,
   faThumbsDown,
   faFlag,
-  faEllipsisV
+  faEllipsisV,
+  faSave,
+  faTimes
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
 import CommentForm from './CommentForm';
+import AvatarInitials from '../../../Common/AvatarInitials';
+import ConfirmDialog from '../../../Common/ConfirmDialog';
+import { errorMessages } from '../../../../utils/errorMessages';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { fr } from 'date-fns/locale';
 import styles from './CommentItem.module.css';
@@ -20,8 +25,10 @@ import styles from './CommentItem.module.css';
 const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.contenu);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [replies, setReplies] = useState(comment.replies || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -73,7 +80,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       }
     } catch (err) {
       console.error('Error liking comment:', err);
-      setError('Une erreur est survenue');
+      setError(errorMessages.commentLike.error);
     } finally {
       setLoading(false);
     }
@@ -107,7 +114,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       }
     } catch (err) {
       console.error('Error disliking comment:', err);
-      setError('Une erreur est survenue');
+      setError(errorMessages.commentDislike.error);
     } finally {
       setLoading(false);
     }
@@ -155,15 +162,16 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
   };
   
   // Delete comment handler
-  const handleDeleteClick = async () => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce commentaire?')) {
-      return;
-    }
-    
+  const handleDeleteClick = () => {
+    setShowDropdown(false);
+    setShowDeleteConfirm(true);
+  };
+  
+  // Confirmed delete handler
+  const confirmDelete = async () => {
     try {
       setLoading(true);
       setError(null);
-      setShowDropdown(false);
       
       await api.delete(`/api/comments/${commentId}`);
       
@@ -171,9 +179,49 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       if (onDeleteComment) {
         onDeleteComment(commentId);
       }
+      
+      setShowDeleteConfirm(false);
     } catch (err) {
       console.error('Error deleting comment:', err);
-      setError('Impossible de supprimer le commentaire');
+      setError(errorMessages.commentDelete.error);
+      setLoading(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+  
+  // Handle update comment
+  const handleUpdateComment = async () => {
+    if (!editContent.trim()) {
+      setError('Le commentaire ne peut pas être vide');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.put(`/api/comments/${commentId}`, {
+        contenu: editContent
+      });
+      
+      if (response.data && response.data.data) {
+        const updatedComment = {
+          ...comment,
+          contenu: editContent,
+          modified_date: new Date()
+        };
+        
+        // Notify parent component
+        if (onUpdateComment) {
+          onUpdateComment(updatedComment);
+        }
+        
+        setIsEditing(false);
+      }
+    } catch (err) {
+      console.error('Error updating comment:', err);
+      setError(errorMessages.commentUpdate.error);
+    } finally {
       setLoading(false);
     }
   };
@@ -209,11 +257,22 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
   return (
     <div className={styles.commentItem}>
       <div className={styles.commentHeader}>
-        <img 
-          src={comment.auteur?.photo_profil || '/images/default-avatar.jpg'} 
-          alt={comment.auteur?.prenom || 'User'} 
-          className={styles.userAvatar}
-        />
+        {comment.auteur?.photo_profil ? (
+          <img 
+            src={comment.auteur.photo_profil} 
+            alt={`${comment.auteur.prenom} ${comment.auteur.nom}`} 
+            className={styles.userAvatar}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextElementSibling.style.display = 'flex';
+            }}
+          />
+        ) : (
+          <AvatarInitials 
+            user={comment.auteur} 
+            className={styles.userAvatar} 
+          />
+        )}
         
         <div className={styles.commentContent}>
           <div className={styles.commentMeta}>
@@ -224,11 +283,34 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
           </div>
           
           {isEditing ? (
-            <textarea
-              className={styles.editInput}
-              defaultValue={comment.contenu}
-              rows={3}
-            />
+            <>
+              <textarea
+                className={styles.editInput}
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                rows={3}
+              />
+              <div className={styles.editButtons}>
+                <button 
+                  className={styles.cancelEditButton}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditContent(comment.contenu);
+                  }}
+                >
+                  <FontAwesomeIcon icon={faTimes} />
+                  <span>Annuler</span>
+                </button>
+                <button 
+                  className={styles.saveEditButton}
+                  onClick={handleUpdateComment}
+                  disabled={loading || !editContent.trim()}
+                >
+                  <FontAwesomeIcon icon={faSave} />
+                  <span>Enregistrer</span>
+                </button>
+              </div>
+            </>
           ) : (
             <div className={styles.commentText}>
               {comment.contenu}
@@ -345,12 +427,24 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       {showReplies && replies.length > 0 && (
         <div className={styles.repliesList}>
           {replies.map(reply => (
-            <div key={reply._id || reply.id} className={styles.replyItem}>
-              <img 
-                src={reply.auteur?.photo_profil || '/images/default-avatar.jpg'} 
-                alt={reply.auteur?.prenom || 'User'} 
-                className={styles.replyAvatar}
-              />
+            <div key={reply._id || reply.id || `reply-${Math.random()}`} className={styles.replyItem}>
+              {reply.auteur?.photo_profil ? (
+                <img 
+                  src={reply.auteur.photo_profil} 
+                  alt={`${reply.auteur.prenom} ${reply.auteur.nom}`} 
+                  className={styles.replyAvatar}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'flex';
+                  }}
+                />
+              ) : (
+                <AvatarInitials 
+                  user={reply.auteur} 
+                  size={24}
+                  className={styles.replyAvatar} 
+                />
+              )}
               
               <div className={styles.replyContent}>
                 <div className={styles.replyMeta}>
@@ -373,6 +467,13 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
           ))}
         </div>
       )}
+      
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        message="Êtes-vous sûr de vouloir supprimer ce commentaire ?"
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 };

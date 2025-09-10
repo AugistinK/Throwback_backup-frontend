@@ -1,9 +1,10 @@
 // components/Dashboard/UserDashboard/Wall/CommentForm.jsx
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPaperPlane, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faPaperPlane, faSpinner, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
+import AvatarInitials from '../../../Common/AvatarInitials';
 import styles from './CommentForm.module.css';
 
 const CommentForm = ({ postId, parentId, onCommentAdded, onCancel, onError }) => {
@@ -75,11 +76,22 @@ const CommentForm = ({ postId, parentId, onCommentAdded, onCancel, onError }) =>
   return (
     <form onSubmit={handleSubmit} className={styles.commentForm}>
       <div className={styles.formContent}>
-        <img 
-          src={user?.photo_profil || '/images/default-avatar.jpg'} 
-          alt={user?.prenom || 'User'} 
-          className={styles.userAvatar}
-        />
+        {user?.photo_profil ? (
+          <img 
+            src={user.photo_profil} 
+            alt={`${user.prenom} ${user.nom}`} 
+            className={styles.userAvatar}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextElementSibling.style.display = 'flex';
+            }}
+          />
+        ) : (
+          <AvatarInitials 
+            user={user} 
+            className={styles.userAvatar} 
+          />
+        )}
         
         <textarea
           placeholder="Écrivez un commentaire..."
@@ -118,7 +130,8 @@ const CommentForm = ({ postId, parentId, onCommentAdded, onCancel, onError }) =>
           className={styles.cancelButton}
           onClick={onCancel}
         >
-          Annuler
+          <FontAwesomeIcon icon={faTimes} />
+          <span>Annuler</span>
         </button>
       )}
     </form>

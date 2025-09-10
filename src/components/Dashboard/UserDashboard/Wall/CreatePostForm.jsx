@@ -13,6 +13,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
+import AvatarInitials from '../../../Common/AvatarInitials';
 import styles from './CreatePostForm.module.css';
 
 const CreatePostForm = ({ onPostCreated }) => {
@@ -132,11 +133,22 @@ const CreatePostForm = ({ onPostCreated }) => {
     <div className={styles.createPostContainer}>
       <form onSubmit={handleSubmit} className={styles.createPostForm}>
         <div className={styles.userInfo}>
-          <img 
-            src={user?.photo_profil || '/images/default-avatar.jpg'} 
-            alt={user?.prenom} 
-            className={styles.userAvatar}
-          />
+          {user?.photo_profil ? (
+            <img 
+              src={user.photo_profil} 
+              alt={`${user.prenom} ${user.nom}`} 
+              className={styles.userAvatar}
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextElementSibling.style.display = 'flex';
+              }}
+            />
+          ) : (
+            <AvatarInitials 
+              user={user} 
+              className={styles.userAvatar} 
+            />
+          )}
           <div className={styles.userName}>
             {user?.prenom} {user?.nom}
           </div>

@@ -20,6 +20,9 @@ import api from '../../../../utils/api';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { fr } from 'date-fns/locale';
 import CommentList from './CommentList';
+import AvatarInitials from '../../../Common/AvatarInitials';
+import ConfirmDialog from '../../../Common/ConfirmDialog';
+import { errorMessages } from '../../../../utils/errorMessages';
 import styles from './PostItem.module.css';
 
 const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
@@ -31,6 +34,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.contenu);
   const [editVisibility, setEditVisibility] = useState(post.visibilite);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
@@ -54,6 +58,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const handleLikeClick = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       const response = await api.post(`/api/posts/${post._id}/like`);
       
@@ -72,7 +77,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       }
     } catch (err) {
       console.error('Erreur lors du like/unlike:', err);
-      setError('Une erreur est survenue lors du like/unlike');
+      setError(errorMessages.postLike.error);
     } finally {
       setLoading(false);
     }
@@ -82,6 +87,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const handleShareClick = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       await api.post(`/api/posts/${post._id}/share`);
       
@@ -102,7 +108,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       alert('Lien copié dans le presse-papier!');
     } catch (err) {
       console.error('Erreur lors du partage:', err);
-      setError('Une erreur est survenue lors du partage');
+      setError(errorMessages.postShare.error);
     } finally {
       setLoading(false);
     }
@@ -117,37 +123,41 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       
       setLoading(true);
       setShowDropdown(false);
+      setError(null);
       
       await api.post(`/api/posts/${post._id}/report`, { raison });
       
       alert('Post signalé avec succès. Notre équipe de modération va examiner ce contenu.');
     } catch (err) {
       console.error('Erreur lors du signalement:', err);
-      setError('Une erreur est survenue lors du signalement');
+      setError(errorMessages.postReport.error);
     } finally {
       setLoading(false);
     }
   };
 
   // Fonction pour supprimer un post
-  const handleDeleteClick = async () => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce post?')) {
-      return;
-    }
-    
+  const handleDeleteClick = () => {
+    setShowDropdown(false);
+    setShowDeleteConfirm(true);
+  };
+  
+  // Fonction pour confirmer la suppression
+  const confirmDeletePost = async () => {
     try {
       setLoading(true);
-      setShowDropdown(false);
+      setError(null);
       
       await api.delete(`/api/posts/${post._id}`);
       
       if (onDeletePost) {
         onDeletePost(post._id);
       }
+      
+      setShowDeleteConfirm(false);
     } catch (err) {
       console.error('Erreur lors de la suppression:', err);
-      setError('Une erreur est survenue lors de la suppression');
-    } finally {
+      setError(errorMessages.postDelete.error);
       setLoading(false);
     }
   };
@@ -156,6 +166,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const handleUpdateClick = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       const response = await api.put(`/api/posts/${post._id}`, {
         contenu: editContent,
@@ -169,7 +180,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       }
     } catch (err) {
       console.error('Erreur lors de la mise à jour:', err);
-      setError('Une erreur est survenue lors de la mise à jour');
+      setError(errorMessages.postUpdate.error);
     } finally {
       setLoading(false);
     }
@@ -225,11 +236,22 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     <div className={styles.postItem}>
       <div className={styles.postHeader}>
         <div className={styles.userInfo}>
-          <img 
-            src={post.auteur?.photo_profil || '/images/default-avatar.jpg'} 
-            alt={post.auteur?.prenom} 
-            className={styles.userAvatar}
-          />
+          {post.auteur?.photo_profil ? (
+            <img 
+              src={post.auteur.photo_profil} 
+              alt={`${post.auteur.prenom} ${post.auteur.nom}`} 
+              className={styles.userAvatar}
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextElementSibling.style.display = 'flex';
+              }}
+            />
+          ) : (
+            <AvatarInitials 
+              user={post.auteur} 
+              className={styles.userAvatar} 
+            />
+          )}
           <div className={styles.userDetails}>
             <div className={styles.userName}>
               {post.auteur?.prenom} {post.auteur?.nom}
@@ -401,6 +423,13 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           onCommentCountChange={setCommentCount}
         />
       )}
+      
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        message="Êtes-vous sûr de vouloir supprimer ce post ?"
+        onConfirm={confirmDeletePost}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 };
