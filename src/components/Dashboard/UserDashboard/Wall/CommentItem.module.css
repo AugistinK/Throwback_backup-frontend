@@ -14,6 +14,8 @@
 .commentHeader {
   display: flex;
   position: relative;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .userAvatar {
@@ -28,40 +30,47 @@
   justify-content: center;
   font-weight: bold;
   color: #555;
+  flex-shrink: 0;
 }
 
 .commentContent {
   flex: 1;
+  min-width: 0; /* Empêche le débordement du contenu */
 }
 
 .commentMeta {
   display: flex;
   align-items: center;
   margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 
 .userName {
   font-weight: 600;
   margin-right: 8px;
   color: #333;
+  white-space: nowrap;
 }
 
 .commentDate {
   font-size: 0.8rem;
   color: #777;
+  white-space: nowrap;
 }
 
 .commentText {
-  margin-bottom: 8px;
+  margin: 8px 0;
   word-break: break-word;
   line-height: 1.5;
+  max-width: 100%;
 }
 
 .commentActions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
-  margin-top: 5px;
+  margin-top: 8px;
 }
 
 .actionButton {
@@ -101,7 +110,9 @@
 }
 
 .dropdownContainer {
-  position: relative;
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 
 .moreButton {
@@ -151,13 +162,14 @@
   color: #555;
 }
 
+/* Contenu du commentaire */
 .replyForm {
-  margin-left: 40px;
+  margin-left: 52px; /* Aligné avec le contenu du commentaire */
   margin-top: 8px;
 }
 
 .repliesList {
-  margin-left: 40px;
+  margin-left: 52px;
   margin-top: 8px;
   border-left: 2px solid #eee;
   padding-left: 12px;
@@ -178,12 +190,14 @@
 
 .replyContent {
   flex: 1;
+  min-width: 0;
 }
 
 .replyMeta {
   display: flex;
   align-items: center;
   margin-bottom: 2px;
+  flex-wrap: wrap;
 }
 
 .replyUserName {
@@ -200,6 +214,7 @@
 .replyText {
   font-size: 0.9rem;
   line-height: 1.4;
+  word-break: break-word;
 }
 
 .editInput {
