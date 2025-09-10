@@ -58,7 +58,10 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(true);
       setError(null);
       
+      console.log(`Sending like request for comment: ${commentId}`);
       const response = await api.post(`/api/comments/${commentId}/like`);
+      
+      console.log('Like response:', response.data);
       
       if (response.data && response.data.data) {
         // Update local comment state
@@ -80,7 +83,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       }
     } catch (err) {
       console.error('Error liking comment:', err);
-      setError(errorMessages.commentLike.error);
+      setError("Impossible d'aimer ce commentaire. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }
@@ -92,7 +95,10 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(true);
       setError(null);
       
+      console.log(`Sending dislike request for comment: ${commentId}`);
       const response = await api.post(`/api/comments/${commentId}/dislike`);
+      
+      console.log('Dislike response:', response.data);
       
       if (response.data && response.data.data) {
         // Update local comment state
@@ -114,7 +120,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       }
     } catch (err) {
       console.error('Error disliking comment:', err);
-      setError(errorMessages.commentDislike.error);
+      setError("Impossible de ne pas aimer ce commentaire. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }
@@ -128,7 +134,10 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(true);
       setError(null);
       
+      console.log(`Loading replies for comment: ${commentId}`);
       const response = await api.get(`/api/comments/${commentId}/replies`);
+      
+      console.log('Replies response:', response.data);
       
       if (response.data && (response.data.data || Array.isArray(response.data))) {
         const loadedReplies = response.data.data || response.data;
@@ -173,7 +182,10 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(true);
       setError(null);
       
-      await api.delete(`/api/comments/${commentId}`);
+      console.log(`Deleting comment: ${commentId}`);
+      const response = await api.delete(`/api/comments/${commentId}`);
+      
+      console.log('Delete response:', response.data);
       
       // Notify parent component
       if (onDeleteComment) {
@@ -183,7 +195,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setShowDeleteConfirm(false);
     } catch (err) {
       console.error('Error deleting comment:', err);
-      setError(errorMessages.commentDelete.error);
+      setError("Impossible de supprimer ce commentaire. Veuillez réessayer.");
       setLoading(false);
       setShowDeleteConfirm(false);
     }
@@ -200,9 +212,12 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(true);
       setError(null);
       
+      console.log(`Updating comment: ${commentId}`);
       const response = await api.put(`/api/comments/${commentId}`, {
         contenu: editContent
       });
+      
+      console.log('Update response:', response.data);
       
       if (response.data && response.data.data) {
         const updatedComment = {
@@ -220,7 +235,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       }
     } catch (err) {
       console.error('Error updating comment:', err);
-      setError(errorMessages.commentUpdate.error);
+      setError("Impossible de modifier ce commentaire. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }
@@ -237,7 +252,10 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(true);
       setError(null);
       
-      await api.post(`/api/comments/${commentId}/report`, { raison: reason });
+      console.log(`Reporting comment: ${commentId}`);
+      const response = await api.post(`/api/comments/${commentId}/report`, { raison: reason });
+      
+      console.log('Report response:', response.data);
       
       alert('Commentaire signalé avec succès');
     } catch (err) {

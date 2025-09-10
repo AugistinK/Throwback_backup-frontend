@@ -1,20 +1,33 @@
+/* components/Dashboard/UserDashboard/Wall/CommentItem.module.css */
 .commentItem {
-  margin-bottom: 15px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #eee;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  transition: background-color 0.2s;
+}
+
+.commentItem:hover {
+  background-color: #f5f5f5;
 }
 
 .commentHeader {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  position: relative;
 }
 
 .userAvatar {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
+  margin-right: 12px;
   object-fit: cover;
+  background-color: #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #555;
 }
 
 .commentContent {
@@ -24,62 +37,50 @@
 .commentMeta {
   display: flex;
   align-items: center;
-  gap: 8px;
   margin-bottom: 4px;
 }
 
 .userName {
   font-weight: 600;
+  margin-right: 8px;
   color: #333;
-  font-size: 0.9rem;
 }
 
 .commentDate {
-  color: #888;
   font-size: 0.8rem;
+  color: #777;
 }
 
 .commentText {
   margin-bottom: 8px;
-  white-space: pre-wrap;
   word-break: break-word;
-  font-size: 0.95rem;
-}
-
-.editInput {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  resize: vertical;
-  font-family: inherit;
-  font-size: 0.95rem;
-  margin-bottom: 8px;
+  line-height: 1.5;
 }
 
 .commentActions {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
+  margin-top: 5px;
 }
 
 .actionButton {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
   gap: 5px;
-  background: transparent;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
   cursor: pointer;
-  color: #666;
-  font-size: 0.85rem;
-  transition: all 0.2s;
+  padding: 3px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .actionButton:hover {
-  background: #f0f0f0;
-  color: #333;
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #b31217;
 }
 
 .actionButton.liked {
@@ -87,16 +88,16 @@
 }
 
 .actionButton.disliked {
-  color: #333;
+  color: #430000;
 }
 
 .errorMessage {
-  margin-top: 8px;
-  padding: 8px 10px;
-  background-color: #ffebee;
-  color: #721c24;
+  color: #b31217;
+  font-size: 0.9rem;
+  margin-top: 5px;
+  background-color: rgba(179, 18, 23, 0.1);
+  padding: 5px 10px;
   border-radius: 4px;
-  font-size: 0.85rem;
 }
 
 .dropdownContainer {
@@ -104,29 +105,28 @@
 }
 
 .moreButton {
-  background: transparent;
+  background: none;
   border: none;
-  color: #888;
-  padding: 4px;
-  border-radius: 50%;
+  color: #777;
   cursor: pointer;
-  transition: all 0.2s;
+  padding: 5px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
 }
 
 .moreButton:hover {
-  background: #f0f0f0;
-  color: #333;
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .dropdown {
   position: absolute;
-  top: 100%;
   right: 0;
-  background: white;
+  top: 100%;
+  background-color: white;
   border-radius: 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  width: 130px;
   z-index: 10;
+  width: 150px;
 }
 
 .dropdown button {
@@ -134,43 +134,46 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 8px 12px;
   border: none;
-  background: transparent;
+  background: none;
   text-align: left;
   cursor: pointer;
-  font-size: 0.85rem;
+  transition: background-color 0.2s;
 }
 
 .dropdown button:hover {
-  background: #f5f5f5;
+  background-color: #f5f5f5;
+}
+
+.dropdown button svg {
+  width: 16px;
+  color: #555;
 }
 
 .replyForm {
-  margin-left: 42px;
-  margin-top: 10px;
+  margin-left: 40px;
+  margin-top: 8px;
 }
 
 .repliesList {
-  margin-left: 42px;
-  margin-top: 10px;
+  margin-left: 40px;
+  margin-top: 8px;
   border-left: 2px solid #eee;
-  padding-left: 10px;
+  padding-left: 12px;
 }
 
 .replyItem {
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #f5f5f5;
+  margin-bottom: 8px;
 }
 
 .replyAvatar {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  object-fit: cover;
+  margin-right: 8px;
+  flex-shrink: 0;
 }
 
 .replyContent {
@@ -180,81 +183,85 @@
 .replyMeta {
   display: flex;
   align-items: center;
-  gap: 6px;
   margin-bottom: 2px;
 }
 
 .replyUserName {
   font-weight: 600;
-  color: #333;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  margin-right: 8px;
 }
 
 .replyDate {
-  color: #888;
   font-size: 0.75rem;
+  color: #777;
 }
 
 .replyText {
   font-size: 0.9rem;
-  white-space: pre-wrap;
-  word-break: break-word;
+  line-height: 1.4;
 }
 
-@media (max-width: 768px) {
-  .userAvatar {
-    width: 28px;
-    height: 28px;
-  }
-  
-  .actionButton span {
-    display: none;
-  }
-  
-  .replyForm, .repliesList {
-    margin-left: 38px;
-  }
+.editInput {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 8px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: inherit;
 }
 
 .editButtons {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 8px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .cancelEditButton, .saveEditButton {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   padding: 6px 12px;
-  border: none;
   border-radius: 4px;
-  font-size: 0.8rem;
   cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .cancelEditButton {
   background-color: #f5f5f5;
-  color: #666;
+  border: 1px solid #ddd;
+  color: #333;
+}
+
+.cancelEditButton:hover {
+  background-color: #eee;
 }
 
 .saveEditButton {
   background-color: #b31217;
+  border: 1px solid #b31217;
   color: white;
 }
 
-.cancelEditButton:hover {
-  background-color: #e0e0e0;
-}
-
 .saveEditButton:hover {
-  background-color: #8f0e12;
+  background-color: #9c1015;
 }
 
 .saveEditButton:disabled {
   background-color: #d3d3d3;
+  border-color: #d3d3d3;
   cursor: not-allowed;
 }
 
-.avatar-initials {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 600;
+/* Styles spécifiques pour les boutons like/dislike */
+.liked {
+  color: #b31217 !important;
+}
+
+.disliked {
+  color: #430000 !important;
 }

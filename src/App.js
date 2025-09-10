@@ -131,7 +131,7 @@ function App() {
 
             {/* pages en dev */}
             <Route path="live" element={<LiveThrowback />} />
-            <Route path="wall" element={<UserTempPage title="ThrowBack Wall" />} />
+            {/* <Route path="wall" element={<UserTempPage title="ThrowBack Wall" />} /> */}
             <Route path="chat" element={<UserTempPage title="ThrowBack Chat" />} />
             <Route path="discover" element={<UserTempPage title="Discover" />} />
             <Route path="favorites" element={<UserTempPage title="Your Favorites" />} />
