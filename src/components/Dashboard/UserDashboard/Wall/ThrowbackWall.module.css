@@ -61,6 +61,39 @@
   font-size: 0.8em;
 }
 
+/* Ajouter */
+.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loginRequired {
+  font-size: 0.8em;
+  opacity: 0.8;
+  margin-left: 5px;
+}
+
+.errorMessage {
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+  border-radius: 4px;
+  padding: 10px 15px;
+  margin: 10px 0;
+  color: #c62828;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.retryButton {
+  background-color: #c62828;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
 .errorMessage {
   background-color: rgba(179, 18, 23, 0.1);
   color: #b31217;

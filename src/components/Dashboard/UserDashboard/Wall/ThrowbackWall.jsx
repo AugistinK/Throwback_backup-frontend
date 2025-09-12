@@ -5,7 +5,7 @@ import CreatePostForm from './CreatePostForm';
 import WallSidebar from './WallSidebar';
 import ErrorBoundary from '../../../Common/ErrorBoundary';
 import { useAuth } from '../../../../contexts/AuthContext';
-import api from '../../../../utils/api';
+import socialAPI from '../../../../utils/socialAPI';
 import styles from './ThrowbackWall.module.css';
 
 const ThrowbackWall = () => {
@@ -16,47 +16,56 @@ const ThrowbackWall = () => {
   const [hasMore, setHasMore] = useState(true);
   const [currentFilter, setCurrentFilter] = useState('all'); // all, trending, personal
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const { user } = useAuth();
+  const { user, isAuthenticated, token } = useAuth();
 
-  // Fonction améliorée pour récupérer les posts
+  // Fonction améliorée pour récupérer les posts avec meilleure gestion des erreurs
   const fetchPosts = async (page = 1, filter = 'all') => {
     try {
       setLoading(true);
       setError(null);
       
+      // Vérifier l'authentification pour le filtre personnel
+      if (filter === 'personal') {
+        if (!isAuthenticated || !token) {
+          console.log('Utilisateur non authentifié, basculement vers tous les posts');
+          setCurrentFilter('all');
+          filter = 'all'; // Forcer le filtre à 'all'
+        } else if (!user) {
+          console.log('Objet utilisateur non disponible, basculement vers tous les posts');
+          setCurrentFilter('all');
+          filter = 'all'; // Forcer le filtre à 'all'
+        }
+      }
+      
       // Construire les paramètres de requête
       let params = { page, limit: 10 };
       
-      // Correction des paramètres selon le filtre
-      if (filter === 'personal' && user) {
-        // Assurez-vous que l'ID utilisateur est correctement extrait
-        const userId = user.id || user._id;
+      // Extraction sécurisée de l'ID utilisateur pour le filtre personnel
+      if (filter === 'personal') {
+        // Vérifier toutes les possibilités d'emplacement de l'ID
+        const userId = user?.id || user?._id || 
+                      (typeof user === 'object' && user !== null && Object.prototype.hasOwnProperty.call(user, 'userData') ? 
+                       (user.userData?.id || user.userData?._id) : null);
         
         if (!userId) {
-          console.error('ID utilisateur manquant pour le filtre personnel');
-          setError('Impossible de filtrer vos posts. Veuillez vous reconnecter.');
-          setLoading(false);
-          return;
+          console.warn('ID utilisateur introuvable', user);
+          throw new Error("Impossible d'identifier votre compte utilisateur");
         }
         
-        // Utiliser le paramètre auteur au lieu de userId (selon votre API)
         params.auteur = userId;
-        
         console.log(`Filtrage des posts par utilisateur: ${userId}`);
       }
       
       console.log('Paramètres de requête:', params);
       
-      const response = await api.get('/api/posts', { params });
+      // Utiliser socialAPI au lieu de api directement
+      const response = await socialAPI.getAllPosts(params);
       
       // Vérification des résultats
-      console.log(`Posts reçus: ${response.data.data?.length || 0}`);
+      const newPosts = response.data || (Array.isArray(response) ? response : []);
+      console.log(`Posts reçus: ${newPosts.length}`);
       
-      // Gestion plus robuste des données de réponse
-      const newPosts = response.data.data || 
-                      (Array.isArray(response.data) ? response.data : []);
-      
-      const pagination = response.data.pagination || {
+      const pagination = response.pagination || {
         page: page,
         totalPages: Math.ceil(newPosts.length / 10),
         total: newPosts.length
@@ -75,7 +84,15 @@ const ThrowbackWall = () => {
       setCurrentPage(pagination.page);
     } catch (err) {
       console.error('Erreur lors du chargement des posts:', err);
-      setError('Impossible de charger les posts. Veuillez réessayer plus tard.');
+      
+      // Message d'erreur spécifique selon le type d'erreur
+      if (err.response?.status === 401) {
+        setError('Votre session a expiré. Veuillez vous reconnecter.');
+      } else if (err.message.includes("identifier votre compte")) {
+        setError(err.message);
+      } else {
+        setError('Impossible de charger les posts. Veuillez réessayer plus tard.');
+      }
       
       // Initialiser un tableau vide en cas d'erreur sur la première page
       if (page === 1) {
@@ -90,7 +107,7 @@ const ThrowbackWall = () => {
   // Charger les posts au montage du composant ou lors d'un changement de filtre
   useEffect(() => {
     fetchPosts(1, currentFilter);
-  }, [currentFilter, refreshTrigger, user]);
+  }, [currentFilter, refreshTrigger, isAuthenticated]);
 
   // Fonction pour charger plus de posts
   const loadMore = () => {
@@ -104,25 +121,20 @@ const ThrowbackWall = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // Fonction améliorée pour changer le filtre
+  // Fonction améliorée pour changer le filtre avec vérification d'authentification
   const changeFilter = (filter) => {
+    // Si on essaie de passer au filtre personnel sans être authentifié
+    if (filter === 'personal' && (!isAuthenticated || !token)) {
+      console.log('Tentative de filtrage personnel sans authentification');
+      alert('Veuillez vous connecter pour voir vos posts personnels');
+      return;
+    }
+    
     if (filter !== currentFilter) {
       console.log(`Changement de filtre: ${currentFilter} -> ${filter}`);
       setCurrentFilter(filter);
       setCurrentPage(1);
       setPosts([]); // Vider les posts lors du changement de filtre
-      
-      // Mise à jour visuelle des boutons de filtre
-      const allPostsBtn = document.querySelector('[data-filter="all"]');
-      const myPostsBtn = document.querySelector('[data-filter="personal"]');
-      
-      if (filter === 'all') {
-        allPostsBtn?.classList.add(styles.active);
-        myPostsBtn?.classList.remove(styles.active);
-      } else {
-        myPostsBtn?.classList.add(styles.active);
-        allPostsBtn?.classList.remove(styles.active);
-      }
       
       // Forcer un petit délai pour éviter les problèmes de rendu
       setTimeout(() => {
@@ -174,7 +186,7 @@ const ThrowbackWall = () => {
               <CreatePostForm onPostCreated={addPost} />
             </div>
             
-            {/* Barre de filtres améliorée */}
+            {/* Barre de filtres améliorée avec état d'authentification */}
             <div className={styles.filterBar}>
               <button 
                 className={`${styles.filterButton} ${currentFilter === 'all' ? styles.active : ''}`}
@@ -187,7 +199,7 @@ const ThrowbackWall = () => {
                 )}
               </button>
               
-              {user && (
+              {isAuthenticated && token ? (
                 <button 
                   className={`${styles.filterButton} ${currentFilter === 'personal' ? styles.active : ''}`}
                   onClick={() => changeFilter('personal')}
@@ -197,6 +209,14 @@ const ThrowbackWall = () => {
                   {posts.length > 0 && currentFilter === 'personal' && (
                     <span className={styles.filterCount}>{posts.length}</span>
                   )}
+                </button>
+              ) : (
+                <button 
+                  className={`${styles.filterButton} ${styles.disabled}`}
+                  onClick={() => alert('Veuillez vous connecter pour voir vos posts')}
+                >
+                  Mes posts
+                  <span className={styles.loginRequired}>(Connexion requise)</span>
                 </button>
               )}
             </div>
