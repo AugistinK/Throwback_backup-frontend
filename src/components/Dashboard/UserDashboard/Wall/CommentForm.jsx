@@ -15,7 +15,6 @@ const CommentForm = ({ postId, parentId, onCommentAdded, onCancel, onError }) =>
 
   // Handle form submission with improved error handling
 
-  // Modifier dans CommentForm.jsx
 const handleSubmit = async (e) => {
   e.preventDefault();
   
@@ -27,7 +26,7 @@ const handleSubmit = async (e) => {
     return;
   }
   
-  // Supprimer cette validation
+  // Supprimer cette validation de limite de caractères
   // if (content.length > 500) {
   //   const errorMsg = 'Le commentaire ne peut pas dépasser 500 caractères';
   //   setLocalError(errorMsg);

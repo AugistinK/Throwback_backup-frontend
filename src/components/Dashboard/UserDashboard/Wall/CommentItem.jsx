@@ -52,138 +52,153 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
     locale: fr
   });
 
-  // Handle like/unlike with improved error handling
-
-const handleLikeClick = async () => {
-  try {
-    // Mise à jour optimiste de l'interface avant confirmation du serveur
-    const optimisticUpdate = {
-      ...comment,
-      userInteraction: {
-        ...comment.userInteraction,
-        liked: !isLiked,
-        disliked: false // Désactiver dislike si on like
-      },
-      likes: isLiked ? likeCount - 1 : likeCount + 1,
-      dislikes: isDisliked ? dislikeCount - 1 : dislikeCount
-    };
-    
-    // Mettre à jour l'UI immédiatement
-    if (onUpdateComment) {
-      onUpdateComment(optimisticUpdate);
-    }
-    
-    setLoading(true);
-    setError(null);
-    
-    // Ajouter un timeout et retry
-    const maxRetries = 3;
-    let retryCount = 0;
-    let success = false;
-    
-    while (retryCount < maxRetries && !success) {
-      try {
-        const response = await api.post(`/api/comments/${commentId}/like`);
-        console.log('Like response:', response.data);
-        success = true;
-        
-        // Mettre à jour avec les données réelles du serveur si disponibles
-        if (response.data && response.data.data) {
-          const serverUpdatedComment = {
-            ...comment,
-            userInteraction: {
-              ...comment.userInteraction,
-              liked: response.data.data.liked,
-              disliked: response.data.data.disliked
-            },
-            likes: response.data.data.likes,
-            dislikes: response.data.data.dislikes
-          };
-          
-          if (onUpdateComment) {
-            onUpdateComment(serverUpdatedComment);
-          }
-        }
-      } catch (err) {
-        retryCount++;
-        if (retryCount >= maxRetries) throw err;
-        // Attendre avant de réessayer (backoff exponentiel)
-        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
+  // Handle like/unlike avec une gestion d'erreur améliorée
+  const handleLikeClick = async () => {
+    try {
+      // Empêcher les clics multiples pendant le chargement
+      if (loading) return;
+      
+      // Mise à jour optimiste de l'interface avant confirmation du serveur
+      const optimisticUpdate = {
+        ...comment,
+        userInteraction: {
+          ...comment.userInteraction,
+          liked: !isLiked,
+          disliked: false // Désactiver dislike si on like
+        },
+        likes: isLiked ? likeCount - 1 : likeCount + 1,
+        dislikes: isDisliked ? dislikeCount - 1 : dislikeCount
+      };
+      
+      // Mettre à jour l'UI immédiatement
+      if (onUpdateComment) {
+        onUpdateComment(optimisticUpdate);
       }
+      
+      setLoading(true);
+      setError(null);
+      
+      // Ajouter un timeout et retry avec backoff exponentiel
+      const maxRetries = 3;
+      let retryCount = 0;
+      let success = false;
+      
+      while (retryCount < maxRetries && !success) {
+        try {
+          const response = await api.post(`/api/comments/${commentId}/like`);
+          console.log('Like response:', response.data);
+          success = true;
+          
+          // Mettre à jour avec les données réelles du serveur si disponibles
+          if (response.data && response.data.data) {
+            const serverUpdatedComment = {
+              ...comment,
+              userInteraction: {
+                ...comment.userInteraction,
+                liked: response.data.data.liked,
+                disliked: response.data.data.disliked
+              },
+              likes: response.data.data.likes,
+              dislikes: response.data.data.dislikes
+            };
+            
+            if (onUpdateComment) {
+              onUpdateComment(serverUpdatedComment);
+            }
+          }
+        } catch (err) {
+          retryCount++;
+          if (retryCount >= maxRetries) throw err;
+          // Attendre avant de réessayer (backoff exponentiel)
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
+        }
+      }
+    } catch (err) {
+      console.error('Error liking comment:', err);
+      setError("Impossible d'aimer ce commentaire. Veuillez réessayer.");
+      
+      // Restaurer l'état précédent en cas d'erreur
+      if (onUpdateComment) {
+        onUpdateComment(comment);
+      }
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error('Error liking comment:', err);
-    setError("Impossible d'aimer ce commentaire. Veuillez réessayer.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
   
-  // Handle dislike with improved error handling
-const handleDislikeClick = async () => {
-  try {
-    // Mise à jour optimiste de l'interface avant confirmation du serveur
-    const optimisticUpdate = {
-      ...comment,
-      userInteraction: {
-        ...comment.userInteraction,
-        disliked: !isDisliked,
-        liked: false // Désactiver like si on dislike
-      },
-      dislikes: isDisliked ? dislikeCount - 1 : dislikeCount + 1,
-      likes: isLiked ? likeCount - 1 : likeCount
-    };
-    
-    // Mettre à jour l'UI immédiatement
-    if (onUpdateComment) {
-      onUpdateComment(optimisticUpdate);
-    }
-    
-    setLoading(true);
-    setError(null);
-    
-    // Ajouter un timeout et retry
-    const maxRetries = 3;
-    let retryCount = 0;
-    let success = false;
-    
-    while (retryCount < maxRetries && !success) {
-      try {
-        const response = await api.post(`/api/comments/${commentId}/dislike`);
-        console.log('Dislike response:', response.data);
-        success = true;
-        
-        // Mettre à jour avec les données réelles du serveur si disponibles
-        if (response.data && response.data.data) {
-          const serverUpdatedComment = {
-            ...comment,
-            userInteraction: {
-              ...comment.userInteraction,
-              liked: response.data.data.liked,
-              disliked: response.data.data.disliked
-            },
-            likes: response.data.data.likes,
-            dislikes: response.data.data.dislikes
-          };
-          
-          if (onUpdateComment) {
-            onUpdateComment(serverUpdatedComment);
-          }
-        }
-      } catch (err) {
-        retryCount++;
-        if (retryCount >= maxRetries) throw err;
-        // Attendre avant de réessayer (backoff exponentiel)
-        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
+  // Handle dislike avec une gestion d'erreur améliorée
+  const handleDislikeClick = async () => {
+    try {
+      // Empêcher les clics multiples pendant le chargement
+      if (loading) return;
+      
+      // Mise à jour optimiste de l'interface avant confirmation du serveur
+      const optimisticUpdate = {
+        ...comment,
+        userInteraction: {
+          ...comment.userInteraction,
+          disliked: !isDisliked,
+          liked: false // Désactiver like si on dislike
+        },
+        dislikes: isDisliked ? dislikeCount - 1 : dislikeCount + 1,
+        likes: isLiked ? likeCount - 1 : likeCount
+      };
+      
+      // Mettre à jour l'UI immédiatement
+      if (onUpdateComment) {
+        onUpdateComment(optimisticUpdate);
       }
+      
+      setLoading(true);
+      setError(null);
+      
+      // Ajouter un timeout et retry avec backoff exponentiel
+      const maxRetries = 3;
+      let retryCount = 0;
+      let success = false;
+      
+      while (retryCount < maxRetries && !success) {
+        try {
+          const response = await api.post(`/api/comments/${commentId}/dislike`);
+          console.log('Dislike response:', response.data);
+          success = true;
+          
+          // Mettre à jour avec les données réelles du serveur si disponibles
+          if (response.data && response.data.data) {
+            const serverUpdatedComment = {
+              ...comment,
+              userInteraction: {
+                ...comment.userInteraction,
+                liked: response.data.data.liked,
+                disliked: response.data.data.disliked
+              },
+              likes: response.data.data.likes,
+              dislikes: response.data.data.dislikes
+            };
+            
+            if (onUpdateComment) {
+              onUpdateComment(serverUpdatedComment);
+            }
+          }
+        } catch (err) {
+          retryCount++;
+          if (retryCount >= maxRetries) throw err;
+          // Attendre avant de réessayer (backoff exponentiel)
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
+        }
+      }
+    } catch (err) {
+      console.error('Error disliking comment:', err);
+      setError("Impossible de ne pas aimer ce commentaire. Veuillez réessayer.");
+      
+      // Restaurer l'état précédent en cas d'erreur
+      if (onUpdateComment) {
+        onUpdateComment(comment);
+      }
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error('Error disliking comment:', err);
-    setError("Impossible de ne pas aimer ce commentaire. Veuillez réessayer.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
   
   // Load more replies with error handling
   const loadReplies = async () => {
@@ -325,11 +340,17 @@ const handleDislikeClick = async () => {
     }
   };
   
-  // Determine if user can edit/delete
+  // Amélioration de la détermination des droits
   const isAuthor = user && comment.auteur && 
                   (comment.auteur._id === user.id || comment.auteur.id === user.id);
-  const isAdmin = user && user.role && ['admin', 'superadmin'].includes(user.role);
-  const canModify = isAuthor || isAdmin;
+  const isAdmin = user && (
+    (user.roles && user.roles.some(r => ['admin', 'superadmin'].includes(r.libelle_role))) ||
+    ['admin', 'superadmin'].includes(user.role)
+  );
+
+  // Modifier pour restreindre les permissions
+  const canModify = isAuthor; // Seul l'auteur peut modifier son commentaire
+  const canDelete = isAuthor || isAdmin; // L'auteur et les admins peuvent supprimer
 
   return (
     <div className={styles.commentItem}>
@@ -449,7 +470,7 @@ const handleDislikeClick = async () => {
           )}
         </div>
         
-        {canModify && (
+        {user && (
           <div className={styles.dropdownContainer}>
             <button 
               className={styles.moreButton}
@@ -460,7 +481,7 @@ const handleDislikeClick = async () => {
             
             {showDropdown && (
               <div className={styles.dropdown}>
-                {isAuthor && (
+                {canModify && (
                   <button onClick={() => {
                     setIsEditing(true);
                     setShowDropdown(false);
@@ -470,7 +491,7 @@ const handleDislikeClick = async () => {
                   </button>
                 )}
                 
-                {canModify && (
+                {canDelete && (
                   <button onClick={handleDeleteClick}>
                     <FontAwesomeIcon icon={faTrash} />
                     <span>Supprimer</span>

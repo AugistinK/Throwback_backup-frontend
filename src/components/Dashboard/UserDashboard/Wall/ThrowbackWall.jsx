@@ -18,75 +18,74 @@ const ThrowbackWall = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { user } = useAuth();
 
-  // Fonction pour récupérer les posts avec gestion d'erreur améliorée
-// Fonction améliorée pour récupérer les posts
-const fetchPosts = async (page = 1, filter = 'all') => {
-  try {
-    setLoading(true);
-    setError(null);
-    
-    // Construire les paramètres de requête
-    let params = { page, limit: 10 };
-    
-    // Correction des paramètres selon le filtre
-    if (filter === 'personal' && user) {
-      // Assurez-vous que l'ID utilisateur est correctement extrait
-      const userId = user.id || user._id;
+  // Fonction améliorée pour récupérer les posts
+  const fetchPosts = async (page = 1, filter = 'all') => {
+    try {
+      setLoading(true);
+      setError(null);
       
-      if (!userId) {
-        console.error('ID utilisateur manquant pour le filtre personnel');
-        setError('Impossible de filtrer vos posts. Veuillez vous reconnecter.');
-        setLoading(false);
-        return;
+      // Construire les paramètres de requête
+      let params = { page, limit: 10 };
+      
+      // Correction des paramètres selon le filtre
+      if (filter === 'personal' && user) {
+        // Assurez-vous que l'ID utilisateur est correctement extrait
+        const userId = user.id || user._id;
+        
+        if (!userId) {
+          console.error('ID utilisateur manquant pour le filtre personnel');
+          setError('Impossible de filtrer vos posts. Veuillez vous reconnecter.');
+          setLoading(false);
+          return;
+        }
+        
+        // Utiliser le paramètre auteur au lieu de userId (selon votre API)
+        params.auteur = userId;
+        
+        console.log(`Filtrage des posts par utilisateur: ${userId}`);
       }
       
-      // Utiliser le paramètre auteur au lieu de userId (selon votre API)
-      params.auteur = userId;
+      console.log('Paramètres de requête:', params);
       
-      console.log(`Filtrage des posts par utilisateur: ${userId}`);
+      const response = await api.get('/api/posts', { params });
+      
+      // Vérification des résultats
+      console.log(`Posts reçus: ${response.data.data?.length || 0}`);
+      
+      // Gestion plus robuste des données de réponse
+      const newPosts = response.data.data || 
+                      (Array.isArray(response.data) ? response.data : []);
+      
+      const pagination = response.data.pagination || {
+        page: page,
+        totalPages: Math.ceil(newPosts.length / 10),
+        total: newPosts.length
+      };
+      
+      // Si c'est la première page, remplacer les posts
+      // Sinon, ajouter les nouveaux posts à la liste existante
+      if (page === 1) {
+        setPosts(newPosts);
+      } else {
+        setPosts(prevPosts => [...prevPosts, ...newPosts]);
+      }
+      
+      // Vérifier s'il y a plus de pages à charger
+      setHasMore(pagination.page < pagination.totalPages);
+      setCurrentPage(pagination.page);
+    } catch (err) {
+      console.error('Erreur lors du chargement des posts:', err);
+      setError('Impossible de charger les posts. Veuillez réessayer plus tard.');
+      
+      // Initialiser un tableau vide en cas d'erreur sur la première page
+      if (page === 1) {
+        setPosts([]);
+        setHasMore(false);
+      }
+    } finally {
+      setLoading(false);
     }
-    
-    console.log('Paramètres de requête:', params);
-    
-    const response = await api.get('/api/posts', { params });
-    
-    // Vérification des résultats
-    console.log(`Posts reçus: ${response.data.data?.length || 0}`);
-    
-    // Gestion plus robuste des données de réponse
-    const newPosts = response.data.data || 
-                    (Array.isArray(response.data) ? response.data : []);
-    
-    const pagination = response.data.pagination || {
-      page: page,
-      totalPages: Math.ceil(newPosts.length / 10),
-      total: newPosts.length
-    };
-    
-    // Si c'est la première page, remplacer les posts
-    // Sinon, ajouter les nouveaux posts à la liste existante
-    if (page === 1) {
-      setPosts(newPosts);
-    } else {
-      setPosts(prevPosts => [...prevPosts, ...newPosts]);
-    }
-    
-    // Vérifier s'il y a plus de pages à charger
-    setHasMore(pagination.page < pagination.totalPages);
-    setCurrentPage(pagination.page);
-  } catch (err) {
-    console.error('Erreur lors du chargement des posts:', err);
-    setError('Impossible de charger les posts. Veuillez réessayer plus tard.');
-    
-    // Initialiser un tableau vide en cas d'erreur sur la première page
-    if (page === 1) {
-      setPosts([]);
-      setHasMore(false);
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // Charger les posts au montage du composant ou lors d'un changement de filtre
   useEffect(() => {
@@ -105,20 +104,32 @@ const fetchPosts = async (page = 1, filter = 'all') => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // Fonction pour changer le filtre
-const changeFilter = (filter) => {
-  if (filter !== currentFilter) {
-    console.log(`Changement de filtre: ${currentFilter} -> ${filter}`);
-    setCurrentFilter(filter);
-    setCurrentPage(1);
-    setPosts([]); // Vider les posts lors du changement de filtre
-    
-    // Forcer un petit délai pour éviter les problèmes de rendu
-    setTimeout(() => {
-      fetchPosts(1, filter);
-    }, 10);
-  }
-};
+  // Fonction améliorée pour changer le filtre
+  const changeFilter = (filter) => {
+    if (filter !== currentFilter) {
+      console.log(`Changement de filtre: ${currentFilter} -> ${filter}`);
+      setCurrentFilter(filter);
+      setCurrentPage(1);
+      setPosts([]); // Vider les posts lors du changement de filtre
+      
+      // Mise à jour visuelle des boutons de filtre
+      const allPostsBtn = document.querySelector('[data-filter="all"]');
+      const myPostsBtn = document.querySelector('[data-filter="personal"]');
+      
+      if (filter === 'all') {
+        allPostsBtn?.classList.add(styles.active);
+        myPostsBtn?.classList.remove(styles.active);
+      } else {
+        myPostsBtn?.classList.add(styles.active);
+        allPostsBtn?.classList.remove(styles.active);
+      }
+      
+      // Forcer un petit délai pour éviter les problèmes de rendu
+      setTimeout(() => {
+        fetchPosts(1, filter);
+      }, 10);
+    }
+  };
 
   // Fonction pour ajouter un nouveau post à la liste
   const addPost = (newPost) => {
@@ -144,7 +155,6 @@ const changeFilter = (filter) => {
     );
   };
 
-
   // Fonction pour supprimer un post
   const deletePost = (postId) => {
     if (!postId) return;
@@ -155,8 +165,6 @@ const changeFilter = (filter) => {
     }));
   };
 
-  
-
   return (
     <ErrorBoundary fallback={<div className={styles.errorState}>Une erreur est survenue dans l'affichage du mur.</div>}>
       <div className={styles.wallContainer}>
@@ -166,29 +174,32 @@ const changeFilter = (filter) => {
               <CreatePostForm onPostCreated={addPost} />
             </div>
             
-             <div className={styles.filterBar}>
-            <button 
-              className={`${styles.filterButton} ${currentFilter === 'all' ? styles.active : ''}`}
-              onClick={() => changeFilter('all')}
-            >
-              Tous les posts
-              {posts.length > 0 && currentFilter === 'all' && (
-                <span className={styles.filterCount}>{posts.length}</span>
-              )}
-            </button>
-            
-            {user && (
+            {/* Barre de filtres améliorée */}
+            <div className={styles.filterBar}>
               <button 
-                className={`${styles.filterButton} ${currentFilter === 'personal' ? styles.active : ''}`}
-                onClick={() => changeFilter('personal')}
+                className={`${styles.filterButton} ${currentFilter === 'all' ? styles.active : ''}`}
+                onClick={() => changeFilter('all')}
+                data-filter="all"
               >
-                Mes posts
-                {posts.length > 0 && currentFilter === 'personal' && (
+                Tous les posts
+                {posts.length > 0 && currentFilter === 'all' && (
                   <span className={styles.filterCount}>{posts.length}</span>
                 )}
               </button>
-            )}
-          </div>
+              
+              {user && (
+                <button 
+                  className={`${styles.filterButton} ${currentFilter === 'personal' ? styles.active : ''}`}
+                  onClick={() => changeFilter('personal')}
+                  data-filter="personal"
+                >
+                  Mes posts
+                  {posts.length > 0 && currentFilter === 'personal' && (
+                    <span className={styles.filterCount}>{posts.length}</span>
+                  )}
+                </button>
+              )}
+            </div>
                       
             {error && (
               <div className={styles.errorMessage}>
