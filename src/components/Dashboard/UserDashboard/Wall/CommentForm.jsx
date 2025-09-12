@@ -14,64 +14,67 @@ const CommentForm = ({ postId, parentId, onCommentAdded, onCancel, onError }) =>
   const { user } = useAuth();
 
   // Handle form submission with improved error handling
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+
+  // Modifier dans CommentForm.jsx
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  // Form validation
+  if (!content.trim()) {
+    const errorMsg = 'Veuillez entrer un commentaire';
+    setLocalError(errorMsg);
+    if (onError) onError(errorMsg);
+    return;
+  }
+  
+  // Supprimer cette validation
+  // if (content.length > 500) {
+  //   const errorMsg = 'Le commentaire ne peut pas dépasser 500 caractères';
+  //   setLocalError(errorMsg);
+  //   if (onError) onError(errorMsg);
+  //   return;
+  // }
+  
+  try {
+    setLoading(true);
+    setLocalError(null);
     
-    // Form validation
-    if (!content.trim()) {
-      const errorMsg = 'Veuillez entrer un commentaire';
-      setLocalError(errorMsg);
-      if (onError) onError(errorMsg);
-      return;
-    }
+    // Submit to API with proper error handling
+    const response = await api.post(`/api/posts/${postId}/comments`, {
+      contenu: content,
+      parentId: parentId || null
+    });
     
-    if (content.length > 500) {
-      const errorMsg = 'Le commentaire ne peut pas dépasser 500 caractères';
-      setLocalError(errorMsg);
-      if (onError) onError(errorMsg);
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      setLocalError(null);
+    // Check for successful response with data
+    if (response.data && (response.data.success || response.data.data)) {
+      const newComment = response.data.data || response.data;
       
-      // Submit to API with proper error handling
-      const response = await api.post(`/api/posts/${postId}/comments`, {
-        contenu: content,
-        parentId: parentId || null
-      });
+      // Clear form
+      setContent('');
       
-      // Check for successful response with data
-      if (response.data && (response.data.success || response.data.data)) {
-        const newComment = response.data.data || response.data;
-        
-        // Clear form
-        setContent('');
-        
-        // Notify parent component
-        if (onCommentAdded) {
-          onCommentAdded(newComment);
-        }
-        
-        // Close form if it's a reply
-        if (onCancel && parentId) {
-          onCancel();
-        }
-      } else {
-        throw new Error('Réponse invalide du serveur');
+      // Notify parent component
+      if (onCommentAdded) {
+        onCommentAdded(newComment);
       }
-    } catch (err) {
-      console.error('Error submitting comment:', err);
-      const errorMsg = err.response?.data?.message || 
-                      'Une erreur est survenue lors de l\'envoi du commentaire';
       
-      setLocalError(errorMsg);
-      if (onError) onError(errorMsg);
-    } finally {
-      setLoading(false);
+      // Close form if it's a reply
+      if (onCancel && parentId) {
+        onCancel();
+      }
+    } else {
+      throw new Error('Réponse invalide du serveur');
     }
-  };
+  } catch (err) {
+    console.error('Error submitting comment:', err);
+    const errorMsg = err.response?.data?.message || 
+                    'Une erreur est survenue lors de l\'envoi du commentaire';
+    
+    setLocalError(errorMsg);
+    if (onError) onError(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <form onSubmit={handleSubmit} className={styles.commentForm}>
