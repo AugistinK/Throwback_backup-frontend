@@ -330,7 +330,7 @@ const AdminPosts = () => {
                   onChange={handleSelectAll}
                 />
               </th>
-              <th>ID</th>
+              {/* <th>ID</th> */}
               <th>Contenu</th>
               <th>Auteur</th>
               <th>Visibilité</th>
