@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import styles from './AdminPosts.module.css';
-import { socialAPI } from '../../../../utils/socialAPI';
+import socialAPI from '../../../../utils/socialAPI';
 
 const AdminPosts = () => {
   // États pour stocker les données et gérer l'interface

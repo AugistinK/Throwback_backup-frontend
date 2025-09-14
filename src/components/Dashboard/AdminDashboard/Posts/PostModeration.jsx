@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import styles from './PostModeration.module.css';
-import { socialAPI } from '../../../../utils/socialAPI';
+import socialAPI from '../../../../utils/socialAPI';
 
 const PostModeration = () => {
   // États

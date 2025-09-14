@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import styles from './PostDetails.module.css';
-import { socialAPI } from '../../../../utils/socialAPI';
+import socialAPI from '../../../../utils/socialAPI';
 
 const PostDetails = () => {
   const { postId } = useParams();
