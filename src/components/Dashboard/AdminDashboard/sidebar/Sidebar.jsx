@@ -142,7 +142,7 @@ const Sidebar = ({ collapsed, onToggle, isMobile = false }) => {
       category: 'MODERATION',
       items: [
         { path: '/admin/comments', icon: 'fas fa-comments', label: 'Comments', comingSoon: true },
-        { path: '/admin/posts', icon: 'fas fa-file-alt', label: 'Posts', comingSoon: true },
+        { path: '/admin/posts', icon: 'fas fa-file-alt', label: 'Posts' },
         { path: '/admin/likes', icon: 'fas fa-thumbs-up', label: 'Likes', comingSoon: true },
         { path: '/admin/messages', icon: 'fas fa-envelope', label: 'Messages', comingSoon: true },
         { path: '/admin/friends', icon: 'fas fa-user-friends', label: 'Friends', comingSoon: true }

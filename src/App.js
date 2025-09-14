@@ -48,6 +48,7 @@ import AdminLivethrowback from './components/Dashboard/AdminDashboard/LiveStream
 import Playlists from './components/Dashboard/AdminDashboard/Playlists';
 import PlaylistDetail from './components/Dashboard/AdminDashboard/Playlists/PlaylistDetail';
 import PlaylistEdit from './components/Dashboard/AdminDashboard/Playlists/PlaylistEdit';
+import { AdminPosts, PostDetails, PostModeration } from './components/Dashboard/AdminDashboard/Posts';
 
 // Composant temporaire pour les pages admin
 const TempPage = ({ title }) => (
@@ -167,7 +168,12 @@ function App() {
             <Route path="playlists/:id/edit" element={<PlaylistEdit />} />
             <Route path="playlists/new" element={<PlaylistEdit />} />
             <Route path="comments" element={<TempPage title="Modération des Commentaires" />} />
-            <Route path="posts" element={<TempPage title="Modération des Posts" />} />
+            
+            
+            <Route path="posts" element={<AdminPosts />} />
+            <Route path="posts/:postId" element={<PostDetails />} />
+            <Route path="posts/moderation" element={<PostModeration />} />
+
             <Route path="likes" element={<TempPage title="Gestion des Likes" />} />
             <Route path="messages" element={<TempPage title="Gestion des Messages" />} />
             <Route path="friends" element={<TempPage title="Gestion des Amis" />} />
