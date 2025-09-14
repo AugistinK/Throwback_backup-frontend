@@ -157,6 +157,39 @@ const socialAPI = {
       throw error;
     }
   },
+
+    getModerationStats: async () => {
+    try {
+      const response = await api.get('/api/admin/posts/stats');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching moderation stats:', error);
+      throw error;
+    }
+  },
+
+    restorePost: async (postId) => {
+    try {
+      const response = await api.put(`/api/admin/posts/${postId}/restore`);
+      return response.data;
+    } catch (error) {
+      console.error('Error restoring post:', error);
+      throw error;
+    }
+  },
+
+    moderatePost: async (postId, raison) => {
+    try {
+      const response = await api.put(`/api/admin/posts/${postId}/moderate`, {
+        raison_moderation: raison
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error moderating post:', error);
+      throw error;
+    }
+  },
+
   
   reportComment: async (commentId, raison) => {
     try {
