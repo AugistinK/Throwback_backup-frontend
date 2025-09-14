@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart, faReply, faEdit, faTrash, faThumbsDown, faFlag, faEllipsisV, faSave, faTimes } from '@fortawesome/free-solid-svg-icons';
-
 import { useAuth } from '../../../../contexts/AuthContext';
 import CommentForm from './CommentForm';
 import api from '../../../../utils/api';
