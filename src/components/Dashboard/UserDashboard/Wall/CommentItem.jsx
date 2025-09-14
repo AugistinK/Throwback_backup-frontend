@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart, faReply, faEdit, faTrash, faThumbsDown, faFlag, faEllipsisV, faSave, faTimes } from '@fortawesome/free-solid-svg-icons';
-import { useAuth } from '././././contexts/AuthContext';
-import api from '././././utils/api';
+
+import { useAuth } from '../../../../contexts/AuthContext';
 import CommentForm from './CommentForm';
-import AvatarInitials from './././Common/AvatarInitials';
-import ConfirmDialog from './././Common/ConfirmDialog';
+import api from '../../../../utils/api';
+import AvatarInitials from '../../../Common/AvatarInitials';
+import ConfirmDialog from '../../../Common/ConfirmDialog';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { fr } from 'date-fns/locale';
 import styles from './CommentItem.module.css';

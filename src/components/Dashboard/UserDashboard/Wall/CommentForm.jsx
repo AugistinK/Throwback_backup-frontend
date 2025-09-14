@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperPlane, faSpinner, faTimes } from '@fortawesome/free-solid-svg-icons';
-import { useAuth } from '././././contexts/AuthContext';
-import api from '././././utils/api';
+import { useAuth } from '../../../../contexts/AuthContext';
+import api from '../../../../utils/api';
 import AvatarInitials from './././Common/AvatarInitials';
 import styles from './CommentForm.module.css';
 

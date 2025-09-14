@@ -3,9 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import PostList from './PostList';
 import CreatePostForm from './CreatePostForm';
 import WallSidebar from './WallSidebar';
-import ErrorBoundary from './././Common/ErrorBoundary';
-import { useAuth } from '././././contexts/AuthContext';
-import socialAPI from '././././utils/socialAPI';
+import ErrorBoundary from '../../../Common/ErrorBoundary';
+import { useAuth } from '../../../../contexts/AuthContext';
+import socialAPI from '../../../../utils/socialAPI';
 import styles from './ThrowbackWall.module.css';
 
 const ThrowbackWall = () => {
