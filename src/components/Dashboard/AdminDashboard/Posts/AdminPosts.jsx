@@ -346,20 +346,20 @@ const AdminPosts = () => {
     }
   }, [postToModerate, moderationReason, fetchPosts, fetchStats]);
 
-  // Export CSV avec gestion d'erreur
-  const handleExportCSV = useCallback(async () => {
-    try {
-      setLoading(true);
-      await socialAPI.exportPostsCSV();
-      setSuccessMessage('Export CSV téléchargé avec succès');
-    } catch (err) {
-      console.error('Erreur lors de l\'export:', err);
-      const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors de l\'export');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // // Export CSV avec gestion d'erreur
+  // const handleExportCSV = useCallback(async () => {
+  //   try {
+  //     setLoading(true);
+  //     await socialAPI.exportPostsCSV();
+  //     setSuccessMessage('Export CSV téléchargé avec succès');
+  //   } catch (err) {
+  //     console.error('Erreur lors de l\'export:', err);
+  //     const formattedError = socialAPI.formatApiError(err);
+  //     setError(formattedError.message || 'Une erreur est survenue lors de l\'export');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }, []);
 
   // Utilitaires de formatage
   const formatDate = useCallback((dateString) => {
@@ -434,7 +434,7 @@ const AdminPosts = () => {
               )}
             </div>
           )}
-          <button 
+          {/* <button 
             className={styles.exportButton}
             onClick={handleExportCSV}
             disabled={loading}
@@ -442,7 +442,7 @@ const AdminPosts = () => {
           >
             <i className="fas fa-download"></i>
             Export CSV
-          </button>
+          </button> */}
           <button 
             className={styles.moderationButton}
             onClick={() => navigate('/admin/posts/moderation')}
