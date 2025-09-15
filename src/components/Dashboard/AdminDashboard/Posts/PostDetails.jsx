@@ -1,5 +1,5 @@
 // components/Dashboard/AdminDashboard/Posts/PostDetails.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import styles from './PostDetails.module.css';
@@ -9,139 +9,317 @@ const PostDetails = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
   
-  // États
+  // États principaux
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [commentLoading, setCommentLoading] = useState(false);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  
+  // États pour les onglets
   const [tab, setTab] = useState('details');
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmModerate, setConfirmModerate] = useState(false);
-  const [moderationReason, setModerationReason] = useState('');
-  const [confirmRestore, setConfirmRestore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  
+  // États pour les actions
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmModerate, setConfirmModerate] = useState(false);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [moderationReason, setModerationReason] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  
+  // États pour les commentaires
+  const [selectedComments, setSelectedComments] = useState([]);
+  const [showCommentActions, setShowCommentActions] = useState(false);
 
-  // Charger les données du post
+  // Charger les données du post au montage et lors du changement d'ID
   useEffect(() => {
-    fetchPostDetails();
+    if (postId) {
+      fetchPostDetails();
+    }
   }, [postId]);
 
-  // Charger les commentaires quand on change d'onglet
+  // Charger les commentaires quand on change d'onglet ou de page
   useEffect(() => {
-    if (tab === 'comments') {
+    if (tab === 'comments' && post) {
       fetchComments();
     }
-  }, [tab, currentPage]);
+  }, [tab, currentPage, post]);
 
-  // Récupérer les détails du post
-  const fetchPostDetails = async () => {
+  // Charger les analytics quand on change d'onglet
+  useEffect(() => {
+    if (tab === 'analytics' && post) {
+      fetchAnalytics();
+    }
+  }, [tab, post]);
+
+  // Auto-clear des messages
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  // Récupérer les détails du post avec gestion d'erreur améliorée
+  const fetchPostDetails = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await socialAPI.getPostById(postId);
+      setError(null);
+      
+      // Utiliser l'endpoint admin pour avoir plus de détails
+      const response = await socialAPI.getPostById(postId, true);
       setPost(response.data);
+      
     } catch (err) {
       console.error('Erreur lors du chargement du post:', err);
-      setError("Impossible de charger les détails du post. Vérifiez l'ID ou réessayez plus tard.");
+      const formattedError = socialAPI.formatApiError(err);
+      
+      if (formattedError.status === 404) {
+        setError("Post non trouvé. Il a peut-être été supprimé.");
+      } else {
+        setError(formattedError.message || "Impossible de charger les détails du post.");
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId]);
 
   // Récupérer les commentaires du post
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     try {
       setCommentLoading(true);
       const response = await socialAPI.getPostComments(postId, {
         page: currentPage,
-        limit: 10
+        limit: 10,
+        includeReplies: true
       });
+      
       setComments(response.data || []);
       setTotalPages(response.pagination?.totalPages || 1);
     } catch (err) {
       console.error('Erreur lors du chargement des commentaires:', err);
+      // Ne pas afficher d'erreur pour les commentaires, ce n'est pas critique
     } finally {
       setCommentLoading(false);
     }
-  };
+  }, [postId, currentPage]);
+
+  // Récupérer les analytics du post
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setAnalyticsLoading(true);
+      const response = await socialAPI.getPostAnalytics(postId, '30d');
+      setAnalytics(response.data);
+    } catch (err) {
+      console.error('Erreur lors du chargement des analytics:', err);
+      // Ne pas afficher d'erreur pour les analytics
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [postId]);
 
   // Supprimer le post
-  const deletePost = async () => {
+  const deletePost = useCallback(async () => {
     try {
-      setLoading(true);
-      await socialAPI.deletePost(postId);
+      setActionLoading(true);
+      setError(null);
+      
+      await socialAPI.adminDeletePost(postId);
+      
       navigate('/admin/posts', { 
         state: { message: 'Post supprimé avec succès' } 
       });
     } catch (err) {
       console.error('Erreur lors de la suppression du post:', err);
-      setError('Une erreur est survenue lors de la suppression du post');
+      const formattedError = socialAPI.formatApiError(err);
+      setError(formattedError.message || 'Une erreur est survenue lors de la suppression du post');
       setConfirmDelete(false);
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
-  };
+  }, [postId, navigate]);
 
   // Modérer le post
-  const moderatePost = async () => {
+  const moderatePost = useCallback(async () => {
     try {
-      setLoading(true);
-      await socialAPI.updatePost(postId, { 
-        modere: true,
-        raison_moderation: moderationReason
-      });
+      setActionLoading(true);
+      setError(null);
+      
+      await socialAPI.moderatePost(postId, moderationReason);
+      
       setConfirmModerate(false);
-      fetchPostDetails();
+      setModerationReason('');
+      setSuccessMessage('Post modéré avec succès');
+      
+      // Rafraîchir les détails du post
+      await fetchPostDetails();
     } catch (err) {
       console.error('Erreur lors de la modération du post:', err);
-      setError('Une erreur est survenue lors de la modération du post');
+      const formattedError = socialAPI.formatApiError(err);
+      setError(formattedError.message || 'Une erreur est survenue lors de la modération du post');
       setConfirmModerate(false);
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
-  };
+  }, [postId, moderationReason, fetchPostDetails]);
 
   // Restaurer le post (retirer la modération)
-  const restorePost = async () => {
+  const restorePost = useCallback(async () => {
     try {
-      setLoading(true);
-      await socialAPI.updatePost(postId, { 
-        modere: false,
-        raison_moderation: ''
-      });
+      setActionLoading(true);
+      setError(null);
+      
+      await socialAPI.restorePost(postId);
+      
       setConfirmRestore(false);
-      fetchPostDetails();
+      setSuccessMessage('Post restauré avec succès');
+      
+      // Rafraîchir les détails du post
+      await fetchPostDetails();
     } catch (err) {
       console.error('Erreur lors de la restauration du post:', err);
-      setError('Une erreur est survenue lors de la restauration du post');
+      const formattedError = socialAPI.formatApiError(err);
+      setError(formattedError.message || 'Une erreur est survenue lors de la restauration du post');
       setConfirmRestore(false);
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
-  };
+  }, [postId, fetchPostDetails]);
+
+  // Épingler/Désépingler le post
+  const togglePinPost = useCallback(async () => {
+    try {
+      setActionLoading(true);
+      setError(null);
+      
+      const newPinStatus = !post.epingle;
+      await socialAPI.togglePinPost(postId, newPinStatus);
+      
+      setSuccessMessage(`Post ${newPinStatus ? 'épinglé' : 'désépinglé'} avec succès`);
+      
+      // Rafraîchir les détails du post
+      await fetchPostDetails();
+    } catch (err) {
+      console.error('Erreur lors de l\'épinglage du post:', err);
+      const formattedError = socialAPI.formatApiError(err);
+      setError(formattedError.message || 'Une erreur est survenue lors de l\'épinglage');
+    } finally {
+      setActionLoading(false);
+    }
+  }, [postId, post?.epingle, fetchPostDetails]);
+
+  // Rejeter les signalements
+  const dismissReports = useCallback(async () => {
+    try {
+      setActionLoading(true);
+      setError(null);
+      
+      await socialAPI.dismissPostReports(postId);
+      
+      setSuccessMessage('Signalements rejetés avec succès');
+      
+      // Rafraîchir les détails du post
+      await fetchPostDetails();
+    } catch (err) {
+      console.error('Erreur lors du rejet des signalements:', err);
+      const formattedError = socialAPI.formatApiError(err);
+      setError(formattedError.message || 'Une erreur est survenue lors du rejet des signalements');
+    } finally {
+      setActionLoading(false);
+    }
+  }, [postId, fetchPostDetails]);
 
   // Supprimer un commentaire
-  const deleteComment = async (commentId) => {
+  const deleteComment = useCallback(async (commentId) => {
     try {
       await socialAPI.deleteComment(commentId);
+      setSuccessMessage('Commentaire supprimé avec succès');
       fetchComments();
     } catch (err) {
       console.error('Erreur lors de la suppression du commentaire:', err);
+      const formattedError = socialAPI.formatApiError(err);
+      setError(formattedError.message || 'Une erreur est survenue lors de la suppression du commentaire');
     }
-  };
+  }, [fetchComments]);
+
+  // Modérer un commentaire
+  const moderateComment = useCallback(async (commentId, raison) => {
+    try {
+      await socialAPI.moderateComment(postId, commentId, raison);
+      setSuccessMessage('Commentaire modéré avec succès');
+      fetchComments();
+    } catch (err) {
+      console.error('Erreur lors de la modération du commentaire:', err);
+      const formattedError = socialAPI.formatApiError(err);
+      setError(formattedError.message || 'Une erreur est survenue lors de la modération du commentaire');
+    }
+  }, [postId, fetchComments]);
+
+  // Restaurer un commentaire
+  const restoreComment = useCallback(async (commentId) => {
+    try {
+      await socialAPI.restoreComment(postId, commentId);
+      setSuccessMessage('Commentaire restauré avec succès');
+      fetchComments();
+    } catch (err) {
+      console.error('Erreur lors de la restauration du commentaire:', err);
+      const formattedError = socialAPI.formatApiError(err);
+      setError(formattedError.message || 'Une erreur est survenue lors de la restauration du commentaire');
+    }
+  }, [postId, fetchComments]);
+
+  // Exporter les données du post
+  const exportPostData = useCallback(async () => {
+    try {
+      // Créer un objet avec toutes les données du post
+      const exportData = {
+        post: post,
+        comments: comments,
+        analytics: analytics,
+        exportDate: new Date().toISOString()
+      };
+      
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `post_${postId}_export_${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      setSuccessMessage('Données exportées avec succès');
+    } catch (err) {
+      console.error('Erreur lors de l\'export:', err);
+      setError('Une erreur est survenue lors de l\'export');
+    }
+  }, [post, comments, analytics, postId]);
 
   // Formatter la date
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy HH:mm:ss');
     } catch (e) {
       return 'Date inconnue';
     }
-  };
+  }, []);
 
   // Formater les hashtags
-  const renderHashtags = (hashtags) => {
+  const renderHashtags = useCallback((hashtags) => {
     if (!hashtags || !hashtags.length) return null;
     
     return (
@@ -153,31 +331,42 @@ const PostDetails = () => {
         ))}
       </div>
     );
-  };
+  }, []);
 
   // Affichage du média
-  const renderMedia = (media, type) => {
+  const renderMedia = useCallback((media, type) => {
     if (!media) return null;
+    
+    const mediaUrl = media.startsWith('/') ? `${process.env.REACT_APP_API_URL || ''}${media}` : media;
     
     return (
       <div className={styles.mediaContainer}>
         {type === 'IMAGE' ? (
           <img 
-            src={media.startsWith('/') ? `${process.env.REACT_APP_API_URL || ''}${media}` : media} 
+            src={mediaUrl} 
             alt="Contenu du post" 
             className={styles.mediaImage}
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
           />
         ) : type === 'VIDEO' ? (
           <video 
-            src={media.startsWith('/') ? `${process.env.REACT_APP_API_URL || ''}${media}` : media}
+            src={mediaUrl}
             controls
             className={styles.mediaVideo}
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
           />
         ) : type === 'AUDIO' ? (
           <audio 
-            src={media.startsWith('/') ? `${process.env.REACT_APP_API_URL || ''}${media}` : media}
+            src={mediaUrl}
             controls
             className={styles.mediaAudio}
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
           />
         ) : (
           <div className={styles.unknownMedia}>
@@ -187,9 +376,19 @@ const PostDetails = () => {
         )}
       </div>
     );
-  };
+  }, []);
 
-  // Si chargement
+  // Raisons de modération prédéfinies
+  const moderationReasons = [
+    'Contenu inapproprié',
+    'Violation des conditions d\'utilisation',
+    'Contenu offensant',
+    'Informations erronées',
+    'Spam ou contenu indésirable',
+    'Contenu dupliqué'
+  ];
+
+  // Si chargement initial
   if (loading && !post) {
     return (
       <div className={styles.loadingContainer}>
@@ -199,8 +398,8 @@ const PostDetails = () => {
     );
   }
 
-  // Si erreur
-  if (error) {
+  // Si erreur critique
+  if (error && !post) {
     return (
       <div className={styles.errorContainer}>
         <div className={styles.errorIcon}>
@@ -259,10 +458,38 @@ const PostDetails = () => {
             <i className="fas fa-arrow-left"></i>
             Retour
           </button>
+          <button 
+            className={styles.exportButton}
+            onClick={exportPostData}
+            disabled={actionLoading}
+          >
+            <i className="fas fa-download"></i>
+            Exporter
+          </button>
+          <button 
+            className={styles.pinButton}
+            onClick={togglePinPost}
+            disabled={actionLoading}
+            title={post.epingle ? 'Désépingler' : 'Épingler'}
+          >
+            <i className={`fas ${post.epingle ? 'fa-thumbtack' : 'fa-thumbtack'}`}></i>
+            {post.epingle ? 'Désépingler' : 'Épingler'}
+          </button>
+          {post.signalements && post.signalements.length > 0 && (
+            <button 
+              className={styles.dismissButton}
+              onClick={dismissReports}
+              disabled={actionLoading}
+            >
+              <i className="fas fa-times"></i>
+              Rejeter signalements
+            </button>
+          )}
           {post.modere ? (
             <button 
               className={styles.restoreButton}
               onClick={() => setConfirmRestore(true)}
+              disabled={actionLoading}
             >
               <i className="fas fa-check"></i>
               Rétablir
@@ -271,6 +498,7 @@ const PostDetails = () => {
             <button 
               className={styles.moderateButton}
               onClick={() => setConfirmModerate(true)}
+              disabled={actionLoading}
             >
               <i className="fas fa-shield-alt"></i>
               Modérer
@@ -279,6 +507,7 @@ const PostDetails = () => {
           <button 
             className={styles.deleteButton}
             onClick={() => setConfirmDelete(true)}
+            disabled={actionLoading}
           >
             <i className="fas fa-trash"></i>
             Supprimer
@@ -286,12 +515,39 @@ const PostDetails = () => {
         </div>
       </div>
 
+      {/* Messages */}
+      {successMessage && (
+        <div className={styles.successMessage}>
+          <i className="fas fa-check-circle"></i>
+          {successMessage}
+          <button onClick={() => setSuccessMessage('')}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div className={styles.errorMessage}>
+          <i className="fas fa-exclamation-circle"></i>
+          {error}
+          <button onClick={() => setError(null)}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+      )}
+
       {/* Titre et info post */}
       <div className={styles.postHeader}>
         <div className={styles.postId}>
           <span>ID:</span> {post._id}
         </div>
         <div className={styles.postStatus}>
+          {post.epingle && (
+            <span className={`${styles.statusBadge} ${styles.status_pinned}`}>
+              <i className="fas fa-thumbtack"></i>
+              Épinglé
+            </span>
+          )}
           <span className={`${styles.statusBadge} ${styles[`status_${post.modere ? 'moderated' : 'active'}`]}`}>
             {post.modere ? 'Modéré' : 'Actif'}
           </span>
@@ -320,6 +576,12 @@ const PostDetails = () => {
           onClick={() => setTab('reports')}
         >
           Signalements ({post.signalements?.length || 0})
+        </button>
+        <button 
+          className={`${styles.tabButton} ${tab === 'analytics' ? styles.activeTab : ''}`}
+          onClick={() => setTab('analytics')}
+        >
+          Analytics
         </button>
       </div>
 
@@ -416,6 +678,15 @@ const PostDetails = () => {
                   <div className={styles.statInfo}>
                     <span className={styles.statCount}>{post.signalements?.length || 0}</span>
                     <span className={styles.statLabel}>Signalements</span>
+                  </div>
+                </div>
+                <div className={styles.statsItem}>
+                  <div className={styles.statIcon}>
+                    <i className="fas fa-eye"></i>
+                  </div>
+                  <div className={styles.statInfo}>
+                    <span className={styles.statCount}>{post.vues || 0}</span>
+                    <span className={styles.statLabel}>Vues</span>
                   </div>
                 </div>
               </div>
@@ -527,10 +798,34 @@ const PostDetails = () => {
                         </div>
                       </div>
                       <div className={styles.commentActions}>
+                        {comment.statut === 'MODERE' ? (
+                          <button 
+                            className={styles.commentActionButton}
+                            title="Restaurer le commentaire"
+                            onClick={() => restoreComment(comment._id)}
+                          >
+                            <i className="fas fa-check"></i>
+                          </button>
+                        ) : (
+                          <button 
+                            className={styles.commentActionButton}
+                            title="Modérer le commentaire"
+                            onClick={() => {
+                              const reason = prompt('Raison de la modération:');
+                              if (reason) moderateComment(comment._id, reason);
+                            }}
+                          >
+                            <i className="fas fa-shield-alt"></i>
+                          </button>
+                        )}
                         <button 
                           className={styles.commentActionButton}
                           title="Supprimer le commentaire"
-                          onClick={() => deleteComment(comment._id)}
+                          onClick={() => {
+                            if (window.confirm('Êtes-vous sûr de vouloir supprimer ce commentaire ?')) {
+                              deleteComment(comment._id);
+                            }
+                          }}
                         >
                           <i className="fas fa-trash"></i>
                         </button>
@@ -602,7 +897,11 @@ const PostDetails = () => {
                               <button 
                                 className={styles.commentActionButton}
                                 title="Supprimer la réponse"
-                                onClick={() => deleteComment(reply._id)}
+                                onClick={() => {
+                                  if (window.confirm('Êtes-vous sûr de vouloir supprimer cette réponse ?')) {
+                                    deleteComment(reply._id);
+                                  }
+                                }}
                               >
                                 <i className="fas fa-trash"></i>
                               </button>
@@ -707,6 +1006,56 @@ const PostDetails = () => {
             )}
           </div>
         )}
+
+        {/* Onglet Analytics */}
+        {tab === 'analytics' && (
+          <div className={styles.analyticsTab}>
+            {analyticsLoading ? (
+              <div className={styles.loadingContainer}>
+                <div className={styles.loadingSpinner}></div>
+                <p>Chargement des analytics...</p>
+              </div>
+            ) : analytics ? (
+              <div className={styles.analyticsContent}>
+                <div className={styles.analyticsGrid}>
+                  <div className={styles.analyticsCard}>
+                    <h4>Vues</h4>
+                    <div className={styles.analyticsValue}>{analytics.vues || 0}</div>
+                  </div>
+                  <div className={styles.analyticsCard}>
+                    <h4>Engagements</h4>
+                    <div className={styles.analyticsValue}>{analytics.engagements || 0}</div>
+                  </div>
+                  <div className={styles.analyticsCard}>
+                    <h4>Portée</h4>
+                    <div className={styles.analyticsValue}>{analytics.portee || 0}</div>
+                  </div>
+                  <div className={styles.analyticsCard}>
+                    <h4>Taux d'engagement</h4>
+                    <div className={styles.analyticsValue}>{analytics.tauxEngagement || 0}%</div>
+                  </div>
+                </div>
+                
+                {analytics.graphiques && (
+                  <div className={styles.chartsSection}>
+                    <h4>Évolution des performances</h4>
+                    {/* Ici on pourrait intégrer Chart.js ou une autre librairie */}
+                    <div className={styles.chartPlaceholder}>
+                      <p>Graphiques des performances sur 30 jours</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className={styles.noAnalyticsContainer}>
+                <div className={styles.noAnalyticsIcon}>
+                  <i className="fas fa-chart-bar"></i>
+                </div>
+                <p>Aucune donnée d'analytics disponible</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Modales */}
@@ -737,8 +1086,9 @@ const PostDetails = () => {
               <button 
                 className={styles.deleteConfirmButton}
                 onClick={deletePost}
+                disabled={actionLoading}
               >
-                Supprimer
+                {actionLoading ? 'Suppression...' : 'Supprimer'}
               </button>
             </div>
           </div>
@@ -766,6 +1116,17 @@ const PostDetails = () => {
                 value={moderationReason}
                 onChange={(e) => setModerationReason(e.target.value)}
               ></textarea>
+              <div className={styles.reasonTemplates}>
+                {moderationReasons.map((reason, index) => (
+                  <button 
+                    key={index}
+                    onClick={() => setModerationReason(reason)}
+                    type="button"
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className={styles.modalFooter}>
               <button 
@@ -777,9 +1138,9 @@ const PostDetails = () => {
               <button 
                 className={styles.moderateConfirmButton}
                 onClick={moderatePost}
-                disabled={!moderationReason.trim()}
+                disabled={!moderationReason.trim() || actionLoading}
               >
-                Modérer
+                {actionLoading ? 'Modération...' : 'Modérer'}
               </button>
             </div>
           </div>
@@ -813,8 +1174,9 @@ const PostDetails = () => {
               <button 
                 className={styles.restoreConfirmButton}
                 onClick={restorePost}
+                disabled={actionLoading}
               >
-                Rétablir
+                {actionLoading ? 'Rétablissement...' : 'Rétablir'}
               </button>
             </div>
           </div>
