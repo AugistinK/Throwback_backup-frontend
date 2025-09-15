@@ -197,48 +197,48 @@ const PostDetails = () => {
     }
   }, [postId, fetchPostDetails]);
 
-  // Épingler/Désépingler le post
-  const togglePinPost = useCallback(async () => {
-    try {
-      setActionLoading(true);
-      setError(null);
+  // // Épingler/Désépingler le post
+  // const togglePinPost = useCallback(async () => {
+  //   try {
+  //     setActionLoading(true);
+  //     setError(null);
       
-      const newPinStatus = !post.epingle;
-      await socialAPI.togglePinPost(postId, newPinStatus);
+  //     const newPinStatus = !post.epingle;
+  //     await socialAPI.togglePinPost(postId, newPinStatus);
       
-      setSuccessMessage(`Post ${newPinStatus ? 'épinglé' : 'désépinglé'} avec succès`);
+  //     setSuccessMessage(`Post ${newPinStatus ? 'épinglé' : 'désépinglé'} avec succès`);
       
-      // Rafraîchir les détails du post
-      await fetchPostDetails();
-    } catch (err) {
-      console.error('Erreur lors de l\'épinglage du post:', err);
-      const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors de l\'épinglage');
-    } finally {
-      setActionLoading(false);
-    }
-  }, [postId, post?.epingle, fetchPostDetails]);
+  //     // Rafraîchir les détails du post
+  //     await fetchPostDetails();
+  //   } catch (err) {
+  //     console.error('Erreur lors de l\'épinglage du post:', err);
+  //     const formattedError = socialAPI.formatApiError(err);
+  //     setError(formattedError.message || 'Une erreur est survenue lors de l\'épinglage');
+  //   } finally {
+  //     setActionLoading(false);
+  //   }
+  // }, [postId, post?.epingle, fetchPostDetails]);
 
   // Rejeter les signalements
-  const dismissReports = useCallback(async () => {
-    try {
-      setActionLoading(true);
-      setError(null);
+  // const dismissReports = useCallback(async () => {
+  //   try {
+  //     setActionLoading(true);
+  //     setError(null);
       
-      await socialAPI.dismissPostReports(postId);
+  //     await socialAPI.dismissPostReports(postId);
       
-      setSuccessMessage('Signalements rejetés avec succès');
+  //     setSuccessMessage('Signalements rejetés avec succès');
       
-      // Rafraîchir les détails du post
-      await fetchPostDetails();
-    } catch (err) {
-      console.error('Erreur lors du rejet des signalements:', err);
-      const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors du rejet des signalements');
-    } finally {
-      setActionLoading(false);
-    }
-  }, [postId, fetchPostDetails]);
+  //     // Rafraîchir les détails du post
+  //     await fetchPostDetails();
+  //   } catch (err) {
+  //     console.error('Erreur lors du rejet des signalements:', err);
+  //     const formattedError = socialAPI.formatApiError(err);
+  //     setError(formattedError.message || 'Une erreur est survenue lors du rejet des signalements');
+  //   } finally {
+  //     setActionLoading(false);
+  //   }
+  // }, [postId, fetchPostDetails]);
 
   // Supprimer un commentaire
   const deleteComment = useCallback(async (commentId) => {
@@ -466,7 +466,7 @@ const PostDetails = () => {
             <i className="fas fa-download"></i>
             Exporter
           </button>
-          <button 
+          {/* <button 
             className={styles.pinButton}
             onClick={togglePinPost}
             disabled={actionLoading}
@@ -474,8 +474,8 @@ const PostDetails = () => {
           >
             <i className={`fas ${post.epingle ? 'fa-thumbtack' : 'fa-thumbtack'}`}></i>
             {post.epingle ? 'Désépingler' : 'Épingler'}
-          </button>
-          {post.signalements && post.signalements.length > 0 && (
+          </button> */}
+          {/* {post.signalements && post.signalements.length > 0 && (
             <button 
               className={styles.dismissButton}
               onClick={dismissReports}
@@ -484,7 +484,7 @@ const PostDetails = () => {
               <i className="fas fa-times"></i>
               Rejeter signalements
             </button>
-          )}
+          )} */}
           {post.modere ? (
             <button 
               className={styles.restoreButton}
