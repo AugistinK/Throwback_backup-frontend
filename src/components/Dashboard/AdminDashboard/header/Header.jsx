@@ -223,7 +223,7 @@ const Header = ({ sidebarCollapsed, isMobile = false }) => {
                 <span style={comingSoonStyle}>Coming Soon</span>
               </button>
               
-              <button 
+              {/* <button 
                 className={styles.dropdownItem}
                 onClick={() => navigateToTempPage('/admin/settings', 'Account Settings')}
               >
@@ -250,7 +250,7 @@ const Header = ({ sidebarCollapsed, isMobile = false }) => {
                 <i className="fas fa-question-circle"></i>
                 <span>Help & Support</span>
                 <span style={comingSoonStyle}>Coming Soon</span>
-              </button>
+              </button> */}
               
               <div className={styles.dropdownDivider}></div>
               
