@@ -1,6 +1,6 @@
 // components/Dashboard/AdminDashboard/Comments/Comments.jsx
 import React, { useState, useEffect } from 'react';
-import {adminAPI} from '../../../../utils/adminAPI';
+import { adminAPI } from '../../../../utils/adminAPI';
 import styles from './Comments.module.css';
 import LoadingSpinner from '../../../Common/LoadingSpinner';
 import CommentCard from './CommentCard';
