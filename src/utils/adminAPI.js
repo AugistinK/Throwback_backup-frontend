@@ -1,8 +1,7 @@
-// components/utils/commentAPI.js
+// utils/adminAPI.js
 import api from './api';
 
-
-const adminAPI = {
+export const adminAPI = {
   // Récupérer les commentaires avec filtres
   getComments: async (filters = {}) => {
     try {
@@ -67,5 +66,3 @@ const adminAPI = {
     }
   }
 };
-
-export { adminAPI };

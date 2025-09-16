@@ -38,12 +38,12 @@ const Comments = () => {
   const loadComments = async () => {
     try {
       setLoading(true);
-      const response = await adminAPI.get('/api/admin/comments', { params: filters });
+      const response = await adminAPI.getComments(filters);
       
-      if (response.data.success) {
-        setComments(response.data.data);
-        setPagination(response.data.pagination);
-        setStats(response.data.stats);
+      if (response.success) {
+        setComments(response.data);
+        setPagination(response.pagination);
+        setStats(response.stats);
       }
     } catch (err) {
       console.error('Error loading comments:', err);
@@ -56,9 +56,9 @@ const Comments = () => {
   // Charger les statistiques
   const loadStats = async () => {
     try {
-      const response = await adminAPI.get('/api/admin/comments/stats');
-      if (response.data.success) {
-        setStats(response.data.data);
+      const response = await adminAPI.getCommentsStats();
+      if (response.success) {
+        setStats(response.data);
       }
     } catch (err) {
       console.error('Error loading stats:', err);
@@ -111,12 +111,9 @@ const Comments = () => {
   // Modérer un commentaire
   const handleModerateComment = async (commentId, action, reason = '') => {
     try {
-      const response = await adminAPI.put(`/api/admin/comments/${commentId}/moderate`, {
-        action,
-        reason
-      });
+      const response = await adminAPI.moderateComment(commentId, action, reason);
 
-      if (response.data.success) {
+      if (response.success) {
         // Recharger les commentaires
         await loadComments();
         await loadStats();
@@ -135,18 +132,14 @@ const Comments = () => {
     if (selectedComments.length === 0) return;
 
     try {
-      const response = await adminAPI.put('/api/admin/comments/bulk-moderate', {
-        commentIds: selectedComments,
-        action,
-        reason
-      });
+      const response = await adminAPI.bulkModerateComments(selectedComments, action, reason);
 
-      if (response.data.success) {
+      if (response.success) {
         setSelectedComments([]);
         await loadComments();
         await loadStats();
         
-        console.log(`${response.data.data.modifiedCount} commentaires modérés`);
+        console.log(`${response.data.modifiedCount} commentaires modérés`);
       }
     } catch (err) {
       console.error('Error bulk moderating:', err);
@@ -157,11 +150,9 @@ const Comments = () => {
   // Répondre à un commentaire
   const handleReplyToComment = async (commentId, content) => {
     try {
-      const response = await adminAPI.post(`/api/admin/comments/${commentId}/reply`, {
-        contenu: content
-      });
+      const response = await adminAPI.replyToComment(commentId, content);
 
-      if (response.data.success) {
+      if (response.success) {
         await loadComments();
         console.log('Réponse ajoutée avec succès');
       }
