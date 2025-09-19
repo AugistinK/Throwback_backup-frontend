@@ -50,6 +50,7 @@ import PlaylistDetail from './components/Dashboard/AdminDashboard/Playlists/Play
 import PlaylistEdit from './components/Dashboard/AdminDashboard/Playlists/PlaylistEdit';
 import { AdminPosts, PostDetails, PostModeration } from './components/Dashboard/AdminDashboard/Posts';
 import Comments from './components/Dashboard/AdminDashboard/Comments/Comments';
+import { AdminLikes } from './components/Dashboard/AdminDashboard/Likes';
 
 // Composant temporaire pour les pages admin
 const TempPage = ({ title }) => (
@@ -175,7 +176,8 @@ function App() {
             <Route path="posts/:postId" element={<PostDetails />} />
             <Route path="posts/moderation" element={<PostModeration />} />
 
-            <Route path="likes" element={<TempPage title="Gestion des Likes" />} />
+            {/* <Route path="likes" element={<TempPage title="Gestion des Likes" />} /> */}
+            <Route path="likes" element={<AdminLikes />} />
             <Route path="messages" element={<TempPage title="Gestion des Messages" />} />
             <Route path="friends" element={<TempPage title="Gestion des Amis" />} />
             <Route path="security" element={<TempPage title="Sécurité" />} />

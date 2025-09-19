@@ -64,5 +64,27 @@ export const adminAPI = {
       console.error('Error replying to comment:', error);
       throw error;
     }
+  },
+
+  getLikes: async (filters = {}) => {
+    const res = await api.get('/api/admin/likes', { params: filters });
+    return res.data;
+  },
+  getLikesStats: async () => {
+    const res = await api.get('/api/admin/likes/stats');
+    return res.data;
+  },
+  getLikeDetails: async (id) => {
+    const res = await api.get(`/api/admin/likes/${id}`);
+    return res.data;
+  },
+  deleteLike: async (id) => {
+    const res = await api.delete(`/api/admin/likes/${id}`);
+    return res.data;
+  },
+  bulkDeleteLikes: async (payload) => {
+    const res = await api.delete('/api/admin/likes/bulk', { data: payload });
+    return res.data;
   }
+
 };
