@@ -81,18 +81,18 @@ const CommentStats = ({ stats }) => {
           </div>
         </div>
 
-        <div className={styles.statCard}>
+        {/* <div className={styles.statCard}>
           <div className={styles.statIcon}>
             <i className="fas fa-flag" style={{ color: '#dc3545' }}></i>
           </div>
           <div className={styles.statContent}>
             <div className={styles.statNumber}>{processedStats.reported.toLocaleString()}</div>
-            <div className={styles.statLabel}>Signalés</div>
+            {/* <div className={styles.statLabel}>Signalés</div> 
             <div className={styles.statPercentage}>{reportedPercentage}%</div>
           </div>
-        </div>
+        </div> */}
 
-        <div className={styles.statCard}>
+        {/* <div className={styles.statCard}>
           <div className={styles.statIcon}>
             <i className="fas fa-exclamation-triangle" style={{ color: '#ffc107' }}></i>
           </div>
@@ -100,7 +100,7 @@ const CommentStats = ({ stats }) => {
             <div className={styles.statNumber}>{(processedStats.byStatus.MODERE || 0).toLocaleString()}</div>
             <div className={styles.statLabel}>En Modération</div>
           </div>
-        </div>
+        </div> */}
 
         <div className={styles.statCard}>
           <div className={styles.statIcon}>
@@ -210,7 +210,7 @@ const CommentStats = ({ stats }) => {
           )}
 
           {/* Commentaires les plus signalés */}
-          {stats.mostReported && stats.mostReported.length > 0 && (
+          {/* {stats.mostReported && stats.mostReported.length > 0 && (
             <div className={styles.statsSection}>
               <h4>Commentaires les Plus Signalés</h4>
               <div className={styles.reportedComments}>
@@ -230,7 +230,7 @@ const CommentStats = ({ stats }) => {
                 ))}
               </div>
             </div>
-          )}
+          )} */}
         </div>
       )}
     </div>

@@ -78,7 +78,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
             <option value="ACTIF">Actifs</option>
             <option value="MODERE">Modérés</option>
             <option value="SUPPRIME">Supprimés</option>
-            <option value="SIGNALE">Signalés</option>
+            {/* <option value="SIGNALE">Signalés</option> */}
           </select>
 
           {/* Filtre par type */}
@@ -101,7 +101,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
             <option value="recent">Plus récents</option>
             <option value="oldest">Plus anciens</option>
             <option value="most_liked">Plus aimés</option>
-            <option value="most_reported">Plus signalés</option>
+            {/* <option value="most_reported">Plus signalés</option> */}
           </select>
         </div>
 
@@ -136,7 +136,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
       {showAdvanced && (
         <div className={styles.advancedFilters}>
           <div className={styles.advancedRow}>
-            <div className={styles.filterGroup}>
+            {/* <div className={styles.filterGroup}>
               <label>Signalements</label>
               <select
                 value={filters.reported}
@@ -147,7 +147,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
                 <option value="reported">Commentaires signalés</option>
                 <option value="not_reported">Non signalés</option>
               </select>
-            </div>
+            </div> */}
 
             <div className={styles.filterGroup}>
               <label>Nombre par page</label>
@@ -211,7 +211,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
               </span>
             )}
             
-            {filters.reported !== 'all' && (
+            {/* {filters.reported !== 'all' && (
               <span className={styles.activeFilter}>
                 <i className="fas fa-flag"></i>
                 {filters.reported === 'reported' ? 'Signalés' : 'Non signalés'}
@@ -219,7 +219,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
                   <i className="fas fa-times"></i>
                 </button>
               </span>
-            )}
+            )} */}
             
             {filters.sortBy !== 'recent' && (
               <span className={styles.activeFilter}>
@@ -237,13 +237,13 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
       {/* Suggestions de filtres rapides */}
       <div className={styles.quickSuggestions}>
         <span className={styles.suggestionsLabel}>Filtres rapides :</span>
-        <button
+        {/* <button
           className={styles.suggestionBtn}
           onClick={() => onFilterChange({ status: 'SIGNALE', reported: 'reported' })}
         >
           <i className="fas fa-flag"></i>
           Commentaires signalés
-        </button>
+        </button> */}
         <button
           className={styles.suggestionBtn}
           onClick={() => onFilterChange({ status: 'MODERE' })}
