@@ -15,7 +15,7 @@ const Comments = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedComments, setSelectedComments] = useState([]);
-
+  
   // Filtres et pagination
   const [filters, setFilters] = useState({
     page: 1,
@@ -26,7 +26,7 @@ const Comments = () => {
     sortBy: 'recent',
     reported: 'all'
   });
-
+  
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -38,23 +38,16 @@ const Comments = () => {
   const loadComments = async () => {
     try {
       setLoading(true);
-      setError(null);
       const response = await adminAPI.getComments(filters);
-
-      if (response?.success) {
-        setComments(Array.isArray(response.data) ? response.data : []);
-        setPagination(response.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 });
-        // Certaines réponses renvoient aussi un bloc stats
-        if (response.stats) setStats(response.stats);
-      } else {
-        setComments([]);
-        setPagination({ page: 1, limit: 20, total: 0, totalPages: 0 });
+      
+      if (response.success) {
+        setComments(response.data);
+        setPagination(response.pagination);
+        setStats(response.stats);
       }
     } catch (err) {
       console.error('Error loading comments:', err);
       setError('Erreur lors du chargement des commentaires');
-      setComments([]);
-      setPagination({ page: 1, limit: 20, total: 0, totalPages: 0 });
     } finally {
       setLoading(false);
     }
@@ -64,18 +57,16 @@ const Comments = () => {
   const loadStats = async () => {
     try {
       const response = await adminAPI.getCommentsStats();
-      if (response?.success) {
+      if (response.success) {
         setStats(response.data);
       }
     } catch (err) {
       console.error('Error loading stats:', err);
-      // on laisse l’UI continuer sans planter
     }
   };
 
   useEffect(() => {
     loadComments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   useEffect(() => {
@@ -87,7 +78,7 @@ const Comments = () => {
     setFilters(prev => ({
       ...prev,
       ...newFilters,
-      page: 1 // Reset page on filter change
+      page: 1 // Reset page when filters change
     }));
     setSelectedComments([]); // Clear selections
   };
@@ -100,16 +91,20 @@ const Comments = () => {
 
   // Sélection des commentaires
   const handleSelectComment = (commentId) => {
-    setSelectedComments(prev =>
-      prev.includes(commentId) ? prev.filter(id => id !== commentId) : [...prev, commentId]
-    );
+    setSelectedComments(prev => {
+      if (prev.includes(commentId)) {
+        return prev.filter(id => id !== commentId);
+      } else {
+        return [...prev, commentId];
+      }
+    });
   };
 
   const handleSelectAll = () => {
     if (selectedComments.length === comments.length) {
       setSelectedComments([]);
     } else {
-      setSelectedComments(comments.map(c => c._id));
+      setSelectedComments(comments.map(comment => comment._id));
     }
   };
 
@@ -117,9 +112,13 @@ const Comments = () => {
   const handleModerateComment = async (commentId, action, reason = '') => {
     try {
       const response = await adminAPI.moderateComment(commentId, action, reason);
-      if (response?.success) {
+
+      if (response.success) {
+        // Recharger les commentaires
         await loadComments();
         await loadStats();
+        
+        // Notification de succès
         console.log(`Commentaire ${action === 'approve' ? 'approuvé' : action === 'reject' ? 'rejeté' : 'supprimé'}`);
       }
     } catch (err) {
@@ -131,13 +130,16 @@ const Comments = () => {
   // Modération en lot
   const handleBulkModerate = async (action, reason = '') => {
     if (selectedComments.length === 0) return;
+
     try {
       const response = await adminAPI.bulkModerateComments(selectedComments, action, reason);
-      if (response?.success) {
+
+      if (response.success) {
         setSelectedComments([]);
         await loadComments();
         await loadStats();
-        console.log(`${response.data?.modifiedCount || 0} commentaires modérés`);
+        
+        console.log(`${response.data.modifiedCount} commentaires modérés`);
       }
     } catch (err) {
       console.error('Error bulk moderating:', err);
@@ -149,7 +151,8 @@ const Comments = () => {
   const handleReplyToComment = async (commentId, content) => {
     try {
       const response = await adminAPI.replyToComment(commentId, content);
-      if (response?.success) {
+
+      if (response.success) {
         await loadComments();
         console.log('Réponse ajoutée avec succès');
       }
@@ -185,12 +188,17 @@ const Comments = () => {
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h1>Modération des Commentaires</h1>
-          <p>Gérez tous les commentaires, souvenirs et réponses de la plateforme</p>
+          <p>
+            Gérez tous les commentaires, souvenirs et réponses de la plateforme
+          </p>
         </div>
         <div className={styles.headerActions}>
-          <button
+          <button 
             className={styles.refreshBtn}
-            onClick={() => { loadComments(); loadStats(); }}
+            onClick={() => {
+              loadComments();
+              loadStats();
+            }}
             disabled={loading}
           >
             <i className={`fas fa-sync-alt ${loading ? styles.spinning : ''}`}></i>
@@ -206,7 +214,7 @@ const Comments = () => {
       <CommentFilters
         filters={filters}
         onFilterChange={handleFilterChange}
-        totalComments={pagination.total || 0}
+        totalComments={pagination.total}
       />
 
       {/* Actions en lot */}
@@ -245,7 +253,7 @@ const Comments = () => {
               <div className={styles.actionsColumn}>Actions</div>
             </div>
 
-            {/* Liste */}
+            {/* Liste des commentaires */}
             <div className={styles.commentsList}>
               {comments.map(comment => (
                 <CommentCard
@@ -262,11 +270,11 @@ const Comments = () => {
             {/* Pagination */}
             {pagination.totalPages > 1 && (
               <Pagination
-                currentPage={pagination.page || 1}
-                totalPages={pagination.totalPages || 1}
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
                 onPageChange={handlePageChange}
-                totalItems={pagination.total || 0}
-                itemsPerPage={pagination.limit || 20}
+                totalItems={pagination.total}
+                itemsPerPage={pagination.limit}
               />
             )}
           </>

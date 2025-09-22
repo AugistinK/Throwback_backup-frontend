@@ -82,17 +82,15 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
           </select>
 
           {/* Filtre par type */}
-        
-        <select
-          value={filters.type}
-          onChange={(e) => onFilterChange({ type: e.target.value })}
-          className={styles.filterSelect}
-        >
-          <option value="all">Tous les types</option>
-          <option value="video">Commentaires vidéos</option>
-          <option value="post">Commentaires posts</option>
-          <option value="podcast">Commentaires podcasts</option> 
-        </select>
+          <select
+            value={filters.type}
+            onChange={(e) => onFilterChange({ type: e.target.value })}
+            className={styles.filterSelect}
+          >
+            <option value="all">Tous les types</option>
+            <option value="video">Commentaires vidéos</option>
+            <option value="post">Commentaires posts</option>
+          </select>
 
           {/* Tri */}
           <select
