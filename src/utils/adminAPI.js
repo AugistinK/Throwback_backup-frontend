@@ -2,63 +2,54 @@
 import api from './api';
 
 export const adminAPI = {
-  // Récupérer les commentaires avec filtres
-  getComments: async (filters = {}) => {
+  // Liste des commentaires
+  getComments: async (params = {}) => {
     try {
-      const response = await api.get('/api/admin/comments', { params: filters });
+      const response = await api.get('/api/admin/comments', { params });
       return response.data;
     } catch (error) {
-      console.error('Error fetching comments:', error);
+      console.error('Error fetching admin comments:', error);
       throw error;
     }
   },
-  
-  // Récupérer les statistiques des commentaires
+
+  // Statistiques des commentaires
   getCommentsStats: async () => {
     try {
       const response = await api.get('/api/admin/comments/stats');
       return response.data;
     } catch (error) {
-      console.error('Error fetching comments stats:', error);
+      console.error('Error fetching admin comments stats:', error);
       throw error;
     }
   },
-  
+
   // Modérer un commentaire
   moderateComment: async (commentId, action, reason = '') => {
     try {
-      const response = await api.put(`/api/admin/comments/${commentId}/moderate`, {
-        action,
-        reason
-      });
+      const response = await api.put(`/api/admin/comments/${commentId}/moderate`, { action, reason });
       return response.data;
     } catch (error) {
       console.error('Error moderating comment:', error);
       throw error;
     }
   },
-  
+
   // Modération en lot
   bulkModerateComments: async (commentIds, action, reason = '') => {
     try {
-      const response = await api.put('/api/admin/comments/bulk-moderate', {
-        commentIds,
-        action,
-        reason
-      });
+      const response = await api.put(`/api/admin/comments/bulk-moderate`, { commentIds, action, reason });
       return response.data;
     } catch (error) {
       console.error('Error bulk moderating comments:', error);
       throw error;
     }
   },
-  
+
   // Répondre à un commentaire
-  replyToComment: async (commentId, content) => {
+  replyToComment: async (commentId, contenu) => {
     try {
-      const response = await api.post(`/api/admin/comments/${commentId}/reply`, {
-        contenu: content
-      });
+      const response = await api.post(`/api/admin/comments/${commentId}/reply`, { contenu });
       return response.data;
     } catch (error) {
       console.error('Error replying to comment:', error);
@@ -88,3 +79,5 @@ export const adminAPI = {
   }
 
 };
+
+export default adminAPI;
