@@ -92,7 +92,7 @@ const CommentStats = ({ stats }) => {
           </div>
         </div> */}
 
-        {/* <div className={styles.statCard}>
+        <div className={styles.statCard}>
           <div className={styles.statIcon}>
             <i className="fas fa-exclamation-triangle" style={{ color: '#ffc107' }}></i>
           </div>
@@ -100,7 +100,7 @@ const CommentStats = ({ stats }) => {
             <div className={styles.statNumber}>{(processedStats.byStatus.MODERE || 0).toLocaleString()}</div>
             <div className={styles.statLabel}>En Modération</div>
           </div>
-        </div> */}
+        </div>
 
         <div className={styles.statCard}>
           <div className={styles.statIcon}>
