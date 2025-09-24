@@ -5,14 +5,14 @@ export default function BulkActionsBar({ count, onCancel, onDelete }) {
   return (
     <div className={styles.bulkBar}>
       <div className={styles.bulkInfo}>
-        <i className="fas fa-check-square" /> {count} élément(s) sélectionné(s)
+        <i className="fas fa-check-square" /> {count} selected item{count > 1 ? 's' : ''}
       </div>
       <div className={styles.bulkActions}>
         <button className={styles.btnDanger} onClick={onDelete}>
-          <i className="fas fa-trash" /> Supprimer en masse
+          <i className="fas fa-trash" /> Bulk delete
         </button>
         <button className={styles.btnGhost} onClick={onCancel}>
-          Annuler
+          Cancel
         </button>
       </div>
     </div>

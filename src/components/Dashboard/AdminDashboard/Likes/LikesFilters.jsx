@@ -4,7 +4,6 @@ import styles from './Likes.module.css';
 export default function LikesFilters({ filters, onFilterChange, totalLikes }) {
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
 
-  // Debounce pour la recherche
   useEffect(() => {
     const t = setTimeout(() => {
       if (searchTerm !== filters.search) {
@@ -36,7 +35,7 @@ export default function LikesFilters({ filters, onFilterChange, totalLikes }) {
       <input
         className={styles.input}
         type="text"
-        placeholder="Rechercher (titre vidéo, contenu post/comment, nom/email utilisateur, type/action)…"
+        placeholder="Search (video title, post/comment content, user name/email, type/action)…"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
@@ -46,10 +45,10 @@ export default function LikesFilters({ filters, onFilterChange, totalLikes }) {
         value={filters.type}
         onChange={(e) => onFilterChange({ type: e.target.value, page: 1 })}
       >
-        <option value="all">Tous les types</option>
-        <option value="video">Vidéos</option>
+        <option value="all">All types</option>
+        <option value="video">Videos</option>
         {/* <option value="post">Posts</option> */}
-        <option value="comment">Commentaires</option>
+        <option value="comment">Comments</option>
         {/* <option value="memory">Memories</option> */}
         {/* <option value="playlist">Playlists</option> */}
         {/* <option value="podcast">Podcasts</option> */}
@@ -60,7 +59,7 @@ export default function LikesFilters({ filters, onFilterChange, totalLikes }) {
         value={filters.action}
         onChange={(e) => onFilterChange({ action: e.target.value, page: 1 })}
       >
-        <option value="all">Toutes actions</option>
+        <option value="all">All actions</option>
         <option value="like">Likes</option>
         <option value="dislike">Dislikes</option>
       </select>
@@ -70,25 +69,25 @@ export default function LikesFilters({ filters, onFilterChange, totalLikes }) {
         value={filters.sortBy}
         onChange={(e) => onFilterChange({ sortBy: e.target.value, page: 1 })}
       >
-        <option value="recent">Plus récents</option>
-        <option value="oldest">Plus anciens</option>
-        <option value="most_active">Activité (type/cible)</option>
+        <option value="recent">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="most_active">Activity (type/target)</option>
       </select>
 
       <button className={styles.btnIcon_details} onClick={reset}>
-        <i className="fas fa-undo" /> Réinitialiser
+        <i className="fas fa-undo" /> Reset
       </button>
 
       <button
         className={styles.btnPrimary}
         onClick={() => onFilterChange({ page: 1 })}
-        title="Actualiser la recherche"
+        title="Refresh search"
       >
-        <i className="fas fa-sync-alt" /> Actualiser
+        <i className="fas fa-sync-alt" /> Refresh
       </button>
 
       <div style={{ gridColumn: '1 / -1', color: '#6c757d', fontSize: 14 }}>
-        <i className="fas fa-heart" /> <strong>{totalLikes || 0}</strong> résultat(s)
+        <i className="fas fa-heart" /> <strong>{totalLikes || 0}</strong> result{(totalLikes || 0) > 1 ? 's' : ''}
       </div>
     </div>
   );

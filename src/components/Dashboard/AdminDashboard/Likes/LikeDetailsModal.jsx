@@ -5,20 +5,20 @@ export default function LikeDetailsModal({ like, onClose }) {
   if (!like) return null;
 
   const title =
-    like.type_entite === 'VIDEO'   ? (like.target?.titre || like.entite_id) :
-    like.type_entite === 'POST'    ? (like.target?.contenu || like.entite_id) :
-    like.type_entite === 'COMMENT' ? (like.target?.contenu || like.entite_id) :
-    like.type_entite === 'MEMORY'  ? (like.target?.contenu || like.entite_id) : 
-    like.type_entite === 'PLAYLIST'? (like.target?.nom || like.entite_id) :     
-    like.type_entite === 'PODCAST' ? (like.target?.title || like.entite_id) :   
+    like.type_entite === 'VIDEO'    ? (like.target?.titre || like.entite_id) :
+    like.type_entite === 'POST'     ? (like.target?.contenu || like.entite_id) :
+    like.type_entite === 'COMMENT'  ? (like.target?.contenu || like.entite_id) :
+    like.type_entite === 'MEMORY'   ? (like.target?.contenu || like.entite_id) :
+    like.type_entite === 'PLAYLIST' ? (like.target?.nom || like.entite_id) :
+    like.type_entite === 'PODCAST'  ? (like.target?.title || like.entite_id) :
     like.entite_id;
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h3>Détail du like</h3>
-          <button className={styles.close} onClick={onClose} aria-label="Fermer">×</button>
+          <h3>Like details</h3>
+          <button className={styles.close} onClick={onClose} aria-label="Close">×</button>
         </div>
 
         <div className={styles.modalBody}>
@@ -31,7 +31,7 @@ export default function LikeDetailsModal({ like, onClose }) {
             <div className={styles.detailVal}>{like.type_action}</div>
           </div>
           <div className={styles.detailRow}>
-            <div className={styles.detailKey}>Utilisateur</div>
+            <div className={styles.detailKey}>User</div>
             <div className={styles.detailVal}>
               {like.utilisateur ? `${like.utilisateur.prenom || ''} ${like.utilisateur.nom || ''}`.trim() || like.utilisateur.email : '—'}
             </div>
@@ -42,14 +42,14 @@ export default function LikeDetailsModal({ like, onClose }) {
           </div>
 
           <div className={styles.detailBlock}>
-            <div className={styles.detailTitle}>Cible</div>
+            <div className={styles.detailTitle}>Target</div>
             <p className={styles.entityExcerpt}>{title}</p>
           </div>
         </div>
 
         <div className={styles.modalFooter}>
           <button className={styles.btnIcon_details} onClick={onClose}>
-            Fermer
+            Close
           </button>
         </div>
       </div>

@@ -48,10 +48,10 @@ export default function AdminLikes() {
         });
         setSelected([]);
       } else {
-        setError(res?.message || 'Une erreur est survenue.');
+        setError(res?.message || 'An error has occurred.');
       }
     } catch {
-      setError('Erreur lors du chargement des likes.');
+      setError('Error loading likes.');
     } finally {
       setLoading(false);
     }
@@ -128,19 +128,19 @@ export default function AdminLikes() {
       <div className={styles.header}>
         <div>
           <h1>Likes</h1>
-          <p className={styles.subtitle}>Filtre & modération sur vidéos, posts, commentaires, memories, playlists et podcasts.</p>
+          <p className={styles.subtitle}>Filter & moderation on videos, posts, comments, memories, playlists and podcasts.</p>
         </div>
         <div className={styles.headerKpis}>
           <div className={styles.kpi}>
             <div className={styles.kpiValue}>{totalLikes}</div>
-            <div className={styles.kpiLabel}>Likes totaux</div>
+            <div className={styles.kpiLabel}>Total likes</div>
           </div>
           <div className={styles.kpi}>
             <div className={styles.kpiPills}>
               <span className={styles.pill}><i className="fas fa-thumbs-up" /> {kpiByAction.like}</span>
               <span className={styles.pill}><i className="fas fa-thumbs-down" /> {kpiByAction.dislike}</span>
             </div>
-            <div className={styles.kpiLabel}>Répartition actions</div>
+            <div className={styles.kpiLabel}>Share distribution</div>
           </div>
         </div>
       </div>
@@ -177,7 +177,7 @@ export default function AdminLikes() {
       {error && (
         <div className={styles.card} style={{ marginTop: 16, borderColor: '#ffcdd2' }}>
           <div className={styles.cardHeader}>
-            <h3 style={{ color: '#d32f2f' }}><i className="fas fa-exclamation-triangle" /> Erreur</h3>
+            <h3 style={{ color: '#d32f2f' }}><i className="fas fa-exclamation-triangle" /> Error</h3>
           </div>
           <p style={{ margin: 0, color: '#6c757d' }}>{error}</p>
         </div>
