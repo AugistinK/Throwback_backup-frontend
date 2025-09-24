@@ -29,9 +29,9 @@ export default function LikesTable({
       case 'VIDEO':   return r.target?.titre || r.entite_id;
       case 'POST':    return r.target?.contenu || r.entite_id;
       case 'COMMENT': return r.target?.contenu || r.entite_id;
-      case 'MEMORY':  return r.target?.contenu || r.entite_id;  // Memory.contenu :contentReference[oaicite:11]{index=11}
-      case 'PLAYLIST':return r.target?.nom || r.entite_id;      // Playlist.nom :contentReference[oaicite:12]{index=12}
-      case 'PODCAST': return r.target?.title || r.entite_id;    // Podcast.title :contentReference[oaicite:13]{index=13}
+      case 'MEMORY':  return r.target?.contenu || r.entite_id;  
+      case 'PLAYLIST':return r.target?.nom || r.entite_id;      
+      case 'PODCAST': return r.target?.title || r.entite_id;    
       default:        return r.entite_id;
     }
   };
@@ -121,16 +121,14 @@ export default function LikesTable({
               </div>
 
               <div className={styles.td}>
-                <button
-                  className="btnGhost"
+                <button className={styles.btnIcon_details}
                   onClick={() => onOpenDetails(r)}
                   title="Détails"
                   aria-label="Détails"
                 >
                   <i className="fas fa-eye" />
                 </button>
-                <button
-                  className="btnDanger"
+                <button className={styles.btnIcon_delete}
                   onClick={() => onDelete(r._id)}
                   title="Supprimer"
                   aria-label="Supprimer"

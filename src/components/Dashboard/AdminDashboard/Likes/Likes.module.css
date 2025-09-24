@@ -156,7 +156,7 @@
   box-shadow: 0 4px 8px rgba(179, 18, 23, 0.3);
 }
 
-.btnGhost {
+.btnIcon_details {
   height: 42px;
   padding: 0 20px;
   border-radius: 8px;
@@ -169,14 +169,14 @@
   transition: all 0.2s ease;
 }
 
-.btnGhost:hover {
+.btnIcon_details:hover {
   background-color: #f8f9fa;
   border-color: #ced4da;
   color: #495057;
   transform: translateY(-1px);
 }
 
-.btnDanger {
+.btnIcon_delete {
   height: 36px;
   padding: 0 16px;
   border-radius: 8px;
@@ -189,14 +189,14 @@
   transition: all 0.2s ease;
 }
 
-.btnDanger:hover {
+.btnIcon_delete:hover {
   background: linear-gradient(135deg, #d32f2f, #f44336);
   color: white;
   border-color: #d32f2f;
   transform: translateY(-1px);
 }
 
-.btnDanger:disabled {
+.btnIcon_delete:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -678,7 +678,7 @@
   margin-right: 0;
 }
 
-.td .btnGhost {
+.td .btnIcon_details {
   height: auto;
   padding: 6px 12px;
   border: 1px solid #e9ecef;
@@ -686,12 +686,12 @@
   color: #6c757d;
 }
 
-.td .btnGhost:hover {
+.td .btnIcon_details:hover {
   background: #e9ecef;
   color: #495057;
 }
 
-.td .btnDanger {
+.td .btnIcon_delete {
   height: auto;
   padding: 6px 12px;
 }
