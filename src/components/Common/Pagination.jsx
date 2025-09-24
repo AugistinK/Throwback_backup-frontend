@@ -28,7 +28,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
   return (
     <div className="pagination-container">
       <div className="pagination-info">
-        Affichage de {startItem}-{endItem} sur {totalItems} éléments
+        Display of {startItem}-{endItem} on {totalItems} elements
       </div>
       
       <div className="pagination-controls">

@@ -18,13 +18,13 @@ const ApiRedirect = ({ endpoint }) => {
           apiUrl = apiUrl.replace(`:${param}`, params[param]);
         });
         
-        console.log(`🔄 Redirection API: ${apiUrl}`);
+        console.log(` Redirection API: ${apiUrl}`);
         
         // Appeler l'API backend
         const backendUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
         const fullUrl = `${backendUrl}${apiUrl}`;
         
-        console.log(`📡 Appel API: ${fullUrl}`);
+        console.log(` Appel API: ${fullUrl}`);
         
         // Suivre manuellement les redirections avec axios
         const response = await axios.get(fullUrl, { 
@@ -32,33 +32,33 @@ const ApiRedirect = ({ endpoint }) => {
           validateStatus: status => status >= 200 && status < 400
         });
         
-        console.log(`📡 Réponse API:`, response);
+        console.log(` Réponse API:`, response);
         
         // Vérifier si la réponse contient une redirection
         if (response.request && response.request.responseURL) {
           const redirectUrl = response.request.responseURL;
-          console.log(`🔄 URL de redirection détectée: ${redirectUrl}`);
+          console.log(` URL de redirection détectée: ${redirectUrl}`);
           
           try {
             // Analyser l'URL de redirection
             const urlObj = new URL(redirectUrl);
             const redirectPath = urlObj.pathname + urlObj.search;
-            console.log(`🔄 Chemin de redirection: ${redirectPath}`);
+            console.log(` Chemin de redirection: ${redirectPath}`);
             
             // IMPORTANT: Vérifier si c'est une redirection vers reset-password
             if (urlObj.pathname.includes('reset-password') || urlObj.search.includes('token=')) {
-              console.log(`🔑 Redirection vers reset-password détectée`);
+              console.log(` Redirection vers reset-password détectée`);
               const token = urlObj.searchParams.get('token');
               
               if (token) {
-                console.log(`🔑 Token trouvé: ${token}`);
+                console.log(` Token trouvé: ${token}`);
                 navigate(`/reset-password?token=${token}`);
                 return;
               }
             }
             
             // Redirection générale
-            console.log(`🔄 Redirection vers: ${redirectPath}`);
+            console.log(` Redirection vers: ${redirectPath}`);
             navigate(redirectPath);
           } catch (parseError) {
             console.error('Erreur lors de l\'analyse de l\'URL de redirection:', parseError);
@@ -74,7 +74,7 @@ const ApiRedirect = ({ endpoint }) => {
         // Gérer les redirections HTTP 302
         if (error.response && (error.response.status === 301 || error.response.status === 302)) {
           const location = error.response.headers.location;
-          console.log(`🔄 Redirection ${error.response.status} vers: ${location}`);
+          console.log(` Redirection ${error.response.status} vers: ${location}`);
           
           try {
             // Si location est une URL absolue, extraire l'URL
@@ -89,11 +89,11 @@ const ApiRedirect = ({ endpoint }) => {
             
             // IMPORTANT: Vérifier spécifiquement pour reset-password
             if (urlObj.pathname.includes('reset-password')) {
-              console.log('🔑 Redirection reset-password détectée');
+              console.log(' Redirection reset-password détectée');
               const token = urlObj.searchParams.get('token');
               
               if (token) {
-                console.log(`🔑 Token trouvé: ${token}`);
+                console.log(` Token trouvé: ${token}`);
                 navigate(`/reset-password?token=${token}`);
                 return;
               }

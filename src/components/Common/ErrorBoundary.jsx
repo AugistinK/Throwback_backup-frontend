@@ -33,8 +33,8 @@ class ErrorBoundary extends Component {
           border: '1px solid #ff8888',
           borderRadius: '4px'
         }}>
-          <h2>Une erreur s'est produite</h2>
-          <p>Veuillez rafraîchir la page ou réessayer plus tard.</p>
+          <h2>An error has occurred</h2>
+          <p>Please refresh the page or try again later.</p>
           <button 
             style={{
               padding: '8px 16px',
@@ -46,7 +46,7 @@ class ErrorBoundary extends Component {
             }}
             onClick={() => window.location.reload()}
           >
-            Rafraîchir la page
+            Refresh page
           </button>
         </div>
       );

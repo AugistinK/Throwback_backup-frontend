@@ -27,7 +27,6 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
   const [loading, setLoading] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
-  // Initialiser le formulaire avec les données du livestream
   useEffect(() => {
     if (livestream) {
       setFormData({
@@ -54,106 +53,57 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
     }
   }, [livestream]);
 
-  // Helper pour formater la date pour les inputs datetime-local
   function formatDateTimeForInput(date) {
     if (!date || isNaN(date.getTime())) return '';
-    
     try {
-      // Format YYYY-MM-DDThh:mm
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const hours = String(date.getHours()).padStart(2, '0');
       const minutes = String(date.getMinutes()).padStart(2, '0');
-      
       return `${year}-${month}-${day}T${hours}:${minutes}`;
     } catch (e) {
-      console.error('Erreur lors du formatage de la date:', e);
+      console.error('Date formatting error:', e);
       return '';
     }
   }
 
-  // Mettre à jour le formulaire
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    
-    // Effacer l'erreur correspondante
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     if (errors[name]) {
-      setErrors(prev => {
-        const newErrors = {...prev};
-        delete newErrors[name];
-        return newErrors;
-      });
+      setErrors(prev => { const n = {...prev}; delete n[name]; return n; });
     }
   };
 
-  // Mettre à jour la configuration de lecture
   const handlePlaybackConfigChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
-    setPlaybackConfig(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    setPlaybackConfig(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  // Validation du formulaire
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!formData.title.trim()) {
-      newErrors.title = 'Le titre est requis';
-    }
-    
-    if (!formData.scheduledStartTime) {
-      newErrors.scheduledStartTime = 'La date de début est requise';
-    }
-    
-    if (!formData.scheduledEndTime) {
-      newErrors.scheduledEndTime = 'La date de fin est requise';
-    }
-    
+    if (!formData.title.trim()) newErrors.title = 'Title is required';
+    if (!formData.scheduledStartTime) newErrors.scheduledStartTime = 'Start date is required';
+    if (!formData.scheduledEndTime) newErrors.scheduledEndTime = 'End date is required';
     const start = new Date(formData.scheduledStartTime);
     const end = new Date(formData.scheduledEndTime);
-    
-    if (end <= start) {
-      newErrors.scheduledEndTime = 'La date de fin doit être postérieure à la date de début';
-    }
-    
+    if (end <= start) newErrors.scheduledEndTime = 'End date must be after start date';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Gérer la soumission du formulaire
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    
     try {
       setLoading(true);
-      
-      // Convertir les tags en tableau
-      const tagsArray = formData.tags
-        ? formData.tags.split(',').map(tag => tag.trim())
-        : [];
-      
-      // Préparer les données pour l'API
-      const updatedData = {
-        ...formData,
-        tags: tagsArray,
-        playbackConfig
-      };
-      
+      const tagsArray = formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [];
+      const updatedData = { ...formData, tags: tagsArray, playbackConfig };
       await onSave(livestream._id, updatedData);
-      
       onClose();
     } catch (error) {
       console.error('Error updating livestream:', error);
-      setErrors({ submit: error.message || 'Une erreur est survenue lors de la mise à jour' });
+      setErrors({ submit: error.message || 'An error occurred while updating' });
     } finally {
       setLoading(false);
     }
@@ -161,26 +111,16 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
 
   if (!isOpen || !livestream) return null;
 
-  // Liste des catégories disponibles
-  const categories = [
-    'MUSIC_PERFORMANCE',
-    'TALK_SHOW',
-    'Q_AND_A',
-    'BEHIND_THE_SCENES',
-    'THROWBACK_SPECIAL',
-    'OTHER'
-  ];
+  const categories = ['MUSIC_PERFORMANCE','TALK_SHOW','Q_AND_A','BEHIND_THE_SCENES','THROWBACK_SPECIAL','OTHER'];
 
-  // Liste des effets de transition
   const transitionEffects = [
-    { value: 'none', label: 'Aucun' },
-    { value: 'fade', label: 'Fondu' },
-    { value: 'slide', label: 'Glissement' },
+    { value: 'none', label: 'None' },
+    { value: 'fade', label: 'Fade' },
+    { value: 'slide', label: 'Slide' },
     { value: 'zoom', label: 'Zoom' },
-    { value: 'flip', label: 'Retournement' }
+    { value: 'flip', label: 'Flip' }
   ];
 
-  // Vérifier si le livestream est une compilation
   const isCompilation = livestream.compilationType === 'VIDEO_COLLECTION' && 
                       Array.isArray(livestream.compilationVideos) && 
                       livestream.compilationVideos.length > 0;
@@ -189,12 +129,8 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
     <div className={styles.modalOverlay}>
       <div className={styles.modalContentLarge}>
         <div className={styles.modalHeader}>
-          <h3>Modifier le LiveThrowback</h3>
-          <button 
-            className={styles.closeButton}
-            onClick={onClose}
-            disabled={loading}
-          >
+          <h3>Edit LiveThrowback</h3>
+          <button className={styles.closeButton} onClick={onClose} disabled={loading}>
             <i className="fas fa-times"></i>
           </button>
         </div>
@@ -202,19 +138,17 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
         <div className={styles.modalBody}>
           <div className={styles.editForm}>
             <div className={styles.formSection}>
-              <h4 className={styles.sectionTitle}>Informations générales</h4>
+              <h4 className={styles.sectionTitle}>General information</h4>
               
               <div className={styles.formGroup}>
-                <label htmlFor="title">
-                  Titre <span className={styles.requiredField}>*</span>
-                </label>
+                <label htmlFor="title">Title <span className={styles.requiredField}>*</span></label>
                 <input
                   type="text"
                   id="title"
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
-                  placeholder="Titre de votre LiveThrowback"
+                  placeholder="Title of your LiveThrowback"
                   className={errors.title ? styles.inputError : ''}
                   disabled={loading}
                 />
@@ -228,7 +162,7 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  placeholder="Décrivez votre LiveThrowback..."
+                  placeholder="Describe your LiveThrowback..."
                   rows={3}
                   disabled={loading}
                 />
@@ -236,9 +170,7 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
               
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label htmlFor="scheduledStartTime">
-                    Date de début <span className={styles.requiredField}>*</span>
-                  </label>
+                  <label htmlFor="scheduledStartTime">Start date <span className={styles.requiredField}>*</span></label>
                   <input
                     type="datetime-local"
                     id="scheduledStartTime"
@@ -252,9 +184,7 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
                 </div>
                 
                 <div className={styles.formGroup}>
-                  <label htmlFor="scheduledEndTime">
-                    Date de fin <span className={styles.requiredField}>*</span>
-                  </label>
+                  <label htmlFor="scheduledEndTime">End date <span className={styles.requiredField}>*</span></label>
                   <input
                     type="datetime-local"
                     id="scheduledEndTime"
@@ -270,45 +200,37 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
               
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label htmlFor="category">Catégorie</label>
-                  <select
-                    id="category"
-                    name="category"
-                    value={formData.category}
-                    onChange={handleChange}
-                    disabled={loading}
-                  >
+                  <label htmlFor="category">Category</label>
+                  <select id="category" name="category" value={formData.category} onChange={handleChange} disabled={loading}>
                     {categories.map(category => (
-                      <option key={category} value={category}>
-                        {category.replace(/_/g, ' ')}
-                      </option>
+                      <option key={category} value={category}>{category.replace(/_/g, ' ')}</option>
                     ))}
                   </select>
                 </div>
                 
                 <div className={styles.formGroup}>
-                  <label htmlFor="hostName">Nom de l'hôte</label>
+                  <label htmlFor="hostName">Host name</label>
                   <input
                     type="text"
                     id="hostName"
                     name="hostName"
                     value={formData.hostName}
                     onChange={handleChange}
-                    placeholder="Nom de l'hôte"
+                    placeholder="Host name"
                     disabled={loading}
                   />
                 </div>
               </div>
               
               <div className={styles.formGroup}>
-                <label htmlFor="tags">Tags (séparés par des virgules)</label>
+                <label htmlFor="tags">Tags (comma-separated)</label>
                 <input
                   type="text"
                   id="tags"
                   name="tags"
                   value={formData.tags}
                   onChange={handleChange}
-                  placeholder="musique, oldies, années80, ..."
+                  placeholder="music, oldies, 80s, ..."
                   disabled={loading}
                 />
               </div>
@@ -319,51 +241,20 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
               
               <div className={styles.formCheckboxGroup}>
                 <div className={styles.checkboxItem}>
-                  <input
-                    type="checkbox"
-                    id="isPublic"
-                    name="isPublic"
-                    checked={formData.isPublic}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                  <label htmlFor="isPublic">Rendre public</label>
+                  <input type="checkbox" id="isPublic" name="isPublic" checked={formData.isPublic} onChange={handleChange} disabled={loading} />
+                  <label htmlFor="isPublic">Make public</label>
                 </div>
-                
                 <div className={styles.checkboxItem}>
-                  <input
-                    type="checkbox"
-                    id="chatEnabled"
-                    name="chatEnabled"
-                    checked={formData.chatEnabled}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                  <label htmlFor="chatEnabled">Activer le chat</label>
+                  <input type="checkbox" id="chatEnabled" name="chatEnabled" checked={formData.chatEnabled} onChange={handleChange} disabled={loading} />
+                  <label htmlFor="chatEnabled">Enable chat</label>
                 </div>
-                
                 <div className={styles.checkboxItem}>
-                  <input
-                    type="checkbox"
-                    id="moderationEnabled"
-                    name="moderationEnabled"
-                    checked={formData.moderationEnabled}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                  <label htmlFor="moderationEnabled">Activer la modération</label>
+                  <input type="checkbox" id="moderationEnabled" name="moderationEnabled" checked={formData.moderationEnabled} onChange={handleChange} disabled={loading} />
+                  <label htmlFor="moderationEnabled">Enable moderation</label>
                 </div>
-                
                 <div className={styles.checkboxItem}>
-                  <input
-                    type="checkbox"
-                    id="recordAfterStream"
-                    name="recordAfterStream"
-                    checked={formData.recordAfterStream}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                  <label htmlFor="recordAfterStream">Enregistrer le direct</label>
+                  <input type="checkbox" id="recordAfterStream" name="recordAfterStream" checked={formData.recordAfterStream} onChange={handleChange} disabled={loading} />
+                  <label htmlFor="recordAfterStream">Record the stream</label>
                 </div>
               </div>
             </div>
@@ -378,7 +269,7 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
                     disabled={loading}
                   >
                     <i className={`fas ${showAdvancedSettings ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
-                    {showAdvancedSettings ? 'Masquer les paramètres de lecture' : 'Paramètres de lecture'}
+                    {showAdvancedSettings ? 'Hide playback settings' : 'Playback settings'}
                   </button>
                 </div>
                 
@@ -386,7 +277,7 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
                   <div className={styles.advancedSettings}>
                     <div className={styles.formRow}>
                       <div className={styles.formGroup}>
-                        <label htmlFor="transitionEffect">Effet de transition</label>
+                        <label htmlFor="transitionEffect">Transition effect</label>
                         <select
                           id="transitionEffect"
                           name="transitionEffect"
@@ -395,9 +286,7 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
                           disabled={loading}
                         >
                           {transitionEffects.map(effect => (
-                            <option key={effect.value} value={effect.value}>
-                              {effect.label}
-                            </option>
+                            <option key={effect.value} value={effect.value}>{effect.label}</option>
                           ))}
                         </select>
                       </div>
@@ -405,32 +294,17 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
                     
                     <div className={styles.formCheckboxGroup}>
                       <div className={styles.checkboxItem}>
-                        <input
-                          type="checkbox"
-                          id="loop"
-                          name="loop"
-                          checked={playbackConfig.loop}
-                          onChange={handlePlaybackConfigChange}
-                          disabled={loading}
-                        />
-                        <label htmlFor="loop">Lecture en boucle</label>
+                        <input type="checkbox" id="loop" name="loop" checked={playbackConfig.loop} onChange={handlePlaybackConfigChange} disabled={loading} />
+                        <label htmlFor="loop">Loop playback</label>
                       </div>
-                      
                       <div className={styles.checkboxItem}>
-                        <input
-                          type="checkbox"
-                          id="shuffle"
-                          name="shuffle"
-                          checked={playbackConfig.shuffle}
-                          onChange={handlePlaybackConfigChange}
-                          disabled={loading}
-                        />
-                        <label htmlFor="shuffle">Lecture aléatoire</label>
+                        <input type="checkbox" id="shuffle" name="shuffle" checked={playbackConfig.shuffle} onChange={handlePlaybackConfigChange} disabled={loading} />
+                        <label htmlFor="shuffle">Shuffle</label>
                       </div>
                     </div>
                     
                     <div className={styles.compilationInfo}>
-                      <p><i className="fas fa-info-circle"></i> Cette compilation contient {livestream.compilationVideos.length} vidéos. Pour modifier la liste des vidéos, vous devez créer un nouveau LiveThrowback.</p>
+                      <p><i className="fas fa-info-circle"></i> This compilation contains {livestream.compilationVideos.length} videos. To edit the video list, you must create a new LiveThrowback.</p>
                     </div>
                   </div>
                 )}
@@ -447,28 +321,11 @@ const LiveStreamEditModal = ({ isOpen, onClose, livestream, onSave, apiBaseUrl }
         </div>
         
         <div className={styles.modalFooter}>
-          <button 
-            className={styles.cancelButton}
-            onClick={onClose}
-            disabled={loading}
-          >
-            <i className="fas fa-times"></i> Annuler
+          <button className={styles.cancelButton} onClick={onClose} disabled={loading}>
+            <i className="fas fa-times"></i> Cancel
           </button>
-          
-          <button 
-            className={styles.saveButton}
-            onClick={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <i className="fas fa-spinner fa-spin"></i> Enregistrement...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-save"></i> Enregistrer les modifications
-              </>
-            )}
+          <button className={styles.saveButton} onClick={handleSubmit} disabled={loading}>
+            {loading ? (<><i className="fas fa-spinner fa-spin"></i> Saving...</>) : (<><i className="fas fa-save"></i> Save changes</>)}
           </button>
         </div>
       </div>
