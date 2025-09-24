@@ -5,9 +5,12 @@ export default function LikeDetailsModal({ like, onClose }) {
   if (!like) return null;
 
   const title =
-    like.type_entite === 'VIDEO' ? (like.target?.titre || like.entite_id) :
-    like.type_entite === 'POST' ? (like.target?.contenu || like.entite_id) :
+    like.type_entite === 'VIDEO'   ? (like.target?.titre || like.entite_id) :
+    like.type_entite === 'POST'    ? (like.target?.contenu || like.entite_id) :
     like.type_entite === 'COMMENT' ? (like.target?.contenu || like.entite_id) :
+    like.type_entite === 'MEMORY'  ? (like.target?.contenu || like.entite_id) : 
+    like.type_entite === 'PLAYLIST'? (like.target?.nom || like.entite_id) :     
+    like.type_entite === 'PODCAST' ? (like.target?.title || like.entite_id) :   
     like.entite_id;
 
   return (

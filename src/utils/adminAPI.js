@@ -1,5 +1,6 @@
 // utils/adminAPI.js
 import api from './api';
+import axios from './axiosInstance';
 
 export const adminAPI = {
   // Récupérer les commentaires avec filtres
@@ -52,39 +53,29 @@ export const adminAPI = {
       throw error;
     }
   },
-  
-  // Répondre à un commentaire
-  replyToComment: async (commentId, content) => {
-    try {
-      const response = await api.post(`/api/admin/comments/${commentId}/reply`, {
-        contenu: content
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error replying to comment:', error);
-      throw error;
-    }
-  },
 
-  getLikes: async (filters = {}) => {
-    const res = await api.get('/api/admin/likes', { params: filters });
+
+  getLikes: async ({ params }) => {
+    const res = await axios.get('/api/admin/likes', { params });
     return res.data;
   },
   getLikesStats: async () => {
-    const res = await api.get('/api/admin/likes/stats');
+    const res = await axios.get('/api/admin/likes/stats');
     return res.data;
   },
   getLikeDetails: async (id) => {
-    const res = await api.get(`/api/admin/likes/${id}`);
+    const res = await axios.get(`/api/admin/likes/${id}`);
     return res.data;
   },
   deleteLike: async (id) => {
-    const res = await api.delete(`/api/admin/likes/${id}`);
+    const res = await axios.delete(`/api/admin/likes/${id}`);
     return res.data;
   },
-  bulkDeleteLikes: async (payload) => {
-    const res = await api.delete('/api/admin/likes/bulk', { data: payload });
+  bulkDeleteLikes: async ({ likeIds }) => {
+    const res = await axios.delete('/api/admin/likes/bulk', { data: { likeIds } });
     return res.data;
-  }
+  },
+
+
 
 };

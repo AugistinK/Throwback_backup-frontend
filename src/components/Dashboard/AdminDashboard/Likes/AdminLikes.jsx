@@ -12,7 +12,7 @@ const initialFilters = {
   limit: 20,
   search: '',
   userId: '',
-  type: 'all',     
+  type: 'all',   
   targetId: '',
   dateFrom: '',
   dateTo: '',
@@ -24,12 +24,13 @@ export default function AdminLikes() {
   const [filters, setFilters] = useState(initialFilters);
   const [rows, setRows] = useState([]);
   const [stats, setStats] = useState(null);
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, sortBy: 'recent' });
+  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, sortBy: 'recent' });
   const [loading, setLoading] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState([]);
-  const [details, setDetails] = useState(null);  // { like, open: true/false }
+  const [details, setDetails] = useState(null);
+
   const totalLikes = useMemo(() => (pagination?.total || 0), [pagination]);
 
   const fetchData = async () => {
@@ -45,12 +46,11 @@ export default function AdminLikes() {
           total: res.pagination?.total || 0,
           sortBy: filters.sortBy,
         });
-        // si on change de page/données, on reset la sélection
         setSelected([]);
       } else {
         setError(res?.message || 'Une erreur est survenue.');
       }
-    } catch (e) {
+    } catch {
       setError('Erreur lors du chargement des likes.');
     } finally {
       setLoading(false);
@@ -62,8 +62,6 @@ export default function AdminLikes() {
     try {
       const res = await adminAPI.getLikesStats();
       if (res?.success) setStats(res.data || {});
-    } catch {
-      // on ignore les erreurs de stats côté UI
     } finally {
       setLoadingStats(false);
     }
@@ -89,7 +87,6 @@ export default function AdminLikes() {
     if (!rows?.length) return;
     setSelected((prev) => (prev.length === rows.length ? [] : rows.map((r) => r._id)));
   };
-
   const onToggleRow = (id) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
@@ -97,37 +94,27 @@ export default function AdminLikes() {
   const onOpenDetails = async (row) => {
     try {
       const res = await adminAPI.getLikeDetails(row._id);
-      if (res?.success) setDetails({ open: true, like: res.data });
-      else setDetails({ open: true, like: row });
+      setDetails({ open: true, like: res?.success ? res.data : row });
     } catch {
       setDetails({ open: true, like: row });
     }
   };
-
   const onCloseDetails = () => setDetails(null);
 
   const onDelete = async (id) => {
-    if (!id) return;
     try {
       await adminAPI.deleteLike(id);
       fetchData();
-    } catch {
-      // noop
-    }
+    } catch {}
   };
-
   const onBulkDelete = async () => {
     if (!selected.length) return;
     try {
       await adminAPI.bulkDeleteLikes({ likeIds: selected });
       fetchData();
-    } catch {
-      // noop
-    }
+    } catch {}
   };
 
-  // KPIs pour l’entête
-  const kpiTotal = pagination?.total || 0;
   const kpiByAction = useMemo(() => {
     const byAction = stats?.byAction || [];
     const like = byAction.find((x) => x._id === 'LIKE')?.count || 0;
@@ -137,18 +124,15 @@ export default function AdminLikes() {
 
   return (
     <div className={styles.wrapper}>
-      {/* HEADER */}
+      {/* Header */}
       <div className={styles.header}>
         <div>
           <h1>Likes</h1>
-          <p className={styles.subtitle}>
-            Consultez, filtrez et modérez les “likes” sur les vidéos, posts et commentaires.
-          </p>
+          <p className={styles.subtitle}>Filtre & modération sur vidéos, posts, commentaires, memories, playlists et podcasts.</p>
         </div>
-
         <div className={styles.headerKpis}>
           <div className={styles.kpi}>
-            <div className={styles.kpiValue}>{kpiTotal}</div>
+            <div className={styles.kpiValue}>{totalLikes}</div>
             <div className={styles.kpiLabel}>Likes totaux</div>
           </div>
           <div className={styles.kpi}>
@@ -161,26 +145,18 @@ export default function AdminLikes() {
         </div>
       </div>
 
-      {/* STATS */}
+      {/* Stats */}
       <LikesStats stats={stats} loading={loadingStats} />
 
-      {/* FILTRES */}
-      <LikesFilters
-        filters={filters}
-        onFilterChange={onFilterChange}
-        totalLikes={kpiTotal}
-      />
+      {/* Filtres */}
+      <LikesFilters filters={filters} onFilterChange={onFilterChange} totalLikes={totalLikes} />
 
-      {/* BULK BAR */}
+      {/* Bulk actions */}
       {!!selected.length && (
-        <BulkActionsBar
-          count={selected.length}
-          onCancel={() => setSelected([])}
-          onDelete={onBulkDelete}
-        />
+        <BulkActionsBar count={selected.length} onCancel={() => setSelected([])} onDelete={onBulkDelete} />
       )}
 
-      {/* TABLE */}
+      {/* Table */}
       <LikesTable
         rows={rows}
         loading={loading}
@@ -194,12 +170,10 @@ export default function AdminLikes() {
         onSortChange={onSortChange}
       />
 
-      {/* MODAL DÉTAILS */}
-      {details?.open && (
-        <LikeDetailsModal like={details.like} onClose={onCloseDetails} />
-      )}
+      {/* Modal détails */}
+      {details?.open && <LikeDetailsModal like={details.like} onClose={onCloseDetails} />}
 
-      {/* ERREUR */}
+      {/* Erreur */}
       {error && (
         <div className={styles.card} style={{ marginTop: 16, borderColor: '#ffcdd2' }}>
           <div className={styles.cardHeader}>

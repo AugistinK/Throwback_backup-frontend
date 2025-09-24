@@ -4,6 +4,7 @@ import styles from './Likes.module.css';
 export default function LikesFilters({ filters, onFilterChange, totalLikes }) {
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
 
+  // Debounce pour la recherche
   useEffect(() => {
     const t = setTimeout(() => {
       if (searchTerm !== filters.search) {
@@ -49,6 +50,9 @@ export default function LikesFilters({ filters, onFilterChange, totalLikes }) {
         <option value="video">Vidéos</option>
         <option value="post">Posts</option>
         <option value="comment">Commentaires</option>
+        <option value="memory">Memories</option>
+        <option value="playlist">Playlists</option>
+        <option value="podcast">Podcasts</option>
       </select>
 
       <select

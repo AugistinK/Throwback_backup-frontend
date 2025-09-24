@@ -14,12 +14,27 @@ export default function LikesTable({
   onSortChange
 }) {
   const typeIcon = (t) =>
-    t === 'VIDEO' ? 'fas fa-play-circle'
-      : t === 'POST' ? 'fas fa-file-alt'
-      : t === 'COMMENT' ? 'fas fa-comment'
-      : 'fas fa-question-circle';
+    t === 'VIDEO'   ? 'fas fa-play-circle' :
+    t === 'POST'    ? 'fas fa-file-alt'   :
+    t === 'COMMENT' ? 'fas fa-comment'    :
+    t === 'MEMORY'  ? 'fas fa-heart'      :
+    t === 'PLAYLIST'? 'fas fa-list'       :
+    t === 'PODCAST' ? 'fas fa-podcast'    :
+                      'fas fa-question-circle';
 
   const actionIcon = (a) => (a === 'LIKE' ? 'fas fa-thumbs-up' : 'fas fa-thumbs-down');
+
+  const renderTarget = (r) => {
+    switch (r.type_entite) {
+      case 'VIDEO':   return r.target?.titre || r.entite_id;
+      case 'POST':    return r.target?.contenu || r.entite_id;
+      case 'COMMENT': return r.target?.contenu || r.entite_id;
+      case 'MEMORY':  return r.target?.contenu || r.entite_id;  // Memory.contenu :contentReference[oaicite:11]{index=11}
+      case 'PLAYLIST':return r.target?.nom || r.entite_id;      // Playlist.nom :contentReference[oaicite:12]{index=12}
+      case 'PODCAST': return r.target?.title || r.entite_id;    // Podcast.title :contentReference[oaicite:13]{index=13}
+      default:        return r.entite_id;
+    }
+  };
 
   return (
     <div className={styles.tableWrap}>
@@ -59,9 +74,15 @@ export default function LikesTable({
 
         {/* Body */}
         {loading ? (
-          <div className={styles.loadingRow}>Chargement…</div>
+          <div className={styles.loading}>
+            <div className={styles.loadingSpinner} />
+            Chargement…
+          </div>
         ) : !rows || rows.length === 0 ? (
-          <div className={styles.emptyRow}>Aucun like trouvé</div>
+          <div className={styles.empty}>
+            <i className="fas fa-inbox" />
+            Aucun like trouvé
+          </div>
         ) : (
           rows.map((r) => (
             <div key={r._id} className={styles.tr}>
@@ -86,13 +107,7 @@ export default function LikesTable({
               </div>
 
               <div className={`${styles.td} ${styles.ellipsis}`}>
-                {r.type_entite === 'VIDEO'
-                  ? (r.target?.titre || r.entite_id)
-                  : r.type_entite === 'POST'
-                  ? (r.target?.contenu || r.entite_id)
-                  : r.type_entite === 'COMMENT'
-                  ? (r.target?.contenu || r.entite_id)
-                  : r.entite_id}
+                {renderTarget(r)}
               </div>
 
               <div className={styles.td}>
@@ -107,7 +122,7 @@ export default function LikesTable({
 
               <div className={styles.td}>
                 <button
-                  className={styles.btnGhost}
+                  className="btnGhost"
                   onClick={() => onOpenDetails(r)}
                   title="Détails"
                   aria-label="Détails"
@@ -115,7 +130,7 @@ export default function LikesTable({
                   <i className="fas fa-eye" />
                 </button>
                 <button
-                  className={styles.btnDanger}
+                  className="btnDanger"
                   onClick={() => onDelete(r._id)}
                   title="Supprimer"
                   aria-label="Supprimer"
@@ -132,21 +147,19 @@ export default function LikesTable({
       {pagination?.totalPages > 1 && (
         <div className={styles.pagination}>
           <button
-            className={styles.pageBtn}
             disabled={pagination.page <= 1}
             onClick={() => onPageChange(pagination.page - 1)}
           >
-            ← Précédent
+            ←
           </button>
-          <span className={styles.pageInfo}>
+          <span>
             Page {pagination.page} / {pagination.totalPages}
           </span>
           <button
-            className={styles.pageBtn}
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => onPageChange(pagination.page + 1)}
           >
-            Suivant →
+            →
           </button>
         </div>
       )}
