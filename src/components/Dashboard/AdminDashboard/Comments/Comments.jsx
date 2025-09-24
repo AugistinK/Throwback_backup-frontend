@@ -16,7 +16,7 @@ const Comments = () => {
   const [error, setError] = useState(null);
   const [selectedComments, setSelectedComments] = useState([]);
   
-  // Filtres et pagination
+  // Filters & pagination
   const [filters, setFilters] = useState({
     page: 1,
     limit: 20,
@@ -34,7 +34,7 @@ const Comments = () => {
     totalPages: 0
   });
 
-  // Charger les commentaires
+  // Load comments
   const loadComments = async () => {
     try {
       setLoading(true);
@@ -47,13 +47,13 @@ const Comments = () => {
       }
     } catch (err) {
       console.error('Error loading comments:', err);
-      setError('Erreur lors du chargement des commentaires');
+      setError('Error while loading comments');
     } finally {
       setLoading(false);
     }
   };
 
-  // Charger les statistiques
+  // Load stats
   const loadStats = async () => {
     try {
       const response = await adminAPI.getCommentsStats();
@@ -73,23 +73,23 @@ const Comments = () => {
     loadStats();
   }, []);
 
-  // Gérer les changements de filtre
+  // Filter change
   const handleFilterChange = (newFilters) => {
     setFilters(prev => ({
       ...prev,
       ...newFilters,
-      page: 1 // Reset page when filters change
+      page: 1
     }));
-    setSelectedComments([]); // Clear selections
+    setSelectedComments([]);
   };
 
-  // Gérer le changement de page
+  // Page change
   const handlePageChange = (page) => {
     setFilters(prev => ({ ...prev, page }));
     setSelectedComments([]);
   };
 
-  // Sélection des commentaires
+  // Selection
   const handleSelectComment = (commentId) => {
     setSelectedComments(prev => {
       if (prev.includes(commentId)) {
@@ -108,26 +108,23 @@ const Comments = () => {
     }
   };
 
-  // Modérer un commentaire
+  // Moderate single
   const handleModerateComment = async (commentId, action, reason = '') => {
     try {
       const response = await adminAPI.moderateComment(commentId, action, reason);
 
       if (response.success) {
-        // Recharger les commentaires
         await loadComments();
         await loadStats();
-        
-        // Notification de succès
-        console.log(`Commentaire ${action === 'approve' ? 'approuvé' : action === 'reject' ? 'rejeté' : 'supprimé'}`);
+        console.log(`Comment ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'deleted'}`);
       }
     } catch (err) {
       console.error('Error moderating comment:', err);
-      setError('Erreur lors de la modération du commentaire');
+      setError('Error while moderating the comment');
     }
   };
 
-  // Modération en lot
+  // Bulk moderation
   const handleBulkModerate = async (action, reason = '') => {
     if (selectedComments.length === 0) return;
 
@@ -138,27 +135,26 @@ const Comments = () => {
         setSelectedComments([]);
         await loadComments();
         await loadStats();
-        
-        console.log(`${response.data.modifiedCount} commentaires modérés`);
+        console.log(`${response.data.modifiedCount} comments moderated`);
       }
     } catch (err) {
       console.error('Error bulk moderating:', err);
-      setError('Erreur lors de la modération en lot');
+      setError('Error during bulk moderation');
     }
   };
 
-  // Répondre à un commentaire
+  // Reply
   const handleReplyToComment = async (commentId, content) => {
     try {
       const response = await adminAPI.replyToComment(commentId, content);
 
       if (response.success) {
         await loadComments();
-        console.log('Réponse ajoutée avec succès');
+        console.log('Reply added successfully');
       }
     } catch (err) {
       console.error('Error replying to comment:', err);
-      setError('Erreur lors de l\'ajout de la réponse');
+      setError('Error while adding the reply');
     }
   };
 
@@ -166,7 +162,7 @@ const Comments = () => {
     return (
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1>Modération des Commentaires</h1>
+          <h1>Comments Moderation</h1>
         </div>
         <LoadingSpinner />
       </div>
@@ -187,9 +183,9 @@ const Comments = () => {
 
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <h1>Modération des Commentaires</h1>
+          <h1>Comments Moderation</h1>
           <p>
-            Gérez tous les commentaires, souvenirs et réponses de la plateforme
+            Manage all platform comments, memories, and replies
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -202,22 +198,22 @@ const Comments = () => {
             disabled={loading}
           >
             <i className={`fas fa-sync-alt ${loading ? styles.spinning : ''}`}></i>
-            Actualiser
+            Refresh
           </button>
         </div>
       </div>
 
-      {/* Statistiques */}
+      {/* Stats */}
       {stats && <CommentStats stats={stats} />}
 
-      {/* Filtres */}
+      {/* Filters */}
       <CommentFilters
         filters={filters}
         onFilterChange={handleFilterChange}
         totalComments={pagination.total}
       />
 
-      {/* Actions en lot */}
+      {/* Bulk actions */}
       {selectedComments.length > 0 && (
         <BulkActions
           selectedCount={selectedComments.length}
@@ -226,17 +222,17 @@ const Comments = () => {
         />
       )}
 
-      {/* Liste des commentaires */}
+      {/* List */}
       <div className={styles.content}>
         {comments.length === 0 ? (
           <div className={styles.emptyState}>
             <i className="fas fa-comments"></i>
-            <h3>Aucun commentaire trouvé</h3>
-            <p>Aucun commentaire ne correspond aux filtres sélectionnés.</p>
+            <h3>No comments found</h3>
+            <p>No comment matches the selected filters.</p>
           </div>
         ) : (
           <>
-            {/* Header du tableau */}
+            {/* Table header */}
             <div className={styles.tableHeader}>
               <div className={styles.checkboxColumn}>
                 <input
@@ -245,15 +241,15 @@ const Comments = () => {
                   onChange={handleSelectAll}
                 />
               </div>
-              <div className={styles.contentColumn}>Contenu</div>
-              <div className={styles.authorColumn}>Auteur</div>
-              <div className={styles.contextColumn}>Contexte</div>
-              <div className={styles.statusColumn}>Statut</div>
+              <div className={styles.contentColumn}>Content</div>
+              <div className={styles.authorColumn}>Author</div>
+              <div className={styles.contextColumn}>Context</div>
+              <div className={styles.statusColumn}>Status</div>
               <div className={styles.dateColumn}>Date</div>
               <div className={styles.actionsColumn}>Actions</div>
             </div>
 
-            {/* Liste des commentaires */}
+            {/* Rows */}
             <div className={styles.commentsList}>
               {comments.map(comment => (
                 <CommentCard

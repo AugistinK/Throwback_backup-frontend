@@ -8,39 +8,39 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
   const [reason, setReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Actions disponibles
+  // Available actions
   const actions = [
     {
       id: 'approve',
-      label: 'Approuver',
+      label: 'Approve',
       icon: 'fas fa-check',
       color: 'success',
-      description: 'Approuver tous les commentaires sélectionnés'
+      description: 'Approve all selected comments'
     },
     {
       id: 'reject',
-      label: 'Rejeter',
+      label: 'Reject',
       icon: 'fas fa-times',
       color: 'warning',
-      description: 'Rejeter les commentaires sélectionnés (modération)'
+      description: 'Reject selected comments (moderation)'
     },
     {
       id: 'delete',
-      label: 'Supprimer',
+      label: 'Delete',
       icon: 'fas fa-trash',
       color: 'danger',
-      description: 'Supprimer définitivement les commentaires sélectionnés'
+      description: 'Permanently delete selected comments'
     }
   ];
 
-  // Gérer la sélection d'action
+  // Handle action selection
   const handleActionSelect = (action) => {
     setSelectedAction(action);
     setShowConfirmation(true);
     setReason('');
   };
 
-  // Confirmer l'action
+  // Confirm action
   const handleConfirm = async () => {
     if (!selectedAction) return;
 
@@ -51,13 +51,13 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
       setSelectedAction(null);
       setReason('');
     } catch (error) {
-      console.error('Erreur lors de l\'action en lot:', error);
+      console.error('Error during bulk action:', error);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Annuler
+  // Cancel
   const handleCancel = () => {
     if (showConfirmation) {
       setShowConfirmation(false);
@@ -68,35 +68,35 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
     }
   };
 
-  // Messages de confirmation
+  // Confirmation messages
   const getConfirmationMessage = () => {
     if (!selectedAction) return '';
 
     const actionMessages = {
-      approve: `Êtes-vous sûr de vouloir approuver ${selectedCount} commentaire${selectedCount > 1 ? 's' : ''} ?`,
-      reject: `Êtes-vous sûr de vouloir rejeter ${selectedCount} commentaire${selectedCount > 1 ? 's' : ''} ?`,
-      delete: `Êtes-vous sûr de vouloir supprimer définitivement ${selectedCount} commentaire${selectedCount > 1 ? 's' : ''} ?`
+      approve: `Are you sure you want to approve ${selectedCount} comment${selectedCount > 1 ? 's' : ''}?`,
+      reject: `Are you sure you want to reject ${selectedCount} comment${selectedCount > 1 ? 's' : ''}?`,
+      delete: `Are you sure you want to permanently delete ${selectedCount} comment${selectedCount > 1 ? 's' : ''}?`
     };
 
     return actionMessages[selectedAction.id];
   };
 
-  // Raisons prédéfinies
+  // Predefined reasons
   const predefinedReasons = {
     reject: [
-      'Contenu inapproprié',
-      'Spam ou publicité',
-      'Harcèlement',
-      'Contenu haineux',
-      'Violation des règles communautaires',
-      'Contenu hors sujet'
+      'Inappropriate content',
+      'Spam or advertising',
+      'Harassment',
+      'Hate content',
+      'Community rules violation',
+      'Off-topic content'
     ],
     delete: [
-      'Violation grave des règles',
-      'Contenu illégal',
-      'Spam répétitif',
-      'Harcèlement grave',
-      'Contenu extrêmement inapproprié'
+      'Severe rules violation',
+      'Illegal content',
+      'Repeated spam',
+      'Severe harassment',
+      'Extremely inappropriate content'
     ]
   };
 
@@ -106,7 +106,7 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
         <div className={styles.selectionInfo}>
           <i className="fas fa-check-square"></i>
           <span className={styles.selectedCount}>
-            {selectedCount} commentaire{selectedCount > 1 ? 's' : ''} sélectionné{selectedCount > 1 ? 's' : ''}
+            {selectedCount} selected comment{selectedCount > 1 ? 's' : ''}
           </span>
         </div>
 
@@ -132,19 +132,19 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
             disabled={isProcessing}
           >
             <i className="fas fa-times"></i>
-            Annuler
+            Cancel
           </button>
         </div>
       </div>
 
-      {/* Modal de confirmation */}
+      {/* Confirmation modal */}
       {showConfirmation && selectedAction && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmationModal}>
             <div className={styles.modalHeader}>
               <h3>
                 <i className={selectedAction.icon}></i>
-                Confirmer l'action
+                Confirm action
               </h3>
             </div>
 
@@ -156,14 +156,14 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
                 <p>{getConfirmationMessage()}</p>
               </div>
 
-              {/* Raison (optionnelle pour approve, recommandée pour reject/delete) */}
+              {/* Reason (optional for approve, recommended for reject/delete) */}
               {(selectedAction.id === 'reject' || selectedAction.id === 'delete') && (
                 <div className={styles.reasonSection}>
                   <label htmlFor="reason">
-                    Raison {selectedAction.id === 'delete' ? '(recommandée)' : '(optionnelle)'}
+                    Reason {selectedAction.id === 'delete' ? '(recommended)' : '(optional)'}
                   </label>
                   
-                  {/* Raisons prédéfinies */}
+                  {/* Predefined reasons */}
                   {predefinedReasons[selectedAction.id] && (
                     <div className={styles.predefinedReasons}>
                       {predefinedReasons[selectedAction.id].map((predefinedReason, index) => (
@@ -179,25 +179,25 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
                     </div>
                   )}
 
-                  {/* Champ de saisie personnalisé */}
+                  {/* Custom input */}
                   <textarea
                     id="reason"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="Saisissez une raison personnalisée..."
+                    placeholder="Enter a custom reason..."
                     className={styles.reasonTextarea}
                     rows="3"
                   />
                 </div>
               )}
 
-              {/* Avertissement pour suppression */}
+              {/* Delete warning */}
               {selectedAction.id === 'delete' && (
                 <div className={styles.warningBox}>
                   <i className="fas fa-exclamation-triangle"></i>
                   <div>
-                    <strong>Attention :</strong> Cette action est irréversible. 
-                    Les commentaires supprimés ne pourront pas être récupérés.
+                    <strong>Warning:</strong> This action is irreversible.
+                    Deleted comments cannot be restored.
                   </div>
                 </div>
               )}
@@ -209,7 +209,7 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
                 onClick={handleCancel}
                 disabled={isProcessing}
               >
-                Annuler
+                Cancel
               </button>
               
               <button
@@ -220,12 +220,12 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
                 {isProcessing ? (
                   <>
                     <i className="fas fa-spinner fa-spin"></i>
-                    Traitement...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <i className={selectedAction.icon}></i>
-                    Confirmer {selectedAction.label.toLowerCase()}
+                    Confirm {selectedAction.label.toLowerCase()}
                   </>
                 )}
               </button>

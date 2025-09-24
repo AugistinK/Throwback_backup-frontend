@@ -15,20 +15,20 @@ const CommentCard = ({
   const [showReplyModal, setShowReplyModal] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
 
-  // Formatage de la date
+  // Date formatting (relative)
   const formatDate = (date) => {
     const now = new Date();
     const commentDate = new Date(date);
     const diffInHours = Math.floor((now - commentDate) / (1000 * 60 * 60));
     
     if (diffInHours < 1) {
-      return 'Il y a moins d\'une heure';
+      return 'Less than an hour ago';
     } else if (diffInHours < 24) {
-      return `Il y a ${diffInHours} heure${diffInHours > 1 ? 's' : ''}`;
+      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
     } else {
       const diffInDays = Math.floor(diffInHours / 24);
       if (diffInDays < 7) {
-        return `Il y a ${diffInDays} jour${diffInDays > 1 ? 's' : ''}`;
+        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
       } else {
         return commentDate.toLocaleDateString('fr-FR', {
           day: '2-digit',
@@ -41,7 +41,7 @@ const CommentCard = ({
     }
   };
 
-  // Déterminer le contexte (vidéo ou post)
+  // Determine context (video or post)
   const getContext = () => {
     if (comment.video_id) {
       return {
@@ -59,19 +59,19 @@ const CommentCard = ({
     } else {
       return {
         type: 'memory',
-        title: 'Souvenir partagé',
+        title: 'Shared memory',
         icon: 'fas fa-heart'
       };
     }
   };
 
-  // Obtenir le statut avec style
+  // Status badge
   const getStatusBadge = () => {
     const statusConfig = {
-      ACTIF: { className: styles.statusActive, icon: 'fas fa-check-circle', label: 'Actif' },
-      MODERE: { className: styles.statusModerated, icon: 'fas fa-exclamation-triangle', label: 'Modéré' },
-      SUPPRIME: { className: styles.statusDeleted, icon: 'fas fa-trash', label: 'Supprimé' },
-      SIGNALE: { className: styles.statusReported, icon: 'fas fa-flag', label: 'Signalé' }
+      ACTIF: { className: styles.statusActive, icon: 'fas fa-check-circle', label: 'Active' },
+      MODERE: { className: styles.statusModerated, icon: 'fas fa-exclamation-triangle', label: 'Moderated' },
+      SUPPRIME: { className: styles.statusDeleted, icon: 'fas fa-trash', label: 'Deleted' },
+      SIGNALE: { className: styles.statusReported, icon: 'fas fa-flag', label: 'Reported' }
     };
     
     const config = statusConfig[comment.statut] || statusConfig.ACTIF;
@@ -84,11 +84,11 @@ const CommentCard = ({
     );
   };
 
-  // Obtenir les informations de l'auteur
+  // Author info
   const getAuthorInfo = () => {
     if (!comment.auteur) {
       return {
-        name: 'Utilisateur supprimé',
+        name: 'Deleted user',
         email: '',
         avatar: '/images/default-avatar.jpg',
         isActive: false
@@ -96,7 +96,7 @@ const CommentCard = ({
     }
 
     return {
-      name: `${comment.auteur.prenom || ''} ${comment.auteur.nom || ''}`.trim() || 'Utilisateur',
+      name: `${comment.auteur.prenom || ''} ${comment.auteur.nom || ''}`.trim() || 'User',
       email: comment.auteur.email || '',
       avatar: comment.auteur.photo_profil || '/images/default-avatar.jpg',
       isActive: comment.auteur.statut_compte === 'ACTIF'
@@ -108,7 +108,7 @@ const CommentCard = ({
 
   return (
     <div className={`${styles.commentCard} ${isSelected ? styles.selected : ''}`}>
-      {/* Checkbox de sélection */}
+      {/* Selection checkbox */}
       <div className={styles.checkboxColumn}>
         <input
           type="checkbox"
@@ -118,7 +118,7 @@ const CommentCard = ({
         />
       </div>
 
-      {/* Contenu du commentaire */}
+      {/* Comment content */}
       <div className={styles.contentColumn}>
         <div className={styles.commentContent}>
           <p className={showFullContent ? '' : styles.truncated}>
@@ -129,12 +129,12 @@ const CommentCard = ({
               className={styles.toggleContent}
               onClick={() => setShowFullContent(!showFullContent)}
             >
-              {showFullContent ? 'Voir moins' : 'Voir plus'}
+              {showFullContent ? 'Show less' : 'Show more'}
             </button>
           )}
         </div>
 
-        {/* Métadonnées du commentaire */}
+        {/* Meta */}
         <div className={styles.commentMeta}>
           <span className={styles.metaItem}>
             <i className="fas fa-thumbs-up"></i>
@@ -147,19 +147,19 @@ const CommentCard = ({
           {comment.parent_comment && (
             <span className={styles.metaItem}>
               <i className="fas fa-reply"></i>
-              Réponse
+              Reply
             </span>
           )}
           {comment.signale_par?.length > 0 && (
             <span className={`${styles.metaItem} ${styles.reported}`}>
               <i className="fas fa-flag"></i>
-              {comment.signale_par.length} signalement{comment.signale_par.length > 1 ? 's' : ''}
+              {comment.signale_par.length} report{comment.signale_par.length > 1 ? 's' : ''}
             </span>
           )}
         </div>
       </div>
 
-      {/* Auteur */}
+      {/* Author */}
       <div className={styles.authorColumn}>
         <div className={styles.authorInfo}>
           <img
@@ -179,13 +179,13 @@ const CommentCard = ({
         </div>
       </div>
 
-      {/* Contexte */}
+      {/* Context */}
       <div className={styles.contextColumn}>
         <div className={styles.contextInfo}>
           <i className={`${context.icon} ${styles.contextIcon}`}></i>
           <div className={styles.contextDetails}>
             <div className={styles.contextType}>
-              {context.type === 'video' ? 'Vidéo' : context.type === 'post' ? 'Post' : 'Souvenir'}
+              {context.type === 'video' ? 'Video' : context.type === 'post' ? 'Post' : 'Memory'}
             </div>
             <div className={styles.contextTitle} title={context.title}>
               {context.title}
@@ -197,7 +197,7 @@ const CommentCard = ({
         </div>
       </div>
 
-      {/* Statut */}
+      {/* Status */}
       <div className={styles.statusColumn}>
         {getStatusBadge()}
       </div>
@@ -223,30 +223,30 @@ const CommentCard = ({
       {/* Actions */}
       <div className={styles.actionsColumn}>
         <div className={styles.actionButtons}>
-          {/* Bouton de modération */}
+          {/* Moderate button */}
           <button
             className={styles.actionBtn}
             onClick={() => setShowModerationModal(true)}
-            title="Modérer ce commentaire"
+            title="Moderate this comment"
           >
             <i className="fas fa-gavel"></i>
           </button>
 
-          {/* Bouton de réponse */}
+          {/* Reply button */}
           <button
             className={styles.actionBtn}
             onClick={() => setShowReplyModal(true)}
-            title="Répondre à ce commentaire"
+            title="Reply to this comment"
           >
             <i className="fas fa-reply"></i>
           </button>
 
-          {/* Actions rapides */}
+          {/* Quick actions */}
           {comment.statut !== 'ACTIF' && (
             <button
               className={`${styles.actionBtn} ${styles.approveBtn}`}
               onClick={() => onModerate(comment._id, 'approve')}
-              title="Approuver"
+              title="Approve"
             >
               <i className="fas fa-check"></i>
             </button>
@@ -256,7 +256,7 @@ const CommentCard = ({
             <button
               className={`${styles.actionBtn} ${styles.deleteBtn}`}
               onClick={() => onModerate(comment._id, 'delete')}
-              title="Supprimer"
+              title="Delete"
             >
               <i className="fas fa-trash"></i>
             </button>

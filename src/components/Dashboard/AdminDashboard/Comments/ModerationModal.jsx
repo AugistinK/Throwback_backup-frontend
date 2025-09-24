@@ -10,42 +10,42 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
   const actions = [
     {
       id: 'approve',
-      label: 'Approuver',
+      label: 'Approve',
       icon: 'fas fa-check',
       color: 'success',
-      description: 'Approuver ce commentaire et le rendre visible'
+      description: 'Approve this comment and make it visible'
     },
     {
       id: 'reject',
-      label: 'Rejeter',
+      label: 'Reject',
       icon: 'fas fa-times',
       color: 'warning', 
-      description: 'Rejeter ce commentaire (modération)'
+      description: 'Reject this comment (moderation)'
     },
     {
       id: 'delete',
-      label: 'Supprimer',
+      label: 'Delete',
       icon: 'fas fa-trash',
       color: 'danger',
-      description: 'Supprimer définitivement ce commentaire'
+      description: 'Permanently delete this comment'
     }
   ];
 
   const predefinedReasons = {
     reject: [
-      'Contenu inapproprié',
-      'Spam ou publicité',
-      'Harcèlement',
-      'Contenu haineux',
-      'Violation des règles communautaires',
-      'Contenu hors sujet'
+      'Inappropriate content',
+      'Spam or advertising',
+      'Harassment',
+      'Hate content',
+      'Community rules violation',
+      'Off-topic content'
     ],
     delete: [
-      'Violation grave des règles',
-      'Contenu illégal',
-      'Spam répétitif',
-      'Harcèlement grave',
-      'Contenu extrêmement inapproprié'
+      'Severe rules violation',
+      'Illegal content',
+      'Repeated spam',
+      'Severe harassment',
+      'Extremely inappropriate content'
     ]
   };
 
@@ -56,7 +56,7 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
     try {
       await onModerate(selectedAction, reason);
     } catch (error) {
-      console.error('Erreur lors de la modération:', error);
+      console.error('Error during moderation:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -68,14 +68,14 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h3>Modérer le Commentaire</h3>
+          <h3>Moderate Comment</h3>
           <button className={styles.closeBtn} onClick={onClose}>
             <i className="fas fa-times"></i>
           </button>
         </div>
 
         <div className={styles.modalContent}>
-          {/* Aperçu du commentaire */}
+          {/* Comment preview */}
           <div className={styles.commentPreview}>
             <div className={styles.commentContent}>
               <p>"{comment.contenu}"</p>
@@ -83,7 +83,7 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
             <div className={styles.commentMeta}>
               <span>
                 <i className="fas fa-user"></i>
-                {comment.auteur ? `${comment.auteur.prenom} ${comment.auteur.nom}` : 'Utilisateur supprimé'}
+                {comment.auteur ? `${comment.auteur.prenom} ${comment.auteur.nom}` : 'Deleted user'}
               </span>
               <span>
                 <i className="fas fa-clock"></i>
@@ -92,16 +92,16 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
               {comment.signale_par && comment.signale_par.length > 0 && (
                 <span className={styles.reported}>
                   <i className="fas fa-flag"></i>
-                  {comment.signale_par.length} signalement{comment.signale_par.length > 1 ? 's' : ''}
+                  {comment.signale_par.length} report{comment.signale_par.length > 1 ? 's' : ''}
                 </span>
               )}
             </div>
           </div>
 
           <form onSubmit={handleSubmit}>
-            {/* Sélection de l'action */}
+            {/* Action selection */}
             <div className={styles.actionSelection}>
-              <label>Action à effectuer :</label>
+              <label>Action to perform:</label>
               <div className={styles.actionButtons}>
                 {actions.map(action => (
                   <button
@@ -124,11 +124,11 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
               )}
             </div>
 
-            {/* Raison */}
+            {/* Reason */}
             {(selectedAction === 'reject' || selectedAction === 'delete') && (
               <div className={styles.reasonSection}>
                 <label htmlFor="reason">
-                  Raison {selectedAction === 'delete' ? '(recommandée)' : '(optionnelle)'}
+                  Reason {selectedAction === 'delete' ? '(recommended)' : '(optional)'}
                 </label>
                 
                 {predefinedReasons[selectedAction] && (
@@ -152,20 +152,20 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
                   id="reason"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder="Saisissez une raison personnalisée..."
+                  placeholder="Enter a custom reason..."
                   className={styles.reasonTextarea}
                   rows="3"
                 />
               </div>
             )}
 
-            {/* Avertissement pour suppression */}
+            {/* Delete warning */}
             {selectedAction === 'delete' && (
               <div className={styles.warningBox}>
                 <i className="fas fa-exclamation-triangle"></i>
                 <div>
-                  <strong>Attention :</strong> Cette action est irréversible. 
-                  Le commentaire supprimé ne pourra pas être récupéré.
+                  <strong>Warning:</strong> This action is irreversible. 
+                  The deleted comment cannot be recovered.
                 </div>
               </div>
             )}
@@ -177,7 +177,7 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
                 onClick={onClose}
                 disabled={isProcessing}
               >
-                Annuler
+                Cancel
               </button>
               
               <button
@@ -188,7 +188,7 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
                 {isProcessing ? (
                   <>
                     <i className="fas fa-spinner fa-spin"></i>
-                    Traitement...
+                    Processing...
                   </>
                 ) : (
                   <>
@@ -205,7 +205,7 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
   );
 };
 
-// components/Dashboard/AdminDashboard/Comments/ReplyModal.jsx
+// components/Dashboard/AdminDashboard/Comments/ReplyModal.jsx (exporté dans ce fichier)
 const ReplyModal = ({ comment, onReply, onClose }) => {
   const [content, setContent] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -218,7 +218,7 @@ const ReplyModal = ({ comment, onReply, onClose }) => {
     try {
       await onReply(content.trim());
     } catch (error) {
-      console.error('Erreur lors de la réponse:', error);
+      console.error('Error while replying:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -228,25 +228,25 @@ const ReplyModal = ({ comment, onReply, onClose }) => {
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h3>Répondre au Commentaire</h3>
+          <h3>Reply to Comment</h3>
           <button className={styles.closeBtn} onClick={onClose}>
             <i className="fas fa-times"></i>
           </button>
         </div>
 
         <div className={styles.modalContent}>
-          {/* Commentaire original */}
+          {/* Original comment */}
           <div className={styles.commentPreview}>
             <div className={styles.originalComment}>
               <div className={styles.commentHeader}>
                 <i className="fas fa-quote-left"></i>
-                <span>Commentaire original :</span>
+                <span>Original comment:</span>
               </div>
               <p>"{comment.contenu}"</p>
               <div className={styles.commentMeta}>
                 <span>
                   <i className="fas fa-user"></i>
-                  {comment.auteur ? `${comment.auteur.prenom} ${comment.auteur.nom}` : 'Utilisateur supprimé'}
+                  {comment.auteur ? `${comment.auteur.prenom} ${comment.auteur.nom}` : 'Deleted user'}
                 </span>
               </div>
             </div>
@@ -254,26 +254,26 @@ const ReplyModal = ({ comment, onReply, onClose }) => {
 
           <form onSubmit={handleSubmit}>
             <div className={styles.replySection}>
-              <label htmlFor="replyContent">Votre réponse (en tant qu'administrateur) :</label>
+              <label htmlFor="replyContent">Your reply (as administrator):</label>
               <textarea
                 id="replyContent"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Écrivez votre réponse..."
+                placeholder="Write your reply..."
                 className={styles.replyTextarea}
                 rows="4"
                 maxLength="500"
                 required
               />
               <div className={styles.charCount}>
-                {content.length}/500 caractères
+                {content.length}/500 characters
               </div>
             </div>
 
             <div className={styles.replyInfo}>
               <i className="fas fa-info-circle"></i>
               <p>
-                Cette réponse sera visible publiquement et identifiée comme une réponse administrative.
+                This reply will be publicly visible and identified as an administrative response.
               </p>
             </div>
 
@@ -284,7 +284,7 @@ const ReplyModal = ({ comment, onReply, onClose }) => {
                 onClick={onClose}
                 disabled={isProcessing}
               >
-                Annuler
+                Cancel
               </button>
               
               <button
@@ -295,12 +295,12 @@ const ReplyModal = ({ comment, onReply, onClose }) => {
                 {isProcessing ? (
                   <>
                     <i className="fas fa-spinner fa-spin"></i>
-                    Envoi...
+                    Sending...
                   </>
                 ) : (
                   <>
                     <i className="fas fa-reply"></i>
-                    Envoyer la réponse
+                    Send reply
                   </>
                 )}
               </button>
