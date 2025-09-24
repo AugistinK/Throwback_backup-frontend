@@ -51,6 +51,6 @@ const adminAPI = {
   },
 };
 
-// export default adminAPI;
-// // (optionnel) export nommé si tu en as besoin ailleurs
-// export { adminAPI };
+export default adminAPI;
+// (optionnel) export nommé si tu en as besoin ailleurs
+export { adminAPI };
