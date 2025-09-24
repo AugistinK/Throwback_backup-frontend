@@ -48,11 +48,11 @@ export default function LikesFilters({ filters, onFilterChange, totalLikes }) {
       >
         <option value="all">Tous les types</option>
         <option value="video">Vidéos</option>
-        <option value="post">Posts</option>
+        {/* <option value="post">Posts</option> */}
         <option value="comment">Commentaires</option>
-        <option value="memory">Memories</option>
-        <option value="playlist">Playlists</option>
-        <option value="podcast">Podcasts</option>
+        {/* <option value="memory">Memories</option> */}
+        {/* <option value="playlist">Playlists</option> */}
+        {/* <option value="podcast">Podcasts</option> */}
       </select>
 
       <select
