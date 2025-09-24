@@ -5,19 +5,19 @@ import LikesTable from './LikesTable';
 import LikesStats from './LikesStats';
 import LikeDetailsModal from './LikeDetailsModal';
 import BulkActionsBar from './BulkActionsBar';
-import adminAPI from '../../../../api/adminAPI';
+import { adminAPI } from '../../../../utils/adminAPI';
 
 const initialFilters = {
   page: 1,
   limit: 20,
   search: '',
   userId: '',
-  type: 'all',      // all | video | post | comment
+  type: 'all',     
   targetId: '',
   dateFrom: '',
   dateTo: '',
-  action: 'all',    // all | like | dislike
-  sortBy: 'recent', // recent | oldest | most_active
+  action: 'all',    
+  sortBy: 'recent', 
 };
 
 export default function AdminLikes() {
