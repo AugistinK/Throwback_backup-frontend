@@ -1,41 +1,53 @@
 import React from 'react';
 import styles from './Likes.module.css';
 
-export default function LikeDetailsModal({ open, data, onClose }) {
-  if (!open) return null;
-  const like = data?.like || data;
-  const entity = data?.entity;
+export default function LikeDetailsModal({ like, onClose }) {
+  if (!like) return null;
 
   const title =
-    like?.type_entite === 'VIDEO' ? (entity?.titre || 'Vidéo') :
-    like?.type_entite === 'POST' ? (entity?.contenu?.slice(0, 60) || 'Post') :
-    like?.type_entite === 'COMMENT' ? (entity?.contenu?.slice(0, 60) || 'Commentaire') : 'Entité';
+    like.type_entite === 'VIDEO' ? (like.target?.titre || like.entite_id) :
+    like.type_entite === 'POST' ? (like.target?.contenu || like.entite_id) :
+    like.type_entite === 'COMMENT' ? (like.target?.contenu || like.entite_id) :
+    like.entite_id;
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h3>Détail interaction</h3>
+          <h3>Détail du like</h3>
           <button className={styles.close} onClick={onClose} aria-label="Fermer">×</button>
         </div>
 
         <div className={styles.modalBody}>
-          <div className={styles.detailRow}><span className={styles.detailKey}>Type</span><span className={styles.detailVal}>{like?.type_entite}</span></div>
-          <div className={styles.detailRow}><span className={styles.detailKey}>Action</span><span className={styles.detailVal}>{like?.type_action}</span></div>
-          <div className={styles.detailRow}><span className={styles.detailKey}>Cible</span><span className={styles.detailVal}>{title}</span></div>
-          <div className={styles.detailRow}><span className={styles.detailKey}>Utilisateur</span><span className={styles.detailVal}>{like?.utilisateur ? `${like.utilisateur.prenom || ''} ${like.utilisateur.nom || ''}`.trim() : '-'}</span></div>
-          <div className={styles.detailRow}><span className={styles.detailKey}>Date</span><span className={styles.detailVal}>{new Date(like?.creation_date).toLocaleString()}</span></div>
-
-          {entity && like?.type_entite !== 'VIDEO' && (
-            <div className={styles.detailBlock}>
-              <div className={styles.detailTitle}>Extrait du contenu</div>
-              <p className={styles.entityExcerpt}>{entity?.contenu || ''}</p>
+          <div className={styles.detailRow}>
+            <div className={styles.detailKey}>Type</div>
+            <div className={styles.detailVal}>{like.type_entite}</div>
+          </div>
+          <div className={styles.detailRow}>
+            <div className={styles.detailKey}>Action</div>
+            <div className={styles.detailVal}>{like.type_action}</div>
+          </div>
+          <div className={styles.detailRow}>
+            <div className={styles.detailKey}>Utilisateur</div>
+            <div className={styles.detailVal}>
+              {like.utilisateur ? `${like.utilisateur.prenom || ''} ${like.utilisateur.nom || ''}`.trim() || like.utilisateur.email : '—'}
             </div>
-          )}
+          </div>
+          <div className={styles.detailRow}>
+            <div className={styles.detailKey}>Date</div>
+            <div className={styles.detailVal}>{like.creation_date ? new Date(like.creation_date).toLocaleString() : '—'}</div>
+          </div>
+
+          <div className={styles.detailBlock}>
+            <div className={styles.detailTitle}>Cible</div>
+            <p className={styles.entityExcerpt}>{title}</p>
+          </div>
         </div>
 
         <div className={styles.modalFooter}>
-          <button className={styles.btnPrimary} onClick={onClose}>Fermer</button>
+          <button className={styles.btnGhost} onClick={onClose}>
+            Fermer
+          </button>
         </div>
       </div>
     </div>
