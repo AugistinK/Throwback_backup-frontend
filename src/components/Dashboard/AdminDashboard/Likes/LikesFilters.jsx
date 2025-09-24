@@ -75,7 +75,7 @@ export default function LikesFilters({ filters, onFilterChange, totalLikes }) {
         <option value="most_active">Activité (type/cible)</option>
       </select>
 
-      <button className={styles.btnGhost} onClick={reset}>
+      <button className={styles.btnIcon_details} onClick={reset}>
         <i className="fas fa-undo" /> Réinitialiser
       </button>
 

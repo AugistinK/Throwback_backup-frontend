@@ -48,7 +48,7 @@ export default function LikeDetailsModal({ like, onClose }) {
         </div>
 
         <div className={styles.modalFooter}>
-          <button className={styles.btnGhost} onClick={onClose}>
+          <button className={styles.btnIcon_details} onClick={onClose}>
             Fermer
           </button>
         </div>
