@@ -1,57 +1,101 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './Likes.module.css';
 
-export default function LikesFilters({ value, onChange, onReset }) {
-  const [local, setLocal] = useState(value);
+const LikesFilters = ({ filters, onFilterChange, totalLikes }) => {
+  const [searchTerm, setSearchTerm] = useState(filters.search || '');
 
-  const apply = () => onChange(local);
-  const change = (k, v) => setLocal(prev => ({ ...prev, [k]: v }));
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (searchTerm !== filters.search) {
+        onFilterChange({ search: searchTerm, page: 1 });
+      }
+    }, 450);
+    return () => clearTimeout(t);
+  }, [searchTerm]); // eslint-disable-line
+
+  const reset = () => {
+    setSearchTerm('');
+    onFilterChange({
+      page: 1,
+      limit: filters.limit || 20,
+      search: '',
+      userId: '',
+      type: 'all',
+      targetId: '',
+      dateFrom: '',
+      dateTo: '',
+      action: 'all',
+      sortBy: 'recent'
+    });
+  };
 
   return (
-    <div className={styles.filters}>
-      <input
-        className={styles.input}
-        placeholder="Recherche (type/action)…"
-        value={local.search}
-        onChange={e => change('search', e.target.value)}
-      />
+    <div className={styles.filtersContainer}>
+      <div className={styles.mainFilters}>
+        <div className={styles.searchContainer}>
+          <div className={styles.searchInput}>
+            <i className="fas fa-search" />
+            <input
+              type="text"
+              // ✅ placeholder enrichi (titre vidéo, contenu, utilisateur…)
+              placeholder="Rechercher (titre vidéo, contenu post/comment, nom/email utilisateur, type/action)…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button className={styles.clearSearch} onClick={() => setSearchTerm('')}>
+                <i className="fas fa-times" />
+              </button>
+            )}
+          </div>
+        </div>
 
-      <select className={styles.select} value={local.type} onChange={e => change('type', e.target.value)}>
-        <option value="all">Tous types</option>
-        <option value="VIDEO">Vidéos</option>
-        <option value="POST">Posts</option>
-        <option value="COMMENT">Commentaires</option>
-      </select>
+        <select
+          className={styles.filterSelect}
+          value={filters.type}
+          onChange={(e) => onFilterChange({ type: e.target.value, page: 1 })}
+        >
+          <option value="all">Tous les types</option>
+          <option value="video">Vidéos</option>
+          <option value="post">Posts</option>
+          <option value="comment">Commentaires</option>
+        </select>
 
-      <select className={styles.select} value={local.action} onChange={e => change('action', e.target.value)}>
-        <option value="all">Like & Dislike</option>
-        <option value="LIKE">Like</option>
-        <option value="DISLIKE">Dislike</option>
-      </select>
+        <select
+          className={styles.filterSelect}
+          value={filters.action}
+          onChange={(e) => onFilterChange({ action: e.target.value, page: 1 })}
+        >
+          <option value="all">Toutes actions</option>
+          <option value="like">Likes</option>
+          <option value="dislike">Dislikes</option>
+        </select>
 
-      <input
-        className={styles.input}
-        type="date"
-        value={local.dateFrom}
-        onChange={e => change('dateFrom', e.target.value)}
-        title="Depuis"
-      />
-      <input
-        className={styles.input}
-        type="date"
-        value={local.dateTo}
-        onChange={e => change('dateTo', e.target.value)}
-        title="Jusqu’à"
-      />
+        <select
+          className={styles.filterSelect}
+          value={filters.sortBy}
+          onChange={(e) => onFilterChange({ sortBy: e.target.value, page: 1 })}
+        >
+          <option value="recent">Plus récents</option>
+          <option value="oldest">Plus anciens</option>
+          <option value="most_active">Activité (type/cible)</option>
+        </select>
 
-      <select className={styles.select} value={local.sortBy} onChange={e => change('sortBy', e.target.value)}>
-        <option value="recent">Plus récents</option>
-        <option value="oldest">Plus anciens</option>
-        <option value="most_active">Activité (type/cible)</option>
-      </select>
+        <button className={styles.resetBtn} onClick={reset}>
+          <i className="fas fa-undo" /> Réinitialiser
+        </button>
+      </div>
 
-      <button className={styles.btnPrimary} onClick={apply}>Appliquer</button>
-      <button className={styles.btnGhost} onClick={onReset}>Réinitialiser</button>
+      <div className={styles.filtersInfo}>
+        <div className={styles.resultsCount}>
+          <i className="fas fa-heart" />
+          <span>
+            <strong>{totalLikes || 0}</strong> résultat(s)
+          </span>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default LikesFilters;
