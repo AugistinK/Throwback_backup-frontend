@@ -16,7 +16,7 @@ const Comments = () => {
   const [error, setError] = useState(null);
   const [selectedComments, setSelectedComments] = useState([]);
   
-  // Filters & pagination
+  // Filters and pagination
   const [filters, setFilters] = useState({
     page: 1,
     limit: 20,
@@ -73,23 +73,23 @@ const Comments = () => {
     loadStats();
   }, []);
 
-  // Filter change
+  // Handle filter change
   const handleFilterChange = (newFilters) => {
     setFilters(prev => ({
       ...prev,
       ...newFilters,
-      page: 1
+      page: 1 // Reset page when filters change
     }));
-    setSelectedComments([]);
+    setSelectedComments([]); // Clear selections
   };
 
-  // Page change
+  // Handle page change
   const handlePageChange = (page) => {
     setFilters(prev => ({ ...prev, page }));
     setSelectedComments([]);
   };
 
-  // Selection
+  // Select a comment
   const handleSelectComment = (commentId) => {
     setSelectedComments(prev => {
       if (prev.includes(commentId)) {
@@ -108,7 +108,7 @@ const Comments = () => {
     }
   };
 
-  // Moderate single
+  // Moderate a comment
   const handleModerateComment = async (commentId, action, reason = '') => {
     try {
       const response = await adminAPI.moderateComment(commentId, action, reason);
@@ -116,11 +116,12 @@ const Comments = () => {
       if (response.success) {
         await loadComments();
         await loadStats();
+        
         console.log(`Comment ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'deleted'}`);
       }
     } catch (err) {
       console.error('Error moderating comment:', err);
-      setError('Error while moderating the comment');
+      setError('Error while moderating comment');
     }
   };
 
@@ -135,6 +136,7 @@ const Comments = () => {
         setSelectedComments([]);
         await loadComments();
         await loadStats();
+        
         console.log(`${response.data.modifiedCount} comments moderated`);
       }
     } catch (err) {
@@ -143,7 +145,7 @@ const Comments = () => {
     }
   };
 
-  // Reply
+  // Reply to a comment
   const handleReplyToComment = async (commentId, content) => {
     try {
       const response = await adminAPI.replyToComment(commentId, content);
@@ -154,7 +156,7 @@ const Comments = () => {
       }
     } catch (err) {
       console.error('Error replying to comment:', err);
-      setError('Error while adding the reply');
+      setError('Error while adding reply');
     }
   };
 
@@ -185,7 +187,7 @@ const Comments = () => {
         <div className={styles.headerLeft}>
           <h1>Comments Moderation</h1>
           <p>
-            Manage all platform comments, memories, and replies
+            Manage all comments, memories, and replies on the platform
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -222,13 +224,13 @@ const Comments = () => {
         />
       )}
 
-      {/* List */}
+      {/* Comments list */}
       <div className={styles.content}>
         {comments.length === 0 ? (
           <div className={styles.emptyState}>
             <i className="fas fa-comments"></i>
             <h3>No comments found</h3>
-            <p>No comment matches the selected filters.</p>
+            <p>No comments match the selected filters.</p>
           </div>
         ) : (
           <>
@@ -249,7 +251,7 @@ const Comments = () => {
               <div className={styles.actionsColumn}>Actions</div>
             </div>
 
-            {/* Rows */}
+            {/* Comments list */}
             <div className={styles.commentsList}>
               {comments.map(comment => (
                 <CommentCard

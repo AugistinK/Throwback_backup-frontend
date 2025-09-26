@@ -13,6 +13,7 @@ const DeleteConfirmModal = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
   
+  // Utiliser l'URL de base passée en prop ou l'URL par défaut
   const baseUrl = apiBaseUrl || process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
   const handleDelete = async () => {
@@ -22,7 +23,7 @@ const DeleteConfirmModal = ({
       
       const token = localStorage.getItem('token');
       if (!token) {
-        throw new Error('You are not authenticated. Please sign in again.');
+        throw new Error("Vous n'êtes pas authentifié. Veuillez vous reconnecter.");
       }
       
       const response = await fetch(`${baseUrl}/api/livestreams/${livestreamId}`, {
@@ -34,14 +35,15 @@ const DeleteConfirmModal = ({
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        throw new Error(errorData.message || 'Failed to delete LiveThrowback');
+        const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        throw new Error(errorData.message || 'Échec de la suppression du LiveThrowback');
       }
       
+      // Notifier le parent de la suppression réussie
       onLiveStreamDeleted(livestreamId);
     } catch (err) {
-      console.error('Delete error:', err);
-      setError(err.message || 'An error occurred during deletion');
+      console.error('Erreur lors de la suppression:', err);
+      setError(err.message || 'Une erreur est survenue lors de la suppression');
       setIsDeleting(false);
     }
   };
@@ -52,7 +54,7 @@ const DeleteConfirmModal = ({
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
-          <h3>Delete LiveThrowback</h3>
+          <h3>Supprimer le LiveThrowback</h3>
           <button 
             className={styles.closeButton}
             onClick={onClose}
@@ -69,12 +71,12 @@ const DeleteConfirmModal = ({
             </div>
             
             <p className={styles.deleteMessage}>
-              Are you sure you want to delete the LiveThrowback 
+              Êtes-vous sûr de vouloir supprimer le LiveThrowback 
               <span className={styles.deleteTitleHighlight}>{` "${livestreamTitle}" `}</span>?
             </p>
             
             <p className={styles.deleteWarning}>
-              <i className="fas fa-exclamation-triangle"></i> This action is irreversible
+              <i className="fas fa-exclamation-triangle"></i> Cette action est irréversible
             </p>
           </div>
           
@@ -92,7 +94,7 @@ const DeleteConfirmModal = ({
             onClick={onClose}
             disabled={isDeleting}
           >
-            <i className="fas fa-times"></i> Cancel
+            <i className="fas fa-times"></i> Annuler
           </button>
           
           <button 
@@ -101,9 +103,9 @@ const DeleteConfirmModal = ({
             disabled={isDeleting}
           >
             {isDeleting ? (
-              <><i className="fas fa-spinner fa-spin"></i> Deleting...</>
+              <><i className="fas fa-spinner fa-spin"></i> Suppression...</>
             ) : (
-              <><i className="fas fa-trash-alt"></i> Delete</>
+              <><i className="fas fa-trash-alt"></i> Supprimer</>
             )}
           </button>
         </div>

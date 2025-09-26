@@ -69,7 +69,7 @@ const ReplyModal = ({ comment, onReply, onClose }) => {
             <div className={styles.replyInfo}>
               <i className="fas fa-info-circle"></i>
               <p>
-                This reply will be publicly visible and identified as an administrative response.
+                This reply will be publicly visible and marked as an administrative response.
               </p>
             </div>
 
@@ -96,7 +96,7 @@ const ReplyModal = ({ comment, onReply, onClose }) => {
                 ) : (
                   <>
                     <i className="fas fa-reply"></i>
-                    Send reply
+                    Send Reply
                   </>
                 )}
               </button>

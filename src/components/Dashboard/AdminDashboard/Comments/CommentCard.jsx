@@ -15,7 +15,7 @@ const CommentCard = ({
   const [showReplyModal, setShowReplyModal] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
 
-  // Date formatting (relative)
+  // Format date
   const formatDate = (date) => {
     const now = new Date();
     const commentDate = new Date(date);
@@ -30,7 +30,7 @@ const CommentCard = ({
       if (diffInDays < 7) {
         return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
       } else {
-        return commentDate.toLocaleDateString('fr-FR', {
+        return commentDate.toLocaleDateString('en-GB', {
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -41,7 +41,7 @@ const CommentCard = ({
     }
   };
 
-  // Determine context (video or post)
+  // Context (video, post, memory)
   const getContext = () => {
     if (comment.video_id) {
       return {
@@ -129,12 +129,12 @@ const CommentCard = ({
               className={styles.toggleContent}
               onClick={() => setShowFullContent(!showFullContent)}
             >
-              {showFullContent ? 'Show less' : 'Show more'}
+              {showFullContent ? 'See less' : 'See more'}
             </button>
           )}
         </div>
 
-        {/* Meta */}
+        {/* Comment metadata */}
         <div className={styles.commentMeta}>
           <span className={styles.metaItem}>
             <i className="fas fa-thumbs-up"></i>
@@ -209,7 +209,7 @@ const CommentCard = ({
             {formatDate(comment.creation_date)}
           </div>
           <div className={styles.dateAbsolute}>
-            {new Date(comment.creation_date).toLocaleDateString('fr-FR', {
+            {new Date(comment.creation_date).toLocaleDateString('en-GB', {
               day: '2-digit',
               month: '2-digit',
               year: '2-digit',

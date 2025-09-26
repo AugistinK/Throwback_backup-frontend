@@ -18,44 +18,51 @@ const LiveStreamDetailModal = ({
   const [loadingComments, setLoadingComments] = useState(false);
   const [localLivestream, setLocalLivestream] = useState(null);
   
+  // Utiliser l'URL de base passée en prop ou l'URL par défaut
   const baseUrl = apiBaseUrl || process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
   
+  // Réinitialiser les états lorsque le livestream change
   useEffect(() => {
     setIsPlaying(false);
     setVideoIndex(0);
     setLocalLivestream(livestream);
   }, [livestream]);
   
+  // Charger les commentaires pour l'onglet modération
   const fetchComments = async () => {
     if (!localLivestream) return;
+    
     try {
       setLoadingComments(true);
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('Auth token not found');
+        console.error("Token d'authentification non trouvé");
         setLoadingComments(false);
         return;
       }
+      
       const response = await fetch(`${baseUrl}/api/livestreams/${localLivestream._id}/comments`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
+      
       if (response.ok) {
         const data = await response.json();
         setComments(data.data || []);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error('API error:', errorData.message || 'Failed to fetch comments');
+        console.error('Erreur API:', errorData.message || 'Échec de la récupération des commentaires');
       }
     } catch (error) {
-      console.error('Error loading comments:', error);
+      console.error('Erreur lors du chargement des commentaires:', error);
     } finally {
       setLoadingComments(false);
     }
   };
   
+  // Charger les commentaires au changement d'onglet
   useEffect(() => {
     if (localLivestream && activeTab === 'moderation') {
       fetchComments();
@@ -64,8 +71,9 @@ const LiveStreamDetailModal = ({
   
   if (!isOpen || !localLivestream) return null;
 
+  // Formater la date
   const formatDate = (dateString) => {
-    if (!dateString) return 'Not set';
+    if (!dateString) return 'Non définie';
     try {
       const options = { 
         year: 'numeric', 
@@ -76,66 +84,109 @@ const LiveStreamDetailModal = ({
       };
       return new Date(dateString).toLocaleDateString('fr-FR', options);
     } catch (error) {
-      console.error('Date formatting error:', error);
-      return 'Invalid date';
+      console.error('Erreur lors du formatage de la date:', error);
+      return 'Date invalide';
     }
   };
 
+  // Formater la durée totale
   const formatTotalDuration = (seconds) => {
     if (!seconds) return '0s';
+    
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = Math.floor(seconds % 60);
-    if (hours > 0) return `${hours}h ${minutes}m ${remainingSeconds}s`;
-    if (minutes > 0) return `${minutes}m ${remainingSeconds}s`;
-    return `${remainingSeconds}s`;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${remainingSeconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      return `${remainingSeconds}s`;
+    }
   };
 
+  // Obtenir le badge de statut avec couleur appropriée
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'SCHEDULED': { label: 'Scheduled', bgColor: '#3498db', icon: 'fa-calendar-alt' },
-      'LIVE': { label: 'Live', bgColor: '#e74c3c', icon: 'fa-broadcast-tower' },
-      'COMPLETED': { label: 'Completed', bgColor: '#2ecc71', icon: 'fa-check-circle' },
-      'CANCELLED': { label: 'Cancelled', bgColor: '#7f8c8d', icon: 'fa-times-circle' }
+      'SCHEDULED': { 
+        label: 'Programmé', 
+        bgColor: '#3498db', 
+        icon: 'fa-calendar-alt' 
+      },
+      'LIVE': { 
+        label: 'En direct', 
+        bgColor: '#e74c3c', 
+        icon: 'fa-broadcast-tower' 
+      },
+      'COMPLETED': { 
+        label: 'Terminé', 
+        bgColor: '#2ecc71', 
+        icon: 'fa-check-circle' 
+      },
+      'CANCELLED': { 
+        label: 'Annulé', 
+        bgColor: '#7f8c8d', 
+        icon: 'fa-times-circle' 
+      }
     };
+
     const config = statusConfig[status] || statusConfig['SCHEDULED'];
+    
     return (
-      <span className={styles.statusBadge} style={{ backgroundColor: config.bgColor }}>
+      <span 
+        className={styles.statusBadge} 
+        style={{ backgroundColor: config.bgColor }}
+      >
         <i className={`fas ${config.icon}`}></i> {config.label}
       </span>
     );
   };
 
+  // Vérifier si c'est une compilation de vidéos
   const isCompilation = localLivestream.compilationType === 'VIDEO_COLLECTION' && 
                       Array.isArray(localLivestream.compilationVideos) && 
                       localLivestream.compilationVideos.length > 0;
 
-  const handlePlayPreview = () => setIsPlaying(true);
+  // Gérer le lancement de la lecture d'aperçu
+  const handlePlayPreview = () => {
+    setIsPlaying(true);
+  };
 
+  // Gérer le changement de vidéo dans la prévisualisation
   const handleVideoChange = (index) => {
     if (index >= 0 && index < (localLivestream.compilationVideos?.length || 0)) {
       setVideoIndex(index);
     }
   };
 
+  // Obtenir l'URL de l'iframe selon la source de la vidéo
   const getEmbedUrl = (video) => {
     if (!video) return '';
+    
     switch (video.sourceType) {
-      case 'YOUTUBE': return `https://www.youtube.com/embed/${video.sourceId}?autoplay=1`;
-      case 'VIMEO': return `https://player.vimeo.com/video/${video.sourceId}?autoplay=1`;
-      case 'DAILYMOTION': return `https://www.dailymotion.com/embed/video/${video.sourceId}?autoplay=1`;
-      default: return '';
+      case 'YOUTUBE':
+        return `https://www.youtube.com/embed/${video.sourceId}?autoplay=1`;
+      case 'VIMEO':
+        return `https://player.vimeo.com/video/${video.sourceId}?autoplay=1`;
+      case 'DAILYMOTION':
+        return `https://www.dailymotion.com/embed/video/${video.sourceId}?autoplay=1`;
+      default:
+        return '';
     }
   };
   
+  // Supprimer un commentaire
   const handleDeleteComment = async (commentId) => {
     if (!localLivestream || !commentId) return;
+    
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('Auth token not found');
+        console.error("Token d'authentification non trouvé");
         return;
       }
+      
       const response = await fetch(`${baseUrl}/api/livestreams/${localLivestream._id}/comments/${commentId}`, {
         method: 'DELETE',
         headers: { 
@@ -143,25 +194,30 @@ const LiveStreamDetailModal = ({
           'Content-Type': 'application/json'
         }
       });
+      
       if (response.ok) {
+        // Mettre à jour l'UI
         setComments(prev => prev.filter(comment => comment._id !== commentId));
       } else {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        throw new Error(errorData.message || 'Failed to delete');
+        const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        throw new Error(errorData.message || 'Échec de la suppression');
       }
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      console.error('Erreur lors de la suppression du commentaire:', error);
     }
   };
 
+  // Bannir un utilisateur
   const handleBanUser = async (userId) => {
     if (!localLivestream || !userId) return;
+    
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('Auth token not found');
+        console.error("Token d'authentification non trouvé");
         return;
       }
+      
       const response = await fetch(`${baseUrl}/api/livestreams/${localLivestream._id}/ban-user`, {
         method: 'POST',
         headers: {
@@ -170,24 +226,28 @@ const LiveStreamDetailModal = ({
         },
         body: JSON.stringify({ userId })
       });
+      
       if (response.ok) {
+        // Mettre à jour l'UI
         setComments(prev => prev.filter(comment => comment.userId?._id !== userId));
       } else {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        throw new Error(errorData.message || 'Failed to ban user');
+        const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        throw new Error(errorData.message || 'Échec du bannissement');
       }
     } catch (error) {
-      console.error('Error banning user:', error);
+      console.error('Erreur lors du bannissement de l\'utilisateur:', error);
     }
   };
 
+  // Mettre à jour les paramètres du chat
   const updateChatSettings = async (chatEnabled) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('Auth token not found');
+        console.error("Token d'authentification non trouvé");
         return;
       }
+      
       const response = await fetch(`${baseUrl}/api/livestreams/${localLivestream._id}`, {
         method: 'PUT',
         headers: {
@@ -196,27 +256,35 @@ const LiveStreamDetailModal = ({
         },
         body: JSON.stringify({ chatEnabled })
       });
+      
       if (response.ok) {
-        setLocalLivestream({ ...localLivestream, chatEnabled });
+        // Mise à jour locale du livestream
+        setLocalLivestream({
+          ...localLivestream,
+          chatEnabled
+        });
       } else {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        console.error('Error updating chat settings:', errorData.message);
+        const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        console.error('Erreur lors de la mise à jour des paramètres du chat:', errorData.message);
       }
     } catch (error) {
-      console.error('Error updating chat settings:', error);
+      console.error('Erreur lors de la mise à jour des paramètres du chat:', error);
     }
   };
 
+  // Rendre l'aperçu de la compilation
   const renderCompilationPreview = () => {
     if (!isCompilation) {
       return (
         <div className={styles.noCompilationData}>
           <i className="fas fa-exclamation-circle"></i>
-          <p>No compilation data available</p>
+          <p>Aucune donnée de compilation disponible</p>
         </div>
       );
     }
+
     const currentVideo = localLivestream.compilationVideos[videoIndex];
+
     return (
       <div className={styles.compilationPreview}>
         {isPlaying ? (
@@ -240,7 +308,7 @@ const LiveStreamDetailModal = ({
                 ></iframe>
                 <div className={styles.previewNote}>
                   <i className="fas fa-info-circle"></i> 
-                  <span>Previewing video {videoIndex + 1}/{localLivestream.compilationVideos.length}. The full compilation will be streamed live.</span>
+                  <span>Aperçu de la vidéo {videoIndex + 1}/{localLivestream.compilationVideos.length}. La compilation complète sera diffusée en direct.</span>
                 </div>
                 {localLivestream.compilationVideos.length > 1 && (
                   <div className={styles.previewControls}>
@@ -264,13 +332,20 @@ const LiveStreamDetailModal = ({
             )}
           </div>
         ) : (
-          <div className={styles.previewThumbnail} onClick={handlePlayPreview}>
+          <div 
+            className={styles.previewThumbnail}
+            onClick={handlePlayPreview}
+          >
             <img 
               src={currentVideo?.thumbnailUrl || localLivestream.thumbnailUrl || '/images/live-default.jpg'} 
               alt={localLivestream.title}
-              onError={(e) => { e.target.src = '/images/live-default.jpg'; }}
+              onError={(e) => {
+                e.target.src = '/images/live-default.jpg';
+              }}
             />
-            <div className={styles.playButton}><i className="fas fa-play"></i></div>
+            <div className={styles.playButton}>
+              <i className="fas fa-play"></i>
+            </div>
             {localLivestream.compilationVideos.length > 1 && (
               <div className={styles.videoCounter}>
                 {videoIndex + 1}/{localLivestream.compilationVideos.length}
@@ -282,21 +357,29 @@ const LiveStreamDetailModal = ({
     );
   };
   
+  // Rendre l'onglet de modération
   const renderModerationTab = () => {
     return (
       <div className={styles.moderationTab}>
-        <h3 className={styles.tabTitle}>Live chat moderation</h3>
+        <h3 className={styles.tabTitle}>Modération du chat en direct</h3>
         
         {localLivestream.chatEnabled ? (
           <>
             <div className={styles.moderationControls}>
-              <button className={styles.moderationButton} onClick={() => updateChatSettings(false)}>
-                <i className="fas fa-comment-slash"></i> Disable chat
+              <button 
+                className={styles.moderationButton}
+                onClick={() => updateChatSettings(false)}
+              >
+                <i className="fas fa-comment-slash"></i> Désactiver le chat
               </button>
               
-              <button className={styles.refreshButton} onClick={fetchComments} disabled={loadingComments}>
+              <button 
+                className={styles.refreshButton}
+                onClick={fetchComments}
+                disabled={loadingComments}
+              >
                 <i className={`fas ${loadingComments ? 'fa-spinner fa-spin' : 'fa-sync'}`}></i> 
-                {loadingComments ? 'Loading...' : 'Refresh'}
+                {loadingComments ? 'Chargement...' : 'Rafraîchir'}
               </button>
             </div>
             
@@ -308,12 +391,17 @@ const LiveStreamDetailModal = ({
                       src={comment.userId?.photo_profil || '/images/default-user.jpg'} 
                       alt={comment.userId?.prenom || 'User'} 
                       className={styles.commentAvatar}
-                      onError={(e) => { e.target.onerror = null; e.target.src = '/images/default-user.jpg'; }}
+                      onError={(e) => {
+                        e.target.onerror = null; 
+                        e.target.src = '/images/default-user.jpg';
+                      }}
                     />
                     <div className={styles.commentText}>
                       <div className={styles.commentAuthor}>
                         {comment.userId?.prenom} {comment.userId?.nom}
-                        <span className={styles.commentTime}>{formatDate(comment.createdAt)}</span>
+                        <span className={styles.commentTime}>
+                          {formatDate(comment.createdAt)}
+                        </span>
                       </div>
                       <p>{comment.content}</p>
                     </div>
@@ -323,7 +411,7 @@ const LiveStreamDetailModal = ({
                     <button 
                       className={styles.deleteCommentButton}
                       onClick={() => handleDeleteComment(comment._id)}
-                      title="Delete this comment"
+                      title="Supprimer ce commentaire"
                     >
                       <i className="fas fa-trash"></i>
                     </button>
@@ -331,7 +419,7 @@ const LiveStreamDetailModal = ({
                     <button 
                       className={styles.banUserButton}
                       onClick={() => handleBanUser(comment.userId?._id)}
-                      title="Block this user"
+                      title="Bloquer cet utilisateur"
                     >
                       <i className="fas fa-user-slash"></i>
                     </button>
@@ -340,7 +428,7 @@ const LiveStreamDetailModal = ({
               )) : (
                 <div className={styles.noComments}>
                   <i className="fas fa-comments"></i>
-                  <p>No comments yet</p>
+                  <p>Aucun commentaire pour l'instant</p>
                 </div>
               )}
             </div>
@@ -348,9 +436,12 @@ const LiveStreamDetailModal = ({
         ) : (
           <div className={styles.chatDisabled}>
             <i className="fas fa-comment-slash"></i>
-            <p>Chat is currently disabled</p>
-            <button className={styles.enableChatButton} onClick={() => updateChatSettings(true)}>
-              <i className="fas fa-comment"></i> Enable chat
+            <p>Le chat est actuellement désactivé</p>
+            <button 
+              className={styles.enableChatButton}
+              onClick={() => updateChatSettings(true)}
+            >
+              <i className="fas fa-comment"></i> Activer le chat
             </button>
           </div>
         )}
@@ -358,15 +449,16 @@ const LiveStreamDetailModal = ({
     );
   };
 
+  // Rendre l'onglet actif
   const renderTabContent = () => {
     switch (activeTab) {
       case 'videos':
         return (
           <div className={styles.videosTab}>
             <h3 className={styles.tabTitle}>
-              Compilation videos
+              Vidéos de la compilation
               <span className={styles.videoCount}>
-                {isCompilation ? localLivestream.compilationVideos.length : 0} videos
+                {isCompilation ? localLivestream.compilationVideos.length : 0} vidéos
               </span>
             </h3>
             
@@ -383,9 +475,13 @@ const LiveStreamDetailModal = ({
                       <img 
                         src={video.thumbnailUrl || '/images/video-placeholder.jpg'} 
                         alt={video.title}
-                        onError={(e) => { e.target.src = '/images/video-placeholder.jpg'; }}
+                        onError={(e) => {
+                          e.target.src = '/images/video-placeholder.jpg';
+                        }}
                       />
-                      <span className={styles.compilationVideoDuration}>{video.duration || '0:00'}</span>
+                      <span className={styles.compilationVideoDuration}>
+                        {video.duration || '0:00'}
+                      </span>
                     </div>
                     <div className={styles.compilationVideoInfo}>
                       <h4 className={styles.compilationVideoTitle}>{video.title}</h4>
@@ -393,7 +489,7 @@ const LiveStreamDetailModal = ({
                         {video.sourceType === 'YOUTUBE' && <i className="fab fa-youtube"></i>}
                         {video.sourceType === 'VIMEO' && <i className="fab fa-vimeo-v"></i>}
                         {video.sourceType === 'DAILYMOTION' && <i className="fas fa-play-circle"></i>}
-                        <span>{video.channel || 'Unknown channel'}</span>
+                        <span>{video.channel || 'Chaîne inconnue'}</span>
                       </p>
                     </div>
                   </div>
@@ -402,7 +498,7 @@ const LiveStreamDetailModal = ({
             ) : (
               <div className={styles.noVideosMessage}>
                 <i className="fas fa-film"></i>
-                <p>No videos in this compilation</p>
+                <p>Aucune vidéo dans cette compilation</p>
               </div>
             )}
           </div>
@@ -411,47 +507,52 @@ const LiveStreamDetailModal = ({
       case 'stats':
         return (
           <div className={styles.statsTab}>
-            <h3 className={styles.tabTitle}>Statistics</h3>
+            <h3 className={styles.tabTitle}>Statistiques</h3>
             
             {localLivestream.status === 'LIVE' || localLivestream.status === 'COMPLETED' ? (
               <div className={styles.statsGrid}>
                 <div className={styles.statItem}>
-                  <div className={styles.statLabel}>Peak viewers</div>
+                  <div className={styles.statLabel}>Spectateurs max</div>
                   <div className={styles.statValue}>{localLivestream.statistics?.maxConcurrentViewers || 0}</div>
                 </div>
+                
                 <div className={styles.statItem}>
-                  <div className={styles.statLabel}>Unique viewers</div>
+                  <div className={styles.statLabel}>Spectateurs uniques</div>
                   <div className={styles.statValue}>{localLivestream.statistics?.totalUniqueViewers || 0}</div>
                 </div>
+                
                 <div className={styles.statItem}>
-                  <div className={styles.statLabel}>Watch time</div>
+                  <div className={styles.statLabel}>Durée de visionnage</div>
                   <div className={styles.statValue}>{localLivestream.statistics?.totalViewDuration || 0} min</div>
                 </div>
+                
                 <div className={styles.statItem}>
-                  <div className={styles.statLabel}>Chat messages</div>
+                  <div className={styles.statLabel}>Messages chat</div>
                   <div className={styles.statValue}>{localLivestream.statistics?.chatMessages || 0}</div>
                 </div>
+                
                 <div className={styles.statItem}>
-                  <div className={styles.statLabel}>Likes</div>
+                  <div className={styles.statLabel}>J'aime</div>
                   <div className={styles.statValue}>{localLivestream.statistics?.likes || 0}</div>
                 </div>
+                
                 <div className={styles.statItem}>
-                  <div className={styles.statLabel}>Shares</div>
+                  <div className={styles.statLabel}>Partages</div>
                   <div className={styles.statValue}>{localLivestream.statistics?.shares || 0}</div>
                 </div>
               </div>
             ) : (
               <div className={styles.noStatsMessage}>
                 <i className="fas fa-chart-bar"></i>
-                <p>Statistics will be available once the stream starts</p>
+                <p>Les statistiques seront disponibles une fois le direct démarré</p>
               </div>
             )}
             
             {localLivestream.status === 'COMPLETED' && localLivestream.recordedVideoId && (
               <div className={styles.recordedVideoLink}>
-                <h4>Recording available</h4>
+                <h4>Enregistrement disponible</h4>
                 <a href={`/dashboard/videos/${localLivestream.recordedVideoId}`} className={styles.recordedVideoButton}>
-                  <i className="fas fa-play-circle"></i> View recording
+                  <i className="fas fa-play-circle"></i> Voir l'enregistrement
                 </a>
               </div>
             )}
@@ -461,37 +562,45 @@ const LiveStreamDetailModal = ({
       case 'settings':
         return (
           <div className={styles.settingsTab}>
-            <h3 className={styles.tabTitle}>Settings</h3>
+            <h3 className={styles.tabTitle}>Paramètres</h3>
             
             <div className={styles.settingsSection}>
-              <h4>Playback configuration</h4>
+              <h4>Configuration de lecture</h4>
               <div className={styles.settingsGrid}>
                 <div className={styles.settingItem}>
-                  <div className={styles.settingLabel}>Loop playback</div>
+                  <div className={styles.settingLabel}>Lecture en boucle</div>
                   <div className={styles.settingValue}>
                     {localLivestream.playbackConfig?.loop ? (
-                      <span className={styles.enabledSetting}><i className="fas fa-check"></i> Enabled</span>
+                      <span className={styles.enabledSetting}><i className="fas fa-check"></i> Activée</span>
                     ) : (
-                      <span className={styles.disabledSetting}><i className="fas fa-times"></i> Disabled</span>
+                      <span className={styles.disabledSetting}><i className="fas fa-times"></i> Désactivée</span>
                     )}
                   </div>
                 </div>
+                
                 <div className={styles.settingItem}>
-                  <div className={styles.settingLabel}>Shuffle</div>
+                  <div className={styles.settingLabel}>Lecture aléatoire</div>
                   <div className={styles.settingValue}>
                     {localLivestream.playbackConfig?.shuffle ? (
-                      <span className={styles.enabledSetting}><i className="fas fa-check"></i> Enabled</span>
+                      <span className={styles.enabledSetting}><i className="fas fa-check"></i> Activée</span>
                     ) : (
-                      <span className={styles.disabledSetting}><i className="fas fa-times"></i> Disabled</span>
+                      <span className={styles.disabledSetting}><i className="fas fa-times"></i> Désactivée</span>
                     )}
                   </div>
                 </div>
+                
                 <div className={styles.settingItem}>
                   <div className={styles.settingLabel}>Transition</div>
                   <div className={styles.settingValue}>
                     {(() => {
                       const effect = localLivestream.playbackConfig?.transitionEffect || 'none';
-                      const effects = { none: 'None', fade: 'Fade', slide: 'Slide', zoom: 'Zoom', flip: 'Flip' };
+                      const effects = {
+                        'none': 'Aucune',
+                        'fade': 'Fondu',
+                        'slide': 'Glissement',
+                        'zoom': 'Zoom',
+                        'flip': 'Retournement'
+                      };
                       return effects[effect] || effect;
                     })()}
                   </div>
@@ -500,45 +609,48 @@ const LiveStreamDetailModal = ({
             </div>
             
             <div className={styles.settingsSection}>
-              <h4>Stream settings</h4>
+              <h4>Paramètres du direct</h4>
               <div className={styles.settingsGrid}>
                 <div className={styles.settingItem}>
-                  <div className={styles.settingLabel}>Visibility</div>
+                  <div className={styles.settingLabel}>Visibilité</div>
                   <div className={styles.settingValue}>
                     {localLivestream.isPublic ? (
                       <span className={styles.enabledSetting}><i className="fas fa-globe"></i> Public</span>
                     ) : (
-                      <span className={styles.disabledSetting}><i className="fas fa-lock"></i> Private</span>
+                      <span className={styles.disabledSetting}><i className="fas fa-lock"></i> Privé</span>
                     )}
                   </div>
                 </div>
+                
                 <div className={styles.settingItem}>
                   <div className={styles.settingLabel}>Chat</div>
                   <div className={styles.settingValue}>
                     {localLivestream.chatEnabled ? (
-                      <span className={styles.enabledSetting}><i className="fas fa-check"></i> Enabled</span>
+                      <span className={styles.enabledSetting}><i className="fas fa-check"></i> Activé</span>
                     ) : (
-                      <span className={styles.disabledSetting}><i className="fas fa-times"></i> Disabled</span>
+                      <span className={styles.disabledSetting}><i className="fas fa-times"></i> Désactivé</span>
                     )}
                   </div>
                 </div>
+                
                 <div className={styles.settingItem}>
-                  <div className={styles.settingLabel}>Moderation</div>
+                  <div className={styles.settingLabel}>Modération</div>
                   <div className={styles.settingValue}>
                     {localLivestream.moderationEnabled ? (
-                      <span className={styles.enabledSetting}><i className="fas fa-check"></i> Enabled</span>
+                      <span className={styles.enabledSetting}><i className="fas fa-check"></i> Activée</span>
                     ) : (
-                      <span className={styles.disabledSetting}><i className="fas fa-times"></i> Disabled</span>
+                      <span className={styles.disabledSetting}><i className="fas fa-times"></i> Désactivée</span>
                     )}
                   </div>
                 </div>
+                
                 <div className={styles.settingItem}>
-                  <div className={styles.settingLabel}>Recording</div>
+                  <div className={styles.settingLabel}>Enregistrement</div>
                   <div className={styles.settingValue}>
                     {localLivestream.recordAfterStream ? (
-                      <span className={styles.enabledSetting}><i className="fas fa-check"></i> Enabled</span>
+                      <span className={styles.enabledSetting}><i className="fas fa-check"></i> Activé</span>
                     ) : (
-                      <span className={styles.disabledSetting}><i className="fas fa-times"></i> Disabled</span>
+                      <span className={styles.disabledSetting}><i className="fas fa-times"></i> Désactivé</span>
                     )}
                   </div>
                 </div>
@@ -547,7 +659,7 @@ const LiveStreamDetailModal = ({
             
             {localLivestream.status === 'SCHEDULED' && localLivestream.streamKey && (
               <div className={styles.streamKeySection}>
-                <h4>Stream key</h4>
+                <h4>Clé de streaming</h4>
                 <div className={styles.streamKeyContainer}>
                   <div className={styles.streamKeyDisplay}>
                     <span>{localLivestream.streamKey}</span>
@@ -555,14 +667,14 @@ const LiveStreamDetailModal = ({
                       className={styles.copyButton}
                       onClick={() => {
                         navigator.clipboard.writeText(localLivestream.streamKey);
-                        alert('Stream key copied to clipboard');
+                        alert('Clé de streaming copiée dans le presse-papier');
                       }}
                     >
-                      <i className="fas fa-copy"></i> Copy
+                      <i className="fas fa-copy"></i> Copier
                     </button>
                   </div>
                   <p className={styles.streamKeyNote}>
-                    <i className="fas fa-info-circle"></i> This key will not be required for LiveThrowback compilations.
+                    <i className="fas fa-info-circle"></i> Cette clé ne sera pas nécessaire pour les compilations LiveThrowback.
                   </p>
                 </div>
               </div>
@@ -587,32 +699,38 @@ const LiveStreamDetailModal = ({
               
               <div className={styles.infoDescription}>
                 <h4>Description</h4>
-                <p>{localLivestream.description || 'No description provided.'}</p>
+                <p>{localLivestream.description || 'Aucune description fournie.'}</p>
               </div>
               
               <div className={styles.infoMeta}>
                 <div className={styles.infoMetaItem}>
-                  <i className="fas fa-user"></i> Host: {localLivestream.hostName}
+                  <i className="fas fa-user"></i> Hôte: {localLivestream.hostName}
                 </div>
+                
                 <div className={styles.infoMetaItem}>
-                  <i className="fas fa-calendar-alt"></i> Scheduled: {formatDate(localLivestream.scheduledStartTime)}
+                  <i className="fas fa-calendar-alt"></i> Programmé: {formatDate(localLivestream.scheduledStartTime)}
                 </div>
+                
                 <div className={styles.infoMetaItem}>
-                  <i className="fas fa-clock"></i> Scheduled end: {formatDate(localLivestream.scheduledEndTime)}
+                  <i className="fas fa-clock"></i> Fin prévue: {formatDate(localLivestream.scheduledEndTime)}
                 </div>
+                
                 <div className={styles.infoMetaItem}>
-                  <i className="fas fa-tag"></i> Category: {localLivestream.category ? localLivestream.category.replace(/_/g, ' ') : 'Not set'}
+                  <i className="fas fa-tag"></i> Catégorie: {localLivestream.category ? localLivestream.category.replace(/_/g, ' ') : 'Non définie'}
                 </div>
+                
                 {isCompilation && (
                   <div className={styles.infoMetaItem}>
-                    <i className="fas fa-film"></i> Compilation: {localLivestream.compilationVideos.length} videos
+                    <i className="fas fa-film"></i> Compilation: {localLivestream.compilationVideos.length} vidéos
                   </div>
                 )}
+                
                 {isCompilation && (
                   <div className={styles.infoMetaItem}>
-                    <i className="fas fa-hourglass-half"></i> Total duration: {formatTotalDuration(localLivestream.totalCompilationDuration)}
+                    <i className="fas fa-hourglass-half"></i> Durée totale: {formatTotalDuration(localLivestream.totalCompilationDuration)}
                   </div>
                 )}
+                
                 {localLivestream.tags && localLivestream.tags.length > 0 && (
                   <div className={styles.infoMetaItem}>
                     <i className="fas fa-tags"></i> Tags: 
@@ -634,8 +752,11 @@ const LiveStreamDetailModal = ({
     <div className={styles.modalOverlay}>
       <div className={styles.modalContentLarge}>
         <div className={styles.modalHeader}>
-          <h3>LiveThrowback details</h3>
-          <button className={styles.closeButton} onClick={onClose}>
+          <h3>Détails du LiveThrowback</h3>
+          <button 
+            className={styles.closeButton}
+            onClick={onClose}
+          >
             <i className="fas fa-times"></i>
           </button>
         </div>
@@ -645,59 +766,84 @@ const LiveStreamDetailModal = ({
             className={`${styles.tabButton} ${activeTab === 'info' ? styles.activeTab : ''}`}
             onClick={() => setActiveTab('info')}
           >
-            <i className="fas fa-info-circle"></i> Info
+            <i className="fas fa-info-circle"></i> Informations
           </button>
+          
           <button 
             className={`${styles.tabButton} ${activeTab === 'videos' ? styles.activeTab : ''}`}
             onClick={() => setActiveTab('videos')}
           >
-            <i className="fas fa-film"></i> Videos
+            <i className="fas fa-film"></i> Vidéos
           </button>
+          
           <button 
             className={`${styles.tabButton} ${activeTab === 'stats' ? styles.activeTab : ''}`}
             onClick={() => setActiveTab('stats')}
           >
-            <i className="fas fa-chart-bar"></i> Statistics
+            <i className="fas fa-chart-bar"></i> Statistiques
           </button>
+          
           <button 
             className={`${styles.tabButton} ${activeTab === 'settings' ? styles.activeTab : ''}`}
             onClick={() => setActiveTab('settings')}
           >
-            <i className="fas fa-cog"></i> Settings
+            <i className="fas fa-cog"></i> Paramètres
           </button>
+
           <button 
             className={`${styles.tabButton} ${activeTab === 'moderation' ? styles.activeTab : ''}`}
             onClick={() => setActiveTab('moderation')}
           >
-            <i className="fas fa-shield-alt"></i> Moderation
+            <i className="fas fa-shield-alt"></i> Modération
           </button>
         </div>
         
-        <div className={styles.modalBody}>{renderTabContent()}</div>
+        <div className={styles.modalBody}>
+          {renderTabContent()}
+        </div>
         
         <div className={styles.modalFooter}>
           <div className={styles.modalActions}>
             {localLivestream.status === 'SCHEDULED' && (
               <>
-                <button className={styles.startStreamButton} onClick={() => onStartStream(localLivestream._id)}>
-                  <i className="fas fa-play"></i> Start stream
+                <button 
+                  className={styles.startStreamButton}
+                  onClick={() => onStartStream(localLivestream._id)}
+                >
+                  <i className="fas fa-play"></i> Démarrer la diffusion
                 </button>
-                <button className={styles.editStreamButton} onClick={() => onEditStream(localLivestream)}>
-                  <i className="fas fa-edit"></i> Edit
+                
+                <button 
+                  className={styles.editStreamButton}
+                  onClick={() => onEditStream(localLivestream)}
+                >
+                  <i className="fas fa-edit"></i> Modifier
                 </button>
-                <button className={styles.cancelStreamButton} onClick={() => onCancelStream(localLivestream._id)}>
-                  <i className="fas fa-times"></i> Cancel
+                
+                <button 
+                  className={styles.cancelStreamButton}
+                  onClick={() => onCancelStream(localLivestream._id)}
+                >
+                  <i className="fas fa-times"></i> Annuler
                 </button>
               </>
             )}
+            
             {localLivestream.status === 'LIVE' && (
-              <button className={styles.endStreamButton} onClick={() => onEndStream(localLivestream._id)}>
-                <i className="fas fa-stop"></i> End stream
+              <button 
+                className={styles.endStreamButton}
+                onClick={() => onEndStream(localLivestream._id)}
+              >
+                <i className="fas fa-stop"></i> Terminer la diffusion
               </button>
             )}
           </div>
-          <button className={styles.closeModalButton} onClick={onClose}>
-            <i className="fas fa-times"></i> Close
+          
+          <button 
+            className={styles.closeModalButton}
+            onClick={onClose}
+          >
+            <i className="fas fa-times"></i> Fermer
           </button>
         </div>
       </div>

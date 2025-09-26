@@ -71,7 +71,7 @@ const CommentStats = ({ stats }) => {
           <div className={styles.statIcon}><i className="fas fa-exclamation-triangle" style={{ color: '#ffc107' }}></i></div>
           <div className={styles.statContent}>
             <div className={styles.statNumber}>{(processed.byStatus.MODERE || 0).toLocaleString()}</div>
-            <div className={styles.statLabel}>In Moderation</div>
+            <div className={styles.statLabel}>Under Moderation</div>
           </div>
         </div>
 
@@ -95,21 +95,21 @@ const CommentStats = ({ stats }) => {
         </button>
       </div>
 
-      {/* Details */}
+      {/* Detailed stats */}
       {showDetailed && (
         <div className={styles.detailedStats}>
           <div className={styles.statsRow}>
-            {/* By type */}
+            {/* Distribution by type */}
             <div className={styles.statsSection}>
-              <h4>Breakdown by Type</h4>
+              <h4>Distribution by Type</h4>
               <div className={styles.pieStats}>
                 <div className={styles.pieItem}>
                   <div className={styles.pieColor} style={{ backgroundColor: '#007bff' }}></div>
-                  <span>Video comments: {processed.byType.video || 0}</span>
+                  <span>Video Comments: {processed.byType.video || 0}</span>
                 </div>
                 <div className={styles.pieItem}>
                   <div className={styles.pieColor} style={{ backgroundColor: '#28a745' }}></div>
-                  <span>Post comments: {processed.byType.post || 0}</span>
+                  <span>Post Comments: {processed.byType.post || 0}</span>
                 </div>
                 <div className={styles.pieItem}>
                   <div className={styles.pieColor} style={{ backgroundColor: '#ffc107' }}></div>
@@ -130,7 +130,7 @@ const CommentStats = ({ stats }) => {
                     return (
                       <div key={idx} className={styles.activityDay}>
                         <div className={styles.activityDate}>
-                          {new Date(date).toLocaleDateString('fr-FR', {
+                          {new Date(date).toLocaleDateString('en-GB', {
                             weekday: 'short', day: '2-digit', month: '2-digit'
                           })}
                         </div>

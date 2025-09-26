@@ -6,23 +6,23 @@ import DeleteConfirmModal from './DeleteConfirmModal';
 import LiveStreamDetailModal from './LiveStreamDetailModal';
 import LiveStreamEditModal from './LiveStreamEditModal';
 
-// Modular internal components
+// Composants internes pour la modularité
 import LiveStreamList from './LiveStreamList';
 import VideoUrlImport from './VideoUrlImport';
 import CompilationBuilder from './CompilationBuilder';
 import LiveStreamScheduler from './LiveStreamScheduler';
 
-// URLs config
+// Configuration des URLs
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
 
 const AdminLiveThrowback = () => {
-  // Main state
+  // État principal
   const [liveStreams, setLiveStreams] = useState([]);
   const [selectedLiveStream, setSelectedLiveStream] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // UI state
+  // États UI
   const [activeTab, setActiveTab] = useState('streams');
   const [viewMode, setViewMode] = useState('grid');
   const [createMode, setCreateMode] = useState(false);
@@ -30,10 +30,10 @@ const AdminLiveThrowback = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   
-  // Compilation state
+  // États de compilation
   const [selectedVideos, setSelectedVideos] = useState([]);
   
-  // Filters/pagination
+  // États de filtrage/pagination
   const [filters, setFilters] = useState({
     status: '',
     category: '',
@@ -42,7 +42,7 @@ const AdminLiveThrowback = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   
-  // Stats & metrics
+  // Stats et métriques
   const [stats, setStats] = useState({
     total: 0,
     live: 0,
@@ -51,25 +51,25 @@ const AdminLiveThrowback = () => {
     categories: []
   });
 
-  // Get auth token
+  // Obtenir le token d'authentification
   const getAuthToken = () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      console.error('Auth token not found');
-      setError('You are not authenticated. Please sign in again.');
+      console.error('Token d\'authentification non trouvé');
+      setError('Vous n\'êtes pas authentifié. Veuillez vous reconnecter.');
       return null;
     }
     return token;
   };
 
-  // Load streams & stats
+  // Charger les diffusions et statistiques
   const fetchLiveStreams = useCallback(async () => {
     try {
       setLoading(true);
       const token = getAuthToken();
       if (!token) return;
       
-      // Build query with filters
+      // Construire la requête avec filtres
       const params = new URLSearchParams();
       if (filters.search) params.append('search', filters.search);
       if (filters.status) params.append('status', filters.status);
@@ -85,27 +85,27 @@ const AdminLiveThrowback = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        throw new Error(errorData.message || 'Failed to fetch livestreams');
+        const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        throw new Error(errorData.message || 'Échec de la récupération des livestreams');
       }
       
       const data = await response.json();
       setLiveStreams(data.data || []);
       setTotalPages(data.pagination?.totalPages || 1);
       
-      // Load stats when on first page with no filters
+      // Charger les stats si on est sur la première page sans filtres
       if (currentPage === 1 && !filters.status && !filters.category && !filters.search) {
         fetchStats();
       }
     } catch (err) {
-      console.error('fetchLiveStreams error:', err);
-      setError(err.message || 'Failed to fetch livestreams');
+      console.error('Erreur fetchLiveStreams:', err);
+      setError(err.message || 'Échec de la récupération des livestreams');
     } finally {
       setLoading(false);
     }
   }, [currentPage, filters]);
 
-  // Load statistics
+  // Charger les statistiques
   const fetchStats = async () => {
     try {
       const token = getAuthToken();
@@ -120,13 +120,13 @@ const AdminLiveThrowback = () => {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Stats error:', errorData.message || 'Failed to fetch statistics');
+        console.error('Erreur statistiques:', errorData.message || 'Échec de la récupération des statistiques');
         return;
       }
       
       const data = await response.json();
       if (data.success) {
-        // Format stats
+        // Formater les stats pour l'affichage
         const liveCount = data.data?.byStatus?.find(s => s._id === 'LIVE')?.count || 0;
         const scheduledCount = data.data?.byStatus?.find(s => s._id === 'SCHEDULED')?.count || 0;
         
@@ -139,12 +139,13 @@ const AdminLiveThrowback = () => {
         });
       }
     } catch (err) {
-      console.error('Error fetching statistics:', err);
+      console.error('Erreur lors de la récupération des statistiques:', err);
     }
   };
 
-  // Add video to compilation
+  // Ajouter une vidéo à la compilation
   const addVideoToCompilation = (video) => {
+    // Éviter les doublons
     if (!selectedVideos.some(v => v.videoId === video.videoId)) {
       setSelectedVideos([...selectedVideos, {
         ...video,
@@ -154,9 +155,10 @@ const AdminLiveThrowback = () => {
     }
   };
 
-  // Remove video from compilation
+  // Supprimer une vidéo de la compilation
   const removeVideoFromCompilation = (videoId) => {
     const updatedVideos = selectedVideos.filter(v => v.videoId !== videoId);
+    // Réorganiser les ordres
     const reorderedVideos = updatedVideos.map((video, index) => ({
       ...video,
       order: index + 1
@@ -164,12 +166,13 @@ const AdminLiveThrowback = () => {
     setSelectedVideos(reorderedVideos);
   };
 
-  // Reorder videos
+  // Réorganiser les vidéos dans la compilation
   const reorderCompilation = (fromIndex, toIndex) => {
     const updatedVideos = [...selectedVideos];
     const [movedVideo] = updatedVideos.splice(fromIndex, 1);
     updatedVideos.splice(toIndex, 0, movedVideo);
     
+    // Mettre à jour les ordres
     const reorderedVideos = updatedVideos.map((video, index) => ({
       ...video,
       order: index + 1
@@ -178,10 +181,10 @@ const AdminLiveThrowback = () => {
     setSelectedVideos(reorderedVideos);
   };
 
-  // Create LiveThrowback
+  // Créer un nouveau LiveThrowback
   const createLiveThrowback = async (schedulingData) => {
     if (selectedVideos.length === 0) {
-      setError('You must select at least one video for the compilation');
+      setError('Vous devez sélectionner au moins une vidéo pour la compilation');
       return;
     }
     
@@ -190,6 +193,7 @@ const AdminLiveThrowback = () => {
       const token = getAuthToken();
       if (!token) return;
       
+      // Préparer les données pour l'API
       const compilationData = {
         title: schedulingData.title,
         description: schedulingData.description,
@@ -199,10 +203,12 @@ const AdminLiveThrowback = () => {
         hostName: schedulingData.hostName || 'ThrowBack Host',
         isPublic: schedulingData.isPublic !== false,
         chatEnabled: schedulingData.chatEnabled !== false,
+        // Vérifier que tags est une chaîne avant d'appeler split
         tags: typeof schedulingData.tags === 'string' && schedulingData.tags 
           ? schedulingData.tags.split(',').map(tag => tag.trim()) 
           : [],
         
+        // Données spécifiques à la compilation
         compilationType: 'VIDEO_COLLECTION',
         compilationVideos: selectedVideos.map(video => ({
           sourceId: video.videoId,
@@ -215,6 +221,7 @@ const AdminLiveThrowback = () => {
           originalUrl: video.url
         })),
         
+        // Configuration de lecture
         playbackConfig: {
           loop: schedulingData.loop !== false,
           autoplay: true,
@@ -233,12 +240,13 @@ const AdminLiveThrowback = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        throw new Error(errorData.message || 'Failed to create LiveThrowback');
+        const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        throw new Error(errorData.message || 'Échec de la création du LiveThrowback');
       }
       
       const newLiveStream = await response.json();
       
+      // Réinitialiser le formulaire et rafraîchir la liste
       setSelectedVideos([]);
       setCreateMode(false);
       setActiveTab('streams');
@@ -246,15 +254,15 @@ const AdminLiveThrowback = () => {
       
       return newLiveStream.data;
     } catch (err) {
-      console.error('createLiveThrowback error:', err);
-      setError(err.message || 'Failed to create LiveThrowback');
+      console.error('Erreur createLiveThrowback:', err);
+      setError(err.message || 'Échec de la création du LiveThrowback');
       return null;
     } finally {
       setLoading(false);
     }
   };
 
-  // Update LiveThrowback
+  // Mettre à jour un LiveThrowback
   const updateLiveStream = async (livestreamId, updatedData) => {
     try {
       setLoading(true);
@@ -271,12 +279,13 @@ const AdminLiveThrowback = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        throw new Error(errorData.message || 'Failed to update LiveThrowback');
+        const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        throw new Error(errorData.message || 'Échec de la mise à jour du LiveThrowback');
       }
       
       const updatedLiveStream = await response.json();
       
+      // Mettre à jour la liste
       setLiveStreams(prevStreams => 
         prevStreams.map(stream => 
           stream._id === livestreamId ? updatedLiveStream.data : stream
@@ -285,32 +294,32 @@ const AdminLiveThrowback = () => {
       
       return updatedLiveStream.data;
     } catch (err) {
-      console.error('updateLiveStream error:', err);
+      console.error('Erreur updateLiveStream:', err);
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Delete LiveThrowback
+  // Supprimer un LiveThrowback
   const handleDelete = (livestream) => {
     setSelectedLiveStream(livestream);
     setDeleteModalOpen(true);
   };
 
-  // View details
+  // Voir les détails d'un LiveThrowback
   const handleViewDetails = (livestream) => {
     setSelectedLiveStream(livestream);
     setDetailModalOpen(true);
   };
 
-  // Edit
+  // Modifier un LiveThrowback
   const handleEdit = (livestream) => {
     setSelectedLiveStream(livestream);
     setEditModalOpen(true);
   };
 
-  // Confirm deletion
+  // Confirmer la suppression
   const handleLiveStreamDeleted = (deletedId) => {
     setLiveStreams(prevStreams => 
       prevStreams.filter(stream => stream._id !== deletedId)
@@ -320,7 +329,7 @@ const AdminLiveThrowback = () => {
     fetchStats();
   };
 
-  // Start stream
+  // Démarrer une diffusion
   const startLiveStream = async (id) => {
     try {
       const token = getAuthToken();
@@ -335,12 +344,13 @@ const AdminLiveThrowback = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        throw new Error(errorData.message || 'Failed to start stream');
+        const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        throw new Error(errorData.message || 'Échec du démarrage de la diffusion');
       }
       
       const data = await response.json();
       
+      // Mettre à jour la liste
       setLiveStreams(prevStreams => 
         prevStreams.map(stream => 
           stream._id === id ? data.data : stream
@@ -349,12 +359,12 @@ const AdminLiveThrowback = () => {
       
       fetchStats();
     } catch (err) {
-      console.error('startLiveStream error:', err);
-      setError(err.message || 'Failed to start stream');
+      console.error('Erreur startLiveStream:', err);
+      setError(err.message || 'Échec du démarrage de la diffusion');
     }
   };
 
-  // End stream
+  // Terminer une diffusion
   const endLiveStream = async (id) => {
     try {
       const token = getAuthToken();
@@ -369,12 +379,13 @@ const AdminLiveThrowback = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        throw new Error(errorData.message || 'Failed to end stream');
+        const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        throw new Error(errorData.message || 'Échec de la fin de la diffusion');
       }
       
       const data = await response.json();
       
+      // Mettre à jour la liste
       setLiveStreams(prevStreams => 
         prevStreams.map(stream => 
           stream._id === id ? data.data : stream
@@ -383,12 +394,12 @@ const AdminLiveThrowback = () => {
       
       fetchStats();
     } catch (err) {
-      console.error('endLiveStream error:', err);
-      setError(err.message || 'Failed to end stream');
+      console.error('Erreur endLiveStream:', err);
+      setError(err.message || 'Échec de la fin de la diffusion');
     }
   };
 
-  // Cancel stream
+  // Annuler une diffusion
   const cancelLiveStream = async (id) => {
     try {
       const token = getAuthToken();
@@ -403,12 +414,13 @@ const AdminLiveThrowback = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        throw new Error(errorData.message || 'Failed to cancel stream');
+        const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        throw new Error(errorData.message || 'Échec de l\'annulation de la diffusion');
       }
       
       const data = await response.json();
       
+      // Mettre à jour la liste
       setLiveStreams(prevStreams => 
         prevStreams.map(stream => 
           stream._id === id ? data.data : stream
@@ -417,39 +429,39 @@ const AdminLiveThrowback = () => {
       
       fetchStats();
     } catch (err) {
-      console.error('cancelLiveStream error:', err);
-      setError(err.message || 'Failed to cancel stream');
+      console.error('Erreur cancelLiveStream:', err);
+      setError(err.message || 'Échec de l\'annulation de la diffusion');
     }
   };
 
-  // Load on mount & when filters change
+  // Charger les streams au démarrage et quand les filtres changent
   useEffect(() => {
     fetchLiveStreams();
   }, [fetchLiveStreams]);
 
-  // Change filters
+  // Fonction pour changer de filtres
   const applyFilters = (newFilters) => {
     setFilters(newFilters);
     setCurrentPage(1);
   };
 
-  // Dismiss error
+  // Fonction pour fermer l'alerte d'erreur
   const dismissError = () => {
     setError('');
   };
 
-  // Tabs content
+  // Navigue entre les onglets
   const renderTabContent = () => {
     if (createMode) {
       return (
         <div className={styles.creationContainer}>
           <div className={styles.creationHeader}>
-            <h2>Create a new LiveThrowback</h2>
+            <h2>Créer un nouveau LiveThrowback</h2>
             <button 
               className={styles.backButton}
               onClick={() => setCreateMode(false)}
             >
-              <i className="fas fa-arrow-left"></i> Back
+              <i className="fas fa-arrow-left"></i> Retour
             </button>
           </div>
           
@@ -501,7 +513,7 @@ const AdminLiveThrowback = () => {
           />
         );
       default:
-        return <div>Content not available</div>;
+        return <div>Contenu non disponible</div>;
     }
   };
 
@@ -511,7 +523,7 @@ const AdminLiveThrowback = () => {
         <div className={styles.header}>
           <div>
             <h1>LiveThrowback</h1>
-            <p>Create and manage looping video compilations for your users</p>
+            <p>Créez et gérez des compilations vidéo qui tournent en boucle pour vos utilisateurs</p>
           </div>
           
           <div className={styles.headerActions}>
@@ -520,7 +532,7 @@ const AdminLiveThrowback = () => {
                 <button 
                   className={styles.viewToggleButton}
                   onClick={() => setViewMode(prev => prev === 'grid' ? 'table' : 'grid')}
-                  title={viewMode === 'grid' ? 'Switch to table view' : 'Switch to grid view'}
+                  title={viewMode === 'grid' ? "Passer en vue tableau" : "Passer en vue grille"}
                 >
                   <i className={`fas fa-${viewMode === 'grid' ? 'list' : 'th'}`}></i>
                 </button>
@@ -528,7 +540,7 @@ const AdminLiveThrowback = () => {
                   className={styles.addButton}
                   onClick={() => setCreateMode(true)}
                 >
-                  <i className="fas fa-plus"></i> Create LiveThrowback
+                  <i className="fas fa-plus"></i> Créer un LiveThrowback
                 </button>
               </>
             )}
@@ -554,7 +566,7 @@ const AdminLiveThrowback = () => {
             </div>
             <div className={styles.statContent}>
               <div className={styles.statValue}>{stats.live}</div>
-              <div className={styles.statLabel}>Live</div>
+              <div className={styles.statLabel}>En Direct</div>
             </div>
           </div>
           
@@ -564,7 +576,7 @@ const AdminLiveThrowback = () => {
             </div>
             <div className={styles.statContent}>
               <div className={styles.statValue}>{stats.scheduled}</div>
-              <div className={styles.statLabel}>Scheduled</div>
+              <div className={styles.statLabel}>Programmés</div>
             </div>
           </div>
           
@@ -574,7 +586,7 @@ const AdminLiveThrowback = () => {
             </div>
             <div className={styles.statContent}>
               <div className={styles.statValue}>{stats.views}</div>
-              <div className={styles.statLabel}>Total views</div>
+              <div className={styles.statLabel}>Vues totales</div>
             </div>
           </div>
         </div>

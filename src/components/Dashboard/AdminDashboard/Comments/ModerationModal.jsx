@@ -36,12 +36,12 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
       'Inappropriate content',
       'Spam or advertising',
       'Harassment',
-      'Hate content',
-      'Community rules violation',
+      'Hate speech',
+      'Violation of community rules',
       'Off-topic content'
     ],
     delete: [
-      'Severe rules violation',
+      'Severe rule violation',
       'Illegal content',
       'Repeated spam',
       'Severe harassment',
@@ -87,7 +87,7 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
               </span>
               <span>
                 <i className="fas fa-clock"></i>
-                {new Date(comment.creation_date).toLocaleDateString('fr-FR')}
+                {new Date(comment.creation_date).toLocaleDateString('en-GB')}
               </span>
               {comment.signale_par && comment.signale_par.length > 0 && (
                 <span className={styles.reported}>
@@ -159,7 +159,7 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
               </div>
             )}
 
-            {/* Delete warning */}
+            {/* Warning for deletion */}
             {selectedAction === 'delete' && (
               <div className={styles.warningBox}>
                 <i className="fas fa-exclamation-triangle"></i>
@@ -205,7 +205,7 @@ const ModerationModal = ({ comment, onModerate, onClose }) => {
   );
 };
 
-// components/Dashboard/AdminDashboard/Comments/ReplyModal.jsx (exporté dans ce fichier)
+// components/Dashboard/AdminDashboard/Comments/ReplyModal.jsx
 const ReplyModal = ({ comment, onReply, onClose }) => {
   const [content, setContent] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -273,7 +273,7 @@ const ReplyModal = ({ comment, onReply, onClose }) => {
             <div className={styles.replyInfo}>
               <i className="fas fa-info-circle"></i>
               <p>
-                This reply will be publicly visible and identified as an administrative response.
+                This reply will be publicly visible and marked as an administrative response.
               </p>
             </div>
 
@@ -300,7 +300,7 @@ const ReplyModal = ({ comment, onReply, onClose }) => {
                 ) : (
                   <>
                     <i className="fas fa-reply"></i>
-                    Send reply
+                    Send Reply
                   </>
                 )}
               </button>

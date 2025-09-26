@@ -30,7 +30,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
     });
   };
 
-  // Active filters count
+  // Count active filters
   const getActiveFiltersCount = () => {
     let count = 0;
     if (filters.search) count++;
@@ -45,7 +45,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
 
   return (
     <div className={styles.filtersContainer}>
-      {/* Search bar & primary actions */}
+      {/* Search bar and main actions */}
       <div className={styles.mainFilters}>
         <div className={styles.searchContainer}>
           <div className={styles.searchInput}>
@@ -68,7 +68,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
         </div>
 
         <div className={styles.quickFilters}>
-          {/* Status */}
+          {/* Filter by status */}
           <select
             value={filters.status}
             onChange={(e) => onFilterChange({ status: e.target.value })}
@@ -81,7 +81,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
             {/* <option value="SIGNALE">Reported</option> */}
           </select>
 
-          {/* Type */}
+          {/* Filter by type */}
           <select
             value={filters.type}
             onChange={(e) => onFilterChange({ type: e.target.value })}
@@ -98,8 +98,8 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
             onChange={(e) => onFilterChange({ sortBy: e.target.value })}
             className={styles.filterSelect}
           >
-            <option value="recent">Newest first</option>
-            <option value="oldest">Oldest first</option>
+            <option value="recent">Most recent</option>
+            <option value="oldest">Oldest</option>
             <option value="most_liked">Most liked</option>
             {/* <option value="most_reported">Most reported</option> */}
           </select>
@@ -118,7 +118,7 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
             )}
           </button>
 
-          {/* Reset */}
+          {/* Reset button */}
           {activeFiltersCount > 0 && (
             <button
               className={styles.resetBtn}
@@ -136,19 +136,6 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
       {showAdvanced && (
         <div className={styles.advancedFilters}>
           <div className={styles.advancedRow}>
-            {/* <div className={styles.filterGroup}>
-              <label>Reports</label>
-              <select
-                value={filters.reported}
-                onChange={(e) => onFilterChange({ reported: e.target.value })}
-                className={styles.filterSelect}
-              >
-                <option value="all">All</option>
-                <option value="reported">Reported comments</option>
-                <option value="not_reported">Not reported</option>
-              </select>
-            </div> */}
-
             <div className={styles.filterGroup}>
               <label>Items per page</label>
               <select
@@ -166,14 +153,14 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
         </div>
       )}
 
-      {/* Results & info */}
+      {/* Results info */}
       <div className={styles.filtersInfo}>
         <div className={styles.resultsCount}>
           <i className="fas fa-comments"></i>
           {totalComments} comment{totalComments > 1 ? 's' : ''} found
           {activeFiltersCount > 0 && (
             <span className={styles.filtered}>
-              (with {activeFiltersCount} active filter{activeFiltersCount > 1 ? 's' : ''})
+              (with {activeFiltersCount} filter{activeFiltersCount > 1 ? 's' : ''})
             </span>
           )}
         </div>
@@ -211,16 +198,6 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
               </span>
             )}
             
-            {/* {filters.reported !== 'all' && (
-              <span className={styles.activeFilter}>
-                <i className="fas fa-flag"></i>
-                {filters.reported === 'reported' ? 'Reported' : 'Not reported'}
-                <button onClick={() => onFilterChange({ reported: 'all' })}>
-                  <i className="fas fa-times"></i>
-                </button>
-              </span>
-            )} */}
-            
             {filters.sortBy !== 'recent' && (
               <span className={styles.activeFilter}>
                 <i className="fas fa-sort"></i>
@@ -237,13 +214,6 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
       {/* Quick suggestions */}
       <div className={styles.quickSuggestions}>
         <span className={styles.suggestionsLabel}>Quick filters:</span>
-        {/* <button
-          className={styles.suggestionBtn}
-          onClick={() => onFilterChange({ status: 'SIGNALE', reported: 'reported' })}
-        >
-          <i className="fas fa-flag"></i>
-          Reported comments
-        </button> */}
         <button
           className={styles.suggestionBtn}
           onClick={() => onFilterChange({ status: 'MODERE' })}

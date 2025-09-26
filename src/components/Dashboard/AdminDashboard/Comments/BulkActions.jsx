@@ -22,25 +22,23 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
       label: 'Reject',
       icon: 'fas fa-times',
       color: 'warning',
-      description: 'Reject selected comments (moderation)'
+      description: 'Reject the selected comments (moderation)'
     },
     {
       id: 'delete',
       label: 'Delete',
       icon: 'fas fa-trash',
       color: 'danger',
-      description: 'Permanently delete selected comments'
+      description: 'Permanently delete the selected comments'
     }
   ];
 
-  // Handle action selection
   const handleActionSelect = (action) => {
     setSelectedAction(action);
     setShowConfirmation(true);
     setReason('');
   };
 
-  // Confirm action
   const handleConfirm = async () => {
     if (!selectedAction) return;
 
@@ -57,7 +55,6 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
     }
   };
 
-  // Cancel
   const handleCancel = () => {
     if (showConfirmation) {
       setShowConfirmation(false);
@@ -87,12 +84,12 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
       'Inappropriate content',
       'Spam or advertising',
       'Harassment',
-      'Hate content',
-      'Community rules violation',
+      'Hate speech',
+      'Violation of community rules',
       'Off-topic content'
     ],
     delete: [
-      'Severe rules violation',
+      'Severe rule violation',
       'Illegal content',
       'Repeated spam',
       'Severe harassment',
@@ -191,13 +188,13 @@ const BulkActions = ({ selectedCount, onBulkModerate, onCancel }) => {
                 </div>
               )}
 
-              {/* Delete warning */}
+              {/* Warning for delete */}
               {selectedAction.id === 'delete' && (
                 <div className={styles.warningBox}>
                   <i className="fas fa-exclamation-triangle"></i>
                   <div>
-                    <strong>Warning:</strong> This action is irreversible.
-                    Deleted comments cannot be restored.
+                    <strong>Warning:</strong> This action is irreversible. 
+                    Deleted comments cannot be recovered.
                   </div>
                 </div>
               )}

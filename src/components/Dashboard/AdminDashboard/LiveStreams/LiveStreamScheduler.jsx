@@ -21,72 +21,139 @@ const LiveStreamScheduler = ({ onSchedule, videosSelected, isLoading }) => {
   const [errors, setErrors] = useState({});
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   
-  function formatDateTimeForInput(date) { return date.toISOString().slice(0, 16); }
-  function addHours(date, hours) { const d = new Date(date); d.setHours(d.getHours() + hours); return d; }
-  function addMinutes(date, minutes) { const d = new Date(date); d.setMinutes(d.getMinutes() + minutes); return d; }
+  // Helper pour formater la date pour les inputs datetime-local
+  function formatDateTimeForInput(date) {
+    return date.toISOString().slice(0, 16);
+  }
   
+  // Helper pour ajouter des heures à une date
+  function addHours(date, hours) {
+    const newDate = new Date(date);
+    newDate.setHours(newDate.getHours() + hours);
+    return newDate;
+  }
+
+  // Helper pour ajouter des minutes à une date
+  function addMinutes(date, minutes) {
+    const newDate = new Date(date);
+    newDate.setMinutes(newDate.getMinutes() + minutes);
+    return newDate;
+  }
+  
+  // Mettre à jour le formulaire
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    // S'assurer que tags reste une chaîne
     if (name === 'tags') {
-      setSchedulingData(prev => ({ ...prev, tags: value || '' }));
+      setSchedulingData(prev => ({
+        ...prev,
+        tags: value || ''  // Assurer qu'une chaîne vide est utilisée si value est falsy
+      }));
     } else {
-      setSchedulingData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+      setSchedulingData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
     }
+    
+    // Effacer l'erreur correspondante
     if (errors[name]) {
-      setErrors(prev => { const n = {...prev}; delete n[name]; return n; });
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors[name];
+        return newErrors;
+      });
     }
   };
   
+  // Validation du formulaire
   const validateForm = () => {
     const newErrors = {};
-    if (!schedulingData.title.trim()) newErrors.title = 'Title is required';
-    if (!schedulingData.startDate) newErrors.startDate = 'Start date is required';
-    if (!schedulingData.endDate) newErrors.endDate = 'End date is required';
+    
+    if (!schedulingData.title.trim()) {
+      newErrors.title = 'Le titre est requis';
+    }
+    
+    if (!schedulingData.startDate) {
+      newErrors.startDate = 'La date de début est requise';
+    }
+    
+    if (!schedulingData.endDate) {
+      newErrors.endDate = 'La date de fin est requise';
+    }
+    
     const start = new Date(schedulingData.startDate);
     const end = new Date(schedulingData.endDate);
     const now = new Date();
-    if (start < now) newErrors.startDate = 'Start date must be in the future';
-    if (end <= start) newErrors.endDate = 'End date must be after start date';
+    
+    if (start < now) {
+      newErrors.startDate = 'La date de début doit être dans le futur';
+    }
+    
+    if (end <= start) {
+      newErrors.endDate = 'La date de fin doit être postérieure à la date de début';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
   
+  // Gérer la soumission du formulaire
   const handleSubmit = () => {
     if (!validateForm()) return;
-    const formattedData = { ...schedulingData, tags: typeof schedulingData.tags === 'string' ? schedulingData.tags : '' };
+    
+    // S'assurer que tags est bien une chaîne avant de l'envoyer
+    const formattedData = {
+      ...schedulingData,
+      tags: typeof schedulingData.tags === 'string' ? schedulingData.tags : ''
+    };
+    
     onSchedule(formattedData);
   };
   
-  const categories = ['MUSIC_PERFORMANCE','TALK_SHOW','Q_AND_A','BEHIND_THE_SCENES','THROWBACK_SPECIAL','OTHER'];
+  // Liste des catégories disponibles
+  const categories = [
+    'MUSIC_PERFORMANCE',
+    'TALK_SHOW',
+    'Q_AND_A',
+    'BEHIND_THE_SCENES',
+    'THROWBACK_SPECIAL',
+    'OTHER'
+  ];
+  
+  // Liste des effets de transition
   const transitionEffects = [
-    { value: 'none', label: 'None' },
-    { value: 'fade', label: 'Fade' },
-    { value: 'slide', label: 'Slide' },
+    { value: 'none', label: 'Aucun' },
+    { value: 'fade', label: 'Fondu' },
+    { value: 'slide', label: 'Glissement' },
     { value: 'zoom', label: 'Zoom' },
-    { value: 'flip', label: 'Flip' }
+    { value: 'flip', label: 'Retournement' }
   ];
   
   return (
     <div className={styles.schedulerContainer}>
       <div className={styles.schedulerHeader}>
-        <h3>Schedule LiveThrowback</h3>
+        <h3>Programmer le LiveThrowback</h3>
         {!videosSelected && (
           <div className={styles.warningMessage}>
-            <i className="fas fa-exclamation-triangle"></i> Add at least one video before scheduling
+            <i className="fas fa-exclamation-triangle"></i> Ajoutez au moins une vidéo avant de programmer
           </div>
         )}
       </div>
       
       <div className={styles.schedulingForm}>
         <div className={styles.formGroup}>
-          <label htmlFor="title">Title <span className={styles.requiredField}>*</span></label>
+          <label htmlFor="title">
+            Titre <span className={styles.requiredField}>*</span>
+          </label>
           <input
             type="text"
             id="title"
             name="title"
             value={schedulingData.title}
             onChange={handleChange}
-            placeholder="Title of your LiveThrowback"
+            placeholder="Titre de votre LiveThrowback"
             className={errors.title ? styles.inputError : ''}
           />
           {errors.title && <div className={styles.errorText}>{errors.title}</div>}
@@ -99,14 +166,16 @@ const LiveStreamScheduler = ({ onSchedule, videosSelected, isLoading }) => {
             name="description"
             value={schedulingData.description}
             onChange={handleChange}
-            placeholder="Describe your LiveThrowback..."
+            placeholder="Décrivez votre LiveThrowback..."
             rows={3}
           />
         </div>
         
         <div className={styles.formRow}>
           <div className={styles.formGroup}>
-            <label htmlFor="startDate">Start date <span className={styles.requiredField}>*</span></label>
+            <label htmlFor="startDate">
+              Date de début <span className={styles.requiredField}>*</span>
+            </label>
             <input
               type="datetime-local"
               id="startDate"
@@ -119,7 +188,9 @@ const LiveStreamScheduler = ({ onSchedule, videosSelected, isLoading }) => {
           </div>
           
           <div className={styles.formGroup}>
-            <label htmlFor="endDate">End date <span className={styles.requiredField}>*</span></label>
+            <label htmlFor="endDate">
+              Date de fin <span className={styles.requiredField}>*</span>
+            </label>
             <input
               type="datetime-local"
               id="endDate"
@@ -134,77 +205,134 @@ const LiveStreamScheduler = ({ onSchedule, videosSelected, isLoading }) => {
         
         <div className={styles.formRow}>
           <div className={styles.formGroup}>
-            <label htmlFor="category">Category</label>
-            <select id="category" name="category" value={schedulingData.category} onChange={handleChange}>
-              {categories.map(category => (<option key={category} value={category}>{category.replace(/_/g, ' ')}</option>))}
+            <label htmlFor="category">Catégorie</label>
+            <select
+              id="category"
+              name="category"
+              value={schedulingData.category}
+              onChange={handleChange}
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category.replace(/_/g, ' ')}
+                </option>
+              ))}
             </select>
           </div>
           
           <div className={styles.formGroup}>
-            <label htmlFor="hostName">Host name</label>
+            <label htmlFor="hostName">Nom de l'hôte</label>
             <input
               type="text"
               id="hostName"
               name="hostName"
               value={schedulingData.hostName}
               onChange={handleChange}
-              placeholder="Host name"
+              placeholder="Nom de l'hôte"
             />
           </div>
         </div>
         
         <div className={styles.formGroup}>
-          <label htmlFor="tags">Tags (comma-separated)</label>
+          <label htmlFor="tags">Tags (séparés par des virgules)</label>
           <input
             type="text"
             id="tags"
             name="tags"
             value={schedulingData.tags || ''}
             onChange={handleChange}
-            placeholder="music, oldies, 80s, ..."
+            placeholder="musique, oldies, années80, ..."
           />
         </div>
         
         <div className={styles.formCheckboxGroup}>
           <div className={styles.checkboxItem}>
-            <input type="checkbox" id="isPublic" name="isPublic" checked={schedulingData.isPublic} onChange={handleChange} />
-            <label htmlFor="isPublic">Make public</label>
+            <input
+              type="checkbox"
+              id="isPublic"
+              name="isPublic"
+              checked={schedulingData.isPublic}
+              onChange={handleChange}
+            />
+            <label htmlFor="isPublic">Rendre public</label>
           </div>
+          
           <div className={styles.checkboxItem}>
-            <input type="checkbox" id="chatEnabled" name="chatEnabled" checked={schedulingData.chatEnabled} onChange={handleChange} />
-            <label htmlFor="chatEnabled">Enable chat</label>
+            <input
+              type="checkbox"
+              id="chatEnabled"
+              name="chatEnabled"
+              checked={schedulingData.chatEnabled}
+              onChange={handleChange}
+            />
+            <label htmlFor="chatEnabled">Activer le chat</label>
           </div>
+          
           <div className={styles.checkboxItem}>
-            <input type="checkbox" id="loop" name="loop" checked={schedulingData.loop} onChange={handleChange} />
-            <label htmlFor="loop">Loop playback</label>
+            <input
+              type="checkbox"
+              id="loop"
+              name="loop"
+              checked={schedulingData.loop}
+              onChange={handleChange}
+            />
+            <label htmlFor="loop">Lecture en boucle</label>
           </div>
         </div>
         
         <div className={styles.advancedSettingsToggle}>
-          <button type="button" className={styles.toggleButton} onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}>
+          <button 
+            type="button"
+            className={styles.toggleButton}
+            onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+          >
             <i className={`fas ${showAdvancedSettings ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
-            {showAdvancedSettings ? 'Hide advanced settings' : 'Advanced settings'}
+            {showAdvancedSettings ? 'Masquer les paramètres avancés' : 'Paramètres avancés'}
           </button>
         </div>
         
         {showAdvancedSettings && (
           <div className={styles.advancedSettings}>
             <div className={styles.formGroup}>
-              <label htmlFor="transitionEffect">Transition effect</label>
-              <select id="transitionEffect" name="transitionEffect" value={schedulingData.transitionEffect} onChange={handleChange}>
-                {transitionEffects.map(effect => (<option key={effect.value} value={effect.value}>{effect.label}</option>))}
+              <label htmlFor="transitionEffect">Effet de transition</label>
+              <select
+                id="transitionEffect"
+                name="transitionEffect"
+                value={schedulingData.transitionEffect}
+                onChange={handleChange}
+              >
+                {transitionEffects.map(effect => (
+                  <option key={effect.value} value={effect.value}>
+                    {effect.label}
+                  </option>
+                ))}
               </select>
             </div>
+            
             <div className={styles.checkboxItem}>
-              <input type="checkbox" id="shuffle" name="shuffle" checked={schedulingData.shuffle} onChange={handleChange} />
-              <label htmlFor="shuffle">Shuffle playback</label>
+              <input
+                type="checkbox"
+                id="shuffle"
+                name="shuffle"
+                checked={schedulingData.shuffle}
+                onChange={handleChange}
+              />
+              <label htmlFor="shuffle">Lecture aléatoire</label>
             </div>
           </div>
         )}
         
         <div className={styles.formActions}>
-          <button className={styles.scheduleButton} onClick={handleSubmit} disabled={isLoading || !videosSelected}>
-            {isLoading ? (<><i className="fas fa-spinner fa-spin"></i> Scheduling...</>) : (<><i className="fas fa-calendar-plus"></i> Schedule LiveThrowback</>)}
+          <button 
+            className={styles.scheduleButton}
+            onClick={handleSubmit}
+            disabled={isLoading || !videosSelected}
+          >
+            {isLoading ? (
+              <><i className="fas fa-spinner fa-spin"></i> Programmation en cours...</>
+            ) : (
+              <><i className="fas fa-calendar-plus"></i> Programmer le LiveThrowback</>
+            )}
           </button>
         </div>
       </div>
