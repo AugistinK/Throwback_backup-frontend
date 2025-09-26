@@ -24,6 +24,13 @@ const adminAPI = {
     return data;
   },
 
+  // ➕ Répondre à un commentaire (utilisé par Comments.jsx / ReplyModal.jsx)
+  replyToComment: async (commentId, content) => {
+    // adapte l’URL si ton backend utilise un autre chemin
+    const { data } = await api.post(`/api/admin/comments/${commentId}/reply`, { content });
+    return data;
+  },
+
   // ----- LIKES -----
   getLikes: async ({ params }) => {
     const { data } = await api.get('/api/admin/likes', { params });
