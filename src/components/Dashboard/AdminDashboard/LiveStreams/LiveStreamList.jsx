@@ -100,7 +100,7 @@ const LiveStreamList = ({
         <h3 className={styles.livestreamTitle} title={livestream.title}>{livestream.title}</h3>
         <div className={styles.livestreamMeta}>
           <div className={styles.livestreamHost}>{livestream.hostName}</div>
-          <div className={styles.livestreamDate}>{formatDate(livestream.scheduledStartTime)}</div>
+          {/* <div className={styles.livestreamDate}>{formatDate(livestream.scheduledStartTime)}</div> */}
         </div>
         {livestream.compilationVideos && <div className={styles.compilationInfo}><i className="fas fa-list"></i> {livestream.compilationVideos.length} videos</div>}
       </div>
