@@ -325,7 +325,7 @@ const Shorts = () => {
       <div className={styles.header}>
         <div>
           <h1>Shorts Management</h1>
-        <p>Manage short videos (10–30 seconds) 🎬</p>
+        <p>Manage short videos</p>
         </div>
         <button
           className={styles.addButton}
