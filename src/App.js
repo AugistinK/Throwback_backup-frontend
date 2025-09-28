@@ -187,7 +187,7 @@ function App() {
             {/* <Route path="settings" element={<TempPage title="Account Settings" />} />
             <Route path="preferences" element={<TempPage title="Preferences" />} />
             <Route path="help" element={<TempPage title="Help & Support" />} /> */}
-            {/* <Route path="notifications" element={<TempPage title="Notifications" />} /> */}
+            <Route path="notifications" element={<TempPage title="Notifications" />} />
           </Route>
 
           {/* Fallbacks */}

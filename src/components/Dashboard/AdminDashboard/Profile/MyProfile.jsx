@@ -1,9 +1,10 @@
 // components/Dashboard/AdminDashboard/Profile/MyProfile.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../../../utils/api';
 import styles from './MyProfile.module.css';
 
+/* ---------- Reusable ---------- */
 function Skeleton({ rows = 3 }) {
   return (
     <div className={styles.skeleton}>
@@ -31,16 +32,16 @@ function Field({ label, value, copyable }) {
   return (
     <div className={styles.field}>
       <div className={styles.fieldLabel}>{label}</div>
-      <div className={styles.fieldValue}>
+      <div className={`${styles.fieldValue} ${styles.truncate}`} title={value || ''}>
         <span>{value ?? '—'}</span>
         {copyable && value && (
           <button
             type="button"
-            className={styles.copyBtn}
+            className={styles.iconBtn}
             onClick={async () => {
-              try { await navigator.clipboard.writeText(String(value)); setCopied(true); setTimeout(()=>setCopied(false), 1500);} catch {}
+              try { await navigator.clipboard.writeText(String(value)); setCopied(true); setTimeout(()=>setCopied(false), 1200);} catch {}
             }}
-            title={copied ? 'Copied!' : 'Copy'}
+            aria-label={copied ? 'Copied' : 'Copy to clipboard'}
           >
             <i className={`fas ${copied ? 'fa-check' : 'fa-copy'}`} />
           </button>
@@ -50,6 +51,7 @@ function Field({ label, value, copyable }) {
   );
 }
 
+/* ---------- Change Password ---------- */
 function ChangePasswordCard() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -58,9 +60,7 @@ function ChangePasswordCard() {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
 
-  const canSubmit = useMemo(() => {
-    return currentPassword && newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 6;
-  }, [currentPassword, newPassword, confirmPassword]);
+  const canSubmit = currentPassword && newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 6;
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -114,10 +114,114 @@ function ChangePasswordCard() {
   );
 }
 
+/* ---------- Edit Profile ---------- */
+function EditProfile({ me, onUpdated }) {
+  const [form, setForm] = useState({
+    telephone: me?.telephone || '',
+    pays: me?.pays || '',
+    ville: me?.ville || '',
+    adresse: me?.adresse || '',
+    code_postal: me?.code_postal || '',
+    genre: me?.genre || '',
+    date_naissance: me?.date_naissance ? new Date(me.date_naissance).toISOString().slice(0,10) : '',
+    bio: me?.bio || '',
+    profession: me?.profession || ''
+  });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [err, setErr] = useState(null);
+
+  const updateField = (k, v) => setForm((s) => ({ ...s, [k]: v }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setSaving(true); setMsg(null); setErr(null);
+    try {
+      // Try common endpoints, fallback gracefully
+      let res;
+      try { res = await api.put('/api/profile', form); }
+      catch (e1) {
+        try { res = await api.put('/api/auth/me', form); }
+        catch (e2) { throw e2; }
+      }
+      const data = res?.data?.data || res?.data || {};
+      setMsg('Profile updated');
+      onUpdated?.(data);
+    } catch (e) {
+      setErr(e?.response?.data?.message || 'Unable to update profile');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardHeader}>
+        <h2 className={styles.cardTitle}><i className="fas fa-id-card"/> Contact & Profile</h2>
+        <span className={styles.badgeTip}>Editable</span>
+      </div>
+      <form className={styles.form} onSubmit={submit}>
+        <div className={styles.twoCols}>
+          <label className={styles.inputGroup}>
+            <span>Phone</span>
+            <input value={form.telephone} onChange={(e)=>updateField('telephone', e.target.value)} placeholder="Phone" />
+          </label>
+          <label className={styles.inputGroup}>
+            <span>Country</span>
+            <input value={form.pays} onChange={(e)=>updateField('pays', e.target.value)} placeholder="Country" />
+          </label>
+        </div>
+        <div className={styles.twoCols}>
+          <label className={styles.inputGroup}>
+            <span>City</span>
+            <input value={form.ville} onChange={(e)=>updateField('ville', e.target.value)} placeholder="City" />
+          </label>
+          <label className={styles.inputGroup}>
+            <span>Postal Code</span>
+            <input value={form.code_postal} onChange={(e)=>updateField('code_postal', e.target.value)} placeholder="Postal code" />
+          </label>
+        </div>
+        <label className={styles.inputGroup}>
+          <span>Address</span>
+          <input value={form.adresse} onChange={(e)=>updateField('adresse', e.target.value)} placeholder="Address" />
+        </label>
+        <div className={styles.twoCols}>
+          <label className={styles.inputGroup}>
+            <span>Gender</span>
+            <input value={form.genre} onChange={(e)=>updateField('genre', e.target.value)} placeholder="Gender" />
+          </label>
+          <label className={styles.inputGroup}>
+            <span>Date of Birth</span>
+            <input type="date" value={form.date_naissance} onChange={(e)=>updateField('date_naissance', e.target.value)} />
+          </label>
+        </div>
+        <label className={styles.inputGroup}>
+          <span>Profession</span>
+          <input value={form.profession} onChange={(e)=>updateField('profession', e.target.value)} placeholder="Profession" />
+        </label>
+        <label className={styles.inputGroup}>
+          <span>Bio</span>
+          <textarea rows={3} value={form.bio} onChange={(e)=>updateField('bio', e.target.value)} placeholder="Short bio" />
+        </label>
+
+        {err && <div className={styles.alertError}><i className="fas fa-times-circle"/> {err}</div>}
+        {msg && <div className={styles.alertSuccess}><i className="fas fa-check-circle"/> {msg}</div>}
+
+        <div className={styles.actions}>
+          <button className={styles.primaryBtn} disabled={saving}>
+            {saving ? (<><i className="fas fa-spinner fa-spin"/> Saving...</>) : (<><i className="fas fa-save"/> Save Changes</>)}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/* ---------- Main ---------- */
 export default function MyProfile() {
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState(null);
   const [error, setError] = useState(null);
+  const fileRef = useRef(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -125,7 +229,7 @@ export default function MyProfile() {
       try {
         const { data } = await api.get('/api/auth/me');
         if (!mounted) return;
-        setMe(data?.data || null);
+        setMe(data?.data || data || null);
       } catch (err) {
         setError(err?.response?.data?.message || 'Failed to load profile');
       } finally {
@@ -141,13 +245,34 @@ export default function MyProfile() {
     return `${String(f)}${String(l)}`.toUpperCase();
   }, [me]);
 
+  const uploadAvatar = async (file) => {
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      // Try common endpoints for avatar
+      let res;
+      try { res = await api.patch('/api/profile/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }); }
+      catch (e1) {
+        try { res = await api.patch('/api/auth/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }); }
+        catch (e2) { throw e2; }
+      }
+      const updated = res?.data?.data || res?.data || {};
+      setMe((m) => ({ ...m, ...updated }));
+    } catch (e) {
+      console.error('Avatar upload failed', e);
+      alert(e?.response?.data?.message || 'Avatar upload failed');
+    } finally { setAvatarUploading(false); }
+  };
+
   if (loading) {
     return (
       <div className={styles.container}>
         <div className={styles.header}><h1>My Profile</h1></div>
         <div className={styles.grid}>
           <div className={styles.card}><Skeleton rows={5} /></div>
-          <div className={styles.card}><Skeleton rows={7} /></div>
+          <div className={styles.card}><Skeleton rows={9} /></div>
           <div className={styles.card}><Skeleton rows={6} /></div>
         </div>
       </div>
@@ -183,10 +308,20 @@ export default function MyProfile() {
             <h2 className={styles.cardTitle}><i className="fas fa-user-circle"/> Overview</h2>
           </div>
           <div className={styles.avatarRow}>
-            <div className={styles.avatar}>{initials}</div>
-            <div>
-              <div className={styles.nameLine}>{me?.prenom} {me?.nom}</div>
+            {me?.avatar_url ? (
+              <img src={me.avatar_url} alt="Avatar" className={styles.avatarImg} />
+            ) : (
+              <div className={styles.avatar}>{initials}</div>
+            )}
+            <div className={styles.avatarMeta}>
+              <div className={`${styles.nameLine} ${styles.truncate}`} title={`${me?.prenom||''} ${me?.nom||''}`}>{me?.prenom} {me?.nom}</div>
               <div className={styles.roleLine}><i className="fas fa-shield-alt"/> {me?.role ? String(me.role).charAt(0).toUpperCase() + String(me.role).slice(1) : 'Administrator'}</div>
+              <div className={styles.actionsStack}>
+                <button className={styles.ghostBtn} onClick={() => fileRef.current?.click()} disabled={avatarUploading}>
+                  {avatarUploading ? (<><i className="fas fa-spinner fa-spin"/> Uploading...</>) : (<><i className="fas fa-camera"/> Change avatar</>)}
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e)=>uploadAvatar(e.target.files?.[0])} />
+              </div>
             </div>
           </div>
           <div className={styles.meta}>
@@ -196,25 +331,8 @@ export default function MyProfile() {
           </div>
         </div>
 
-        {/* Contact details */}
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}><i className="fas fa-id-card"/> Contact & Profile</h2>
-            <span className={styles.badgeSoon}>Edit Coming Soon</span>
-          </div>
-          <div className={styles.fields}>
-            <Field label="Email" value={me?.email} copyable />
-            <Field label="Phone" value={me?.telephone} />
-            <Field label="Country" value={me?.pays} />
-            <Field label="City" value={me?.ville} />
-            <Field label="Address" value={me?.adresse} />
-            <Field label="Postal Code" value={me?.code_postal} />
-            <Field label="Gender" value={me?.genre} />
-            <Field label="Date of Birth" value={me?.date_naissance ? new Date(me.date_naissance).toLocaleDateString() : '—'} />
-            <Field label="Bio" value={me?.bio} />
-            <Field label="Profession" value={me?.profession} />
-          </div>
-        </div>
+        {/* Contact & Profile (editable) */}
+        <EditProfile me={me} onUpdated={(u)=> setMe((m)=> ({...m, ...u}))} />
 
         {/* Security */}
         <ChangePasswordCard />
