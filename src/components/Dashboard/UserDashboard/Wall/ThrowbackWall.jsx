@@ -92,7 +92,7 @@ const ThrowbackWall = () => {
         
         if (!userId) {
           console.warn('ID utilisateur introuvable', user);
-          throw new Error("Impossible d'identifier votre compte utilisateur");
+          throw new Error('Unable to identify your user account');
         }
         
         params.auteur = userId;
@@ -130,11 +130,11 @@ const ThrowbackWall = () => {
       
       // Message d'erreur spécifique selon le type d'erreur
       if (err.response?.status === 401) {
-        setError('Votre session a expiré. Veuillez vous reconnecter.');
-      } else if (err.message.includes("identifier votre compte")) {
+        setError('Your session has expired. Please sign in again.');
+      } else if (err.message.includes('identify your user account')) {
         setError(err.message);
       } else {
-        setError('Impossible de charger les posts. Veuillez réessayer plus tard.');
+        setError('Unable to load posts. Please try again later.');
       }
       
       // Initialiser un tableau vide en cas d'erreur sur la première page
@@ -169,14 +169,14 @@ const ThrowbackWall = () => {
     // Si on essaie de passer au filtre personnel sans être authentifié
     if (filter === 'personal' && (!isAuthenticated || !token)) {
       console.log('Tentative de filtrage personnel sans authentification');
-      alert('Veuillez vous connecter pour voir vos posts personnels');
+      alert('Please sign in to view your personal posts');
       return;
     }
     
     // Si on essaie de passer au filtre personnel sans pouvoir identifier l'utilisateur
     if (filter === 'personal' && !getUserId()) {
       console.log('Tentative de filtrage personnel sans ID utilisateur');
-      alert('Votre profil utilisateur est incomplet. Veuillez vous reconnecter.');
+      alert('Your user profile is incomplete. Please sign in again.');
       return;
     }
     
@@ -228,7 +228,7 @@ const ThrowbackWall = () => {
   };
 
   return (
-    <ErrorBoundary fallback={<div className={styles.errorState}>Une erreur est survenue dans l'affichage du mur.</div>}>
+    <ErrorBoundary fallback={<div className={styles.errorState}>An error occurred while displaying the wall.</div>}>
       <div className={styles.wallContainer}>
         <div className={styles.wallContent}>
           <div className={styles.mainContent}>
@@ -243,7 +243,7 @@ const ThrowbackWall = () => {
                 onClick={() => changeFilter('all')}
                 data-filter="all"
               >
-                Tous les posts
+                All posts
                 {posts.length > 0 && currentFilter === 'all' && (
                   <span className={styles.filterCount}>{posts.length}</span>
                 )}
@@ -256,7 +256,7 @@ const ThrowbackWall = () => {
                   data-filter="personal"
                   disabled={!getUserId()}
                 >
-                  Mes posts
+                  My posts
                   {posts.length > 0 && currentFilter === 'personal' && (
                     <span className={styles.filterCount}>{posts.length}</span>
                   )}
@@ -264,10 +264,10 @@ const ThrowbackWall = () => {
               ) : (
                 <button 
                   className={`${styles.filterButton} ${styles.disabled}`}
-                  onClick={() => alert('Veuillez vous connecter pour voir vos posts')}
+                  onClick={() => alert('Please log in to view your posts')}
                 >
-                  Mes posts
-                  <span className={styles.loginRequired}>(Connexion requise)</span>
+                  My posts
+                  <span className={styles.loginRequired}>(Login required)</span>
                 </button>
               )}
             </div>
@@ -279,7 +279,7 @@ const ThrowbackWall = () => {
                   className={styles.retryButton}
                   onClick={refreshPosts}
                 >
-                  Réessayer
+                  Retry
                 </button>
               </div>
             )}

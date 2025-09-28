@@ -1,3 +1,4 @@
+// components/Dashboard/UserDashboard/Wall/WallSidebar.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -18,14 +19,13 @@ const WallSidebar = ({ onRefresh }) => {
   const [suggestedUsers, setSuggestedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Charger les données
+  // Load data
   useEffect(() => {
     const fetchSidebarData = async () => {
       try {
         setLoading(true);
         
-        // Simuler un appel API pour les hashtags tendance
-        // Dans une implémentation réelle, cela serait remplacé par un appel API
+        // Simulate API call for trending hashtags
         setTimeout(() => {
           setTrendingHashtags([
             { tag: 'throwback80s', count: 234 },
@@ -36,8 +36,7 @@ const WallSidebar = ({ onRefresh }) => {
           ]);
         }, 1000);
         
-        // Simuler un appel API pour les utilisateurs suggérés
-        // Dans une implémentation réelle, cela serait remplacé par un appel API
+        // Simulate API call for suggested users
         setTimeout(() => {
           setSuggestedUsers([
             { 
@@ -71,15 +70,12 @@ const WallSidebar = ({ onRefresh }) => {
     fetchSidebarData();
   }, []);
 
-  // Fonction pour rafraîchir les données
+  // Refresh data
   const handleRefresh = () => {
-    // Réinitialiser les données
     setTrendingHashtags([]);
     setSuggestedUsers([]);
     setLoading(true);
     
-    // Recharger les données
-    // Dans une implémentation réelle, on appellerait fetchSidebarData()
     setTimeout(() => {
       setTrendingHashtags([
         { tag: 'throwback80s', count: 234 },
@@ -112,7 +108,6 @@ const WallSidebar = ({ onRefresh }) => {
       
       setLoading(false);
       
-      // Notifier le parent
       if (onRefresh) {
         onRefresh();
       }
@@ -121,7 +116,6 @@ const WallSidebar = ({ onRefresh }) => {
 
   return (
     <div className={styles.sidebar}>
-     
       <div className={styles.sidebarHeader}>
         <h2>ThrowBack Wall</h2>
         <button 
@@ -136,11 +130,11 @@ const WallSidebar = ({ onRefresh }) => {
       {/* <div className={styles.sidebarSection}>
         <h3>
           <FontAwesomeIcon icon={faChartLine} />
-          <span>Tendances</span>
+          <span>Trends</span>
         </h3>
         
         {loading ? (
-          <div className={styles.loading}>Chargement...</div>
+          <div className={styles.loading}>Loading...</div>
         ) : (
           <div className={styles.trendingHashtags}>
             {trendingHashtags.map((hashtag, index) => (
@@ -165,7 +159,7 @@ const WallSidebar = ({ onRefresh }) => {
         </h3>
         
         {loading ? (
-          <div className={styles.loading}>Chargement...</div>
+          <div className={styles.loading}>Loading...</div>
         ) : (
           <div className={styles.suggestedUsers}>
             {suggestedUsers.map((user) => (
@@ -190,11 +184,11 @@ const WallSidebar = ({ onRefresh }) => {
       </div> */}
       
       <div className={styles.sidebarSection}>
-        <h3>Découvrir plus</h3>
+        <h3>Discover more</h3>
         <div className={styles.discoverLinks}>
           <Link to="/dashboard/videos" className={styles.discoverLink}>
             <FontAwesomeIcon icon={faVideo} />
-            <span>Videos ThrowBack</span>
+            <span>Throwback Videos</span>
           </Link>
           <Link to="/dashboard/shorts" className={styles.discoverLink}>
             <FontAwesomeIcon icon={faMusic} />
