@@ -67,6 +67,7 @@ function ChangePasswordCard() {
     if (!canSubmit) return;
     setLoading(true); setMessage(null); setError(null);
     try {
+      // NOTE: ajuste la route si nécessaire côté backend
       const { data } = await api.put('/api/auth/change-password', { currentPassword, newPassword });
       setMessage(data?.message || 'Password changed successfully');
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
@@ -137,13 +138,7 @@ function EditProfile({ me, onUpdated }) {
     e.preventDefault();
     setSaving(true); setMsg(null); setErr(null);
     try {
-      // Try common endpoints, fallback gracefully
-      let res;
-      try { res = await api.put('/api/profile', form); }
-      catch (e1) {
-        try { res = await api.put('/api/auth/me', form); }
-        catch (e2) { throw e2; }
-      }
+      const res = await api.put('/api/users/profile', form);
       const data = res?.data?.data || res?.data || {};
       setMsg('Profile updated');
       onUpdated?.(data);
@@ -227,7 +222,7 @@ export default function MyProfile() {
     let mounted = true;
     (async () => {
       try {
-        const { data } = await api.get('/api/auth/me');
+        const { data } = await api.get('/api/users/profile/me');
         if (!mounted) return;
         setMe(data?.data || data || null);
       } catch (err) {
@@ -250,14 +245,8 @@ export default function MyProfile() {
     setAvatarUploading(true);
     try {
       const formData = new FormData();
-      formData.append('avatar', file);
-      // Try common endpoints for avatar
-      let res;
-      try { res = await api.patch('/api/profile/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }); }
-      catch (e1) {
-        try { res = await api.patch('/api/auth/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }); }
-        catch (e2) { throw e2; }
-      }
+      formData.append('photo', file);
+      const res = await api.post('/api/users/profile/photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       const updated = res?.data?.data || res?.data || {};
       setMe((m) => ({ ...m, ...updated }));
     } catch (e) {
@@ -308,8 +297,8 @@ export default function MyProfile() {
             <h2 className={styles.cardTitle}><i className="fas fa-user-circle"/> Overview</h2>
           </div>
           <div className={styles.avatarRow}>
-            {me?.avatar_url ? (
-              <img src={me.avatar_url} alt="Avatar" className={styles.avatarImg} />
+            {me?.photo_profil ? (
+              <img src={me.photo_profil} alt="Avatar" className={styles.avatarImg} />
             ) : (
               <div className={styles.avatar}>{initials}</div>
             )}
@@ -340,5 +329,3 @@ export default function MyProfile() {
     </div>
   );
 }
-
-

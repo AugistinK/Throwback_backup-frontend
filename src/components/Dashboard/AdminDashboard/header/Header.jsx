@@ -220,7 +220,7 @@ const Header = ({ sidebarCollapsed, isMobile = false }) => {
               >
                 <i className="fas fa-user"></i>
                 <span>My Profile</span>
-                <span style={comingSoonStyle}>Coming Soon</span>
+                {/* <span style={comingSoonStyle}>Coming Soon</span> */}
               </button>
               
               {/* <button 

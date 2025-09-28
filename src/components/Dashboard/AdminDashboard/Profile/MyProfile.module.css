@@ -1,3 +1,5 @@
+
+
 /* --------------------------------------------------------------
  * styles: components/Dashboard/AdminDashboard/Profile/MyProfile.module.css
  * -------------------------------------------------------------- */
@@ -9,8 +11,7 @@
 .header h1 { margin: 0; font-size: clamp(18px, 2vw, 24px); }
 .subtitle { color: var(--muted); margin-top: 4px; font-size: clamp(12px, 1.6vw, 14px); }
 
-.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: clamp(12px, 1.6vw, 18px);
-  align-items: start; }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: clamp(12px, 1.6vw, 18px); align-items: start; }
 .card { grid-column: span 12; background: var(--card); border:1px solid var(--line); border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.04); padding: clamp(12px, 1.6vw, 18px); min-width: 0; }
 
 /* layout columns on >=1024px */
