@@ -210,6 +210,122 @@ function EditProfile({ me, onUpdated }) {
   );
 }
 
+/* ---------- Privacy / Account ---------- */
+function SecurityExtras() {
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [privacy, setPrivacy] = React.useState(null);
+  const [msg, setMsg] = React.useState(null);
+  const [err, setErr] = React.useState(null);
+  const [busyDisable, setBusyDisable] = React.useState(false);
+  const [busyDelete, setBusyDelete] = React.useState(false);
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/api/users/profile/privacy');
+        setPrivacy(data?.data || data || {});
+      } catch {
+        setPrivacy(null); // si la route n'existe pas, on masque la partie Privacy
+      } finally { setLoading(false); }
+    })();
+  }, []);
+
+  const updatePrivacy = async () => {
+    if (!privacy) return;
+    setSaving(true); setMsg(null); setErr(null);
+    try {
+      await api.put('/api/users/profile/privacy', privacy);
+      setMsg('Privacy settings updated');
+    } catch (e) {
+      setErr(e?.response?.data?.message || 'Unable to update privacy');
+    } finally { setSaving(false); }
+  };
+
+const disableAccount = async () => {
+  if (!window.confirm('Disable your account?')) return;
+  setBusyDisable(true);
+  try {
+    await api.put('/api/users/profile/disable');
+    alert('Your account has been disabled.');
+    window.location.href = '/logout';
+  } catch (e) {
+    const msg = e?.response?.data?.message || e?.message || 'Unable to disable account';
+    alert(msg);
+  } finally {
+    setBusyDisable(false);
+  }
+};
+
+const deleteAccount = async () => {
+  const c = window.prompt('Type DELETE to confirm account deletion');
+  if (String(c).toUpperCase() !== 'DELETE') return;
+  setBusyDelete(true);
+  try {
+    await api.delete('/api/users/profile');
+    alert('Account deleted.');
+    window.location.href = '/logout';
+  } catch (e) {
+    const msg = e?.response?.data?.message || e?.message || 'Unable to delete account';
+    alert(msg);
+  } finally {
+    setBusyDelete(false);
+  }
+};
+
+
+
+
+  if (loading) return <div className={styles.card}><div className={styles.skeleton}><div className={styles.skeletonRow}/><div className={styles.skeletonRow}/><div className={styles.skeletonRow}/></div></div>;
+
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardHeader}>
+        <h2 className={styles.cardTitle}><i className="fas fa-user-shield"/> Privacy & Account</h2>
+        <span className={styles.badgeTip}>Security</span>
+      </div>
+
+      {privacy && Object.keys(privacy).length > 0 ? (
+        <div className={styles.form}>
+          {Object.entries(privacy).map(([k,v]) => (
+            typeof v === 'boolean' ? (
+              <label key={k} className={styles.switchRow}>
+                <span className={styles.switchLabel}>{k.replace(/_/g,' ')}</span>
+                <input type="checkbox" checked={!!privacy[k]} onChange={(e)=>setPrivacy(p=>({...p,[k]:e.target.checked}))} />
+              </label>
+            ) : null
+          ))}
+
+          {err && <div className={styles.alertError}><i className="fas fa-times-circle"/> {err}</div>}
+          {msg && <div className={styles.alertSuccess}><i className="fas fa-check-circle"/> {msg}</div>}
+
+          <div className={styles.actions}>
+            <button className={styles.primaryBtn} onClick={updatePrivacy} disabled={saving}>
+              {saving ? (<><i className="fas fa-spinner fa-spin"/> Saving...</>) : (<><i className="fas fa-shield-alt"/> Save Privacy</>)}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.smallMuted}>Privacy settings are not available on this server.</div>
+      )}
+
+      <div className={styles.divider}/>
+
+      <div className={styles.dangerZone}>
+        <h3>Danger zone</h3>
+        <div className={styles.actionsWrap}>
+          <button className={styles.warnBtn} onClick={disableAccount} disabled={busyDisable}>
+            {busyDisable ? (<><i className="fas fa-spinner fa-spin"/> Disabling...</>) : (<><i className="fas fa-user-slash"/> Disable account</>)}
+          </button>
+          <button className={styles.dangerBtn} onClick={deleteAccount} disabled={busyDelete}>
+            {busyDelete ? (<><i className="fas fa-spinner fa-spin"/> Deleting...</>) : (<><i className="fas fa-trash"/> Delete account</>)}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 /* ---------- Main ---------- */
 export default function MyProfile() {
@@ -324,11 +440,11 @@ export default function MyProfile() {
         {/* Contact & Profile (editable) */}
         <EditProfile me={me} onUpdated={(u)=> setMe((m)=> ({...m, ...u}))} />
 
-        {/* Security
+        {/* Security */}
         <div className={styles.securityCol}>
           <ChangePasswordCard />
           <SecurityExtras />
-        </div> */}
+        </div>
       </div>
     </div>
   );

@@ -91,3 +91,13 @@
 @media (max-width: 860px) {
   .meta { grid-template-columns: 1fr; }
 }
+
+
+.header h1 { font-size: clamp(22px, 2.2vw, 26px); line-height: 1.15; }
+.cardTitle { font-size: 15px; }
+.cardHintSmall { font-size: 11px; max-width: 32ch; } /* le petit texte dans Security */
+.nameLine { font-size: 14px; }
+.roleLine { font-size: 12px; }
+.statValue { font-size: 13px; line-height: 1.2; }
+.statLabel { font-size: 11px; line-height: 1.2; }
+.avatarImg, .avatar { width: 56px; height: 56px; } /* plus compact */
