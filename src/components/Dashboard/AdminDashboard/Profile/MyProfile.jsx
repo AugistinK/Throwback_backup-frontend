@@ -471,6 +471,20 @@ export default function MyProfile() {
                 value={[me?.ville, me?.pays].filter(Boolean).join(', ') || '—'}
                 hint="City & country (optional)"
             />
+            <Stat
+                    icon="fas fa-calendar-check"
+                    label="Member Since"
+                    value={
+                    me?.createdAt
+                        ? new Date(me.createdAt).toLocaleDateString()
+                        : me?.created_at
+                        ? new Date(me.created_at).toLocaleDateString()
+                        : me?.date_creation
+                        ? new Date(me.date_creation).toLocaleDateString()
+                        : '—'
+                    }
+                    hint="Account creation date"
+                />
                 <Stat
                 icon="fas fa-envelope"
                 label="Email"
