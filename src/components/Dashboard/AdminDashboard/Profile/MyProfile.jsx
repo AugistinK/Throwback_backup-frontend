@@ -441,10 +441,65 @@ export default function MyProfile() {
             </div>
           </div>
           <div className={styles.meta}>
-            <Stat icon="fas fa-check-circle" label="Verification" value={me?.statut_verification ? 'Verified' : 'Not verified'} />
-            <Stat icon="fas fa-user-lock" label="Account Status" value={me?.statut_compte || '—'} />
-            <Stat icon="fas fa-sign-in-alt" label="Last Login" value={me?.derniere_connexion ? new Date(me.derniere_connexion).toLocaleString() : '—'} />
-          </div>
+            <Stat
+                icon="fas fa-check-circle"
+                label="Verification"
+                value={me?.statut_verification ? 'Verified' : 'Not verified'}
+                hint="Email/phone confirmation status"
+            />
+            <Stat
+                icon="fas fa-user-lock"
+                label="Account Status"
+                value={me?.statut_compte || '—'}
+                hint="Active, suspended or disabled"
+            />
+            <Stat
+                icon="fas fa-sign-in-alt"
+                label="Last Login"
+                value={me?.derniere_connexion ? new Date(me.derniere_connexion).toLocaleString() : '—'}
+                hint="Shown in your local timezone"
+            />
+            <Stat
+                icon="fas fa-envelope"
+                label="Email"
+                value={me?.email || '—'}
+                hint="Primary contact address"
+            />
+            <Stat
+                icon="fas fa-user-shield"
+                label="Role"
+                value={me?.role ? String(me.role).charAt(0).toUpperCase() + String(me.role).slice(1) : '—'}
+                hint="Administrative permissions"
+            />
+            <Stat
+                icon="fas fa-map-marker-alt"
+                label="Location"
+                value={[me?.ville, me?.pays].filter(Boolean).join(', ') || '—'}
+                hint="City & country (optional)"
+            />
+            <Stat
+                icon="fas fa-calendar-check"
+                label="Member Since"
+                value={
+                me?.createdAt
+                    ? new Date(me.createdAt).toLocaleDateString()
+                    : me?.created_at
+                    ? new Date(me.created_at).toLocaleDateString()
+                    : me?.date_creation
+                    ? new Date(me.date_creation).toLocaleDateString()
+                    : '—'
+                }
+                hint="Account creation date"
+            />
+            <Stat
+                icon="fas fa-id-badge"
+                label="User ID"
+                value={String(me?._id || me?.id || '—')}
+                hint="Internal reference identifier"
+            />
+            </div>
+
+
         </section>
 
        {/* Row 2: Privacy & Account */}
