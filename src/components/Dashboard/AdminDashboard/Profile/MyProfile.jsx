@@ -210,6 +210,7 @@ function EditProfile({ me, onUpdated }) {
   );
 }
 
+
 /* ---------- Main ---------- */
 export default function MyProfile() {
   const [loading, setLoading] = useState(true);
@@ -323,9 +324,14 @@ export default function MyProfile() {
         {/* Contact & Profile (editable) */}
         <EditProfile me={me} onUpdated={(u)=> setMe((m)=> ({...m, ...u}))} />
 
-        {/* Security */}
-        <ChangePasswordCard />
+        {/* Security
+        <div className={styles.securityCol}>
+          <ChangePasswordCard />
+          <SecurityExtras />
+        </div> */}
       </div>
     </div>
   );
 }
+
+
