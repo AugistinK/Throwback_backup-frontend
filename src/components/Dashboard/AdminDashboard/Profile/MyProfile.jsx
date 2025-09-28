@@ -1,7 +1,7 @@
 // components/Dashboard/AdminDashboard/Profile/MyProfile.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../../utils/api';
+import api from '../../../../utils/api';
 import styles from './MyProfile.module.css';
 
 function Skeleton({ rows = 3 }) {
