@@ -34,43 +34,34 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
   
-  // Safely get comment ID
   const commentId = comment._id || comment.id;
-  
-  // Safely extract liked status
   const isLiked = comment.userInteraction?.liked || false;
   const isDisliked = comment.userInteraction?.disliked || false;
-  
-  // Get like/dislike counts safely
   const likeCount = comment.likes || 0;
   const dislikeCount = comment.dislikes || 0;
   
-  // Format creation date safely
   const creationDate = comment.creation_date || comment.createdAt || new Date();
   const formattedDate = formatDistanceToNow(new Date(creationDate), {
     addSuffix: true,
     locale: fr
   });
 
-  // Handle like/unlike avec une gestion d'erreur améliorée
+  // Like handler
   const handleLikeClick = async () => {
     try {
-      // Empêcher les clics multiples pendant le chargement
       if (loading) return;
       
-      // Mise à jour optimiste de l'interface avant confirmation du serveur
       const optimisticUpdate = {
         ...comment,
         userInteraction: {
           ...comment.userInteraction,
           liked: !isLiked,
-          disliked: false // Désactiver dislike si on like
+          disliked: false
         },
         likes: isLiked ? likeCount - 1 : likeCount + 1,
         dislikes: isDisliked ? dislikeCount - 1 : dislikeCount
       };
       
-      // Mettre à jour l'UI immédiatement
       if (onUpdateComment) {
         onUpdateComment(optimisticUpdate);
       }
@@ -78,7 +69,6 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(true);
       setError(null);
       
-      // Ajouter un timeout et retry avec backoff exponentiel
       const maxRetries = 3;
       let retryCount = 0;
       let success = false;
@@ -86,10 +76,8 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       while (retryCount < maxRetries && !success) {
         try {
           const response = await api.post(`/api/comments/${commentId}/like`);
-          console.log('Like response:', response.data);
           success = true;
           
-          // Mettre à jour avec les données réelles du serveur si disponibles
           if (response.data && response.data.data) {
             const serverUpdatedComment = {
               ...comment,
@@ -109,15 +97,12 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
         } catch (err) {
           retryCount++;
           if (retryCount >= maxRetries) throw err;
-          // Attendre avant de réessayer (backoff exponentiel)
           await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
         }
       }
     } catch (err) {
       console.error('Error liking comment:', err);
-      setError("Impossible d'aimer ce commentaire. Veuillez réessayer.");
-      
-      // Restaurer l'état précédent en cas d'erreur
+      setError("Unable to like this comment. Please try again.");
       if (onUpdateComment) {
         onUpdateComment(comment);
       }
@@ -126,25 +111,22 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
     }
   };
   
-  // Handle dislike avec une gestion d'erreur améliorée
+  // Dislike handler
   const handleDislikeClick = async () => {
     try {
-      // Empêcher les clics multiples pendant le chargement
       if (loading) return;
       
-      // Mise à jour optimiste de l'interface avant confirmation du serveur
       const optimisticUpdate = {
         ...comment,
         userInteraction: {
           ...comment.userInteraction,
           disliked: !isDisliked,
-          liked: false // Désactiver like si on dislike
+          liked: false
         },
         dislikes: isDisliked ? dislikeCount - 1 : dislikeCount + 1,
         likes: isLiked ? likeCount - 1 : likeCount
       };
       
-      // Mettre à jour l'UI immédiatement
       if (onUpdateComment) {
         onUpdateComment(optimisticUpdate);
       }
@@ -152,7 +134,6 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(true);
       setError(null);
       
-      // Ajouter un timeout et retry avec backoff exponentiel
       const maxRetries = 3;
       let retryCount = 0;
       let success = false;
@@ -160,10 +141,8 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       while (retryCount < maxRetries && !success) {
         try {
           const response = await api.post(`/api/comments/${commentId}/dislike`);
-          console.log('Dislike response:', response.data);
           success = true;
           
-          // Mettre à jour avec les données réelles du serveur si disponibles
           if (response.data && response.data.data) {
             const serverUpdatedComment = {
               ...comment,
@@ -183,15 +162,12 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
         } catch (err) {
           retryCount++;
           if (retryCount >= maxRetries) throw err;
-          // Attendre avant de réessayer (backoff exponentiel)
           await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
         }
       }
     } catch (err) {
       console.error('Error disliking comment:', err);
-      setError("Impossible de ne pas aimer ce commentaire. Veuillez réessayer.");
-      
-      // Restaurer l'état précédent en cas d'erreur
+      setError("Unable to dislike this comment. Please try again.");
       if (onUpdateComment) {
         onUpdateComment(comment);
       }
@@ -200,7 +176,6 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
     }
   };
   
-  // Load more replies with error handling
   const loadReplies = async () => {
     if (!commentId) return;
     
@@ -208,11 +183,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(true);
       setError(null);
       
-      console.log(`Loading replies for comment: ${commentId}`);
       const response = await api.get(`/api/comments/${commentId}/replies`);
-      
-      console.log('Replies response:', response.data);
-      
       if (response.data && (response.data.data || Array.isArray(response.data))) {
         const loadedReplies = response.data.data || response.data;
         setReplies(loadedReplies);
@@ -220,19 +191,17 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       }
     } catch (err) {
       console.error('Error loading replies:', err);
-      setError('Impossible de charger les réponses');
+      setError('Unable to load replies');
     } finally {
       setLoading(false);
     }
   };
   
-  // Add reply handler
   const handleAddReply = (newReply) => {
     setReplies(prev => [newReply, ...prev]);
     setShowReplyForm(false);
     setShowReplies(true);
     
-    // Update total replies count in parent comment
     const updatedComment = {
       ...comment,
       totalReplies: (comment.totalReplies || 0) + 1,
@@ -244,41 +213,32 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
     }
   };
   
-  // Delete comment handler
   const handleDeleteClick = () => {
     setShowDropdown(false);
     setShowDeleteConfirm(true);
   };
   
-  // Confirmed delete handler
   const confirmDelete = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log(`Deleting comment: ${commentId}`);
-      const response = await api.delete(`/api/comments/${commentId}`);
-      
-      console.log('Delete response:', response.data);
-      
-      // Notify parent component
+      await api.delete(`/api/comments/${commentId}`);
       if (onDeleteComment) {
         onDeleteComment(commentId);
       }
-      
       setShowDeleteConfirm(false);
     } catch (err) {
       console.error('Error deleting comment:', err);
-      setError("Impossible de supprimer ce commentaire. Veuillez réessayer.");
+      setError("Unable to delete this comment. Please try again.");
       setLoading(false);
       setShowDeleteConfirm(false);
     }
   };
   
-  // Handle update comment
   const handleUpdateComment = async () => {
     if (!editContent.trim()) {
-      setError('Le commentaire ne peut pas être vide');
+      setError('The comment cannot be empty');
       return;
     }
     
@@ -286,12 +246,9 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(true);
       setError(null);
       
-      console.log(`Updating comment: ${commentId}`);
       const response = await api.put(`/api/comments/${commentId}`, {
         contenu: editContent
       });
-      
-      console.log('Update response:', response.data);
       
       if (response.data && response.data.data) {
         const updatedComment = {
@@ -300,7 +257,6 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
           modified_date: new Date()
         };
         
-        // Notify parent component
         if (onUpdateComment) {
           onUpdateComment(updatedComment);
         }
@@ -309,38 +265,32 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       }
     } catch (err) {
       console.error('Error updating comment:', err);
-      setError("Impossible de modifier ce commentaire. Veuillez réessayer.");
+      setError("Unable to edit this comment. Please try again.");
     } finally {
       setLoading(false);
     }
   };
   
-  // Report comment handler
   const handleReportClick = async () => {
     try {
       setShowDropdown(false);
       
-      const reason = prompt('Veuillez indiquer la raison du signalement:');
+      const reason = prompt('Please specify the reason for reporting:');
       if (!reason) return;
       
       setLoading(true);
       setError(null);
       
-      console.log(`Reporting comment: ${commentId}`);
-      const response = await api.post(`/api/comments/${commentId}/report`, { raison: reason });
-      
-      console.log('Report response:', response.data);
-      
-      alert('Commentaire signalé avec succès');
+      await api.post(`/api/comments/${commentId}/report`, { raison: reason });
+      alert('Comment successfully reported');
     } catch (err) {
       console.error('Error reporting comment:', err);
-      setError('Impossible de signaler le commentaire');
+      setError('Unable to report the comment');
     } finally {
       setLoading(false);
     }
   };
   
-  // Amélioration de la détermination des droits
   const isAuthor = user && comment.auteur && 
                   (comment.auteur._id === user.id || comment.auteur.id === user.id);
   const isAdmin = user && (
@@ -348,9 +298,8 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
     ['admin', 'superadmin'].includes(user.role)
   );
 
-  // Modifier pour restreindre les permissions
-  const canModify = isAuthor; // Seul l'auteur peut modifier son commentaire
-  const canDelete = isAuthor || isAdmin; // L'auteur et les admins peuvent supprimer
+  const canModify = isAuthor;
+  const canDelete = isAuthor || isAdmin;
 
   return (
     <div className={styles.commentItem}>
@@ -397,7 +346,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
                   }}
                 >
                   <FontAwesomeIcon icon={faTimes} />
-                  <span>Annuler</span>
+                  <span>Cancel</span>
                 </button>
                 <button 
                   className={styles.saveEditButton}
@@ -405,7 +354,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
                   disabled={loading || !editContent.trim()}
                 >
                   <FontAwesomeIcon icon={faSave} />
-                  <span>Enregistrer</span>
+                  <span>Save</span>
                 </button>
               </div>
             </>
@@ -440,7 +389,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
               disabled={loading}
             >
               <FontAwesomeIcon icon={faReply} />
-              <span>Répondre</span>
+              <span>Reply</span>
             </button>
             
             {comment.totalReplies > 0 && !showReplies && (
@@ -449,7 +398,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
                 onClick={loadReplies}
                 disabled={loading}
               >
-                <span>Voir les {comment.totalReplies} réponses</span>
+                <span>View {comment.totalReplies} replies</span>
               </button>
             )}
             
@@ -458,7 +407,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
                 className={styles.actionButton}
                 onClick={() => setShowReplies(false)}
               >
-                <span>Masquer les réponses</span>
+                <span>Hide replies</span>
               </button>
             )}
           </div>
@@ -487,21 +436,21 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
                     setShowDropdown(false);
                   }}>
                     <FontAwesomeIcon icon={faEdit} />
-                    <span>Modifier</span>
+                    <span>Edit</span>
                   </button>
                 )}
                 
                 {canDelete && (
                   <button onClick={handleDeleteClick}>
                     <FontAwesomeIcon icon={faTrash} />
-                    <span>Supprimer</span>
+                    <span>Delete</span>
                   </button>
                 )}
                 
                 {!isAuthor && (
                   <button onClick={handleReportClick}>
                     <FontAwesomeIcon icon={faFlag} />
-                    <span>Signaler</span>
+                    <span>Report</span>
                   </button>
                 )}
               </div>
@@ -568,7 +517,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       
       <ConfirmDialog
         isOpen={showDeleteConfirm}
-        message="Êtes-vous sûr de vouloir supprimer ce commentaire ?"
+        message="Are you sure you want to delete this comment?"
         onConfirm={confirmDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />

@@ -52,7 +52,7 @@ const CommentList = ({ postId, onCommentCountChange }) => {
       setError(null);
     } catch (err) {
       console.error('Error loading comments:', err);
-      setError('Impossible de charger les commentaires. Veuillez réessayer plus tard.');
+      setError('Unable to load comments. Please try again later.');
       
       // Set empty array on first page error to avoid undefined issues
       if (pageNum === 1) {
@@ -140,7 +140,7 @@ const CommentList = ({ postId, onCommentCountChange }) => {
             className={styles.retryButton}
             onClick={refreshComments}
           >
-            Réessayer
+            Retry
           </button>
         </div>
       )}
@@ -148,7 +148,7 @@ const CommentList = ({ postId, onCommentCountChange }) => {
       <div className={styles.commentList}>
         {comments.length === 0 && !loading ? (
           <div className={styles.emptyComments}>
-            Aucun commentaire pour le moment. Soyez le premier à commenter !
+            No comments yet. Be the first to comment!
           </div>
         ) : (
           <>
@@ -165,7 +165,7 @@ const CommentList = ({ postId, onCommentCountChange }) => {
             {loading && (
               <div className={styles.loadingComments}>
                 <Spinner size="small" />
-                <span>Chargement des commentaires...</span>
+                <span>Loading comments...</span>
               </div>
             )}
             
@@ -174,7 +174,7 @@ const CommentList = ({ postId, onCommentCountChange }) => {
                 className={styles.loadMoreButton}
                 onClick={() => loadComments(page + 1)}
               >
-                Afficher plus de commentaires
+                Show more comments
               </button>
             )}
           </>

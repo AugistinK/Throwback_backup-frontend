@@ -26,25 +26,23 @@ const CreatePostForm = ({ onPostCreated }) => {
   const fileInputRef = useRef(null);
   const { user } = useAuth();
 
-  // Fonction pour gérer l'upload de média
+  // Gestion de l'upload de média
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Vérifier la taille du fichier (max 50MB)
+    // Taille max 50MB
     if (file.size > 50 * 1024 * 1024) {
-      setError('Le fichier est trop volumineux. Taille maximale: 50MB');
+      setError('The file is too large. Max size: 50MB');
       return;
     }
     
-    // Créer une URL pour la prévisualisation
     const previewUrl = URL.createObjectURL(file);
     setMediaFile(file);
     setMediaPreview(previewUrl);
     setError(null);
   };
 
-  // Fonction pour supprimer le média
   const removeMedia = () => {
     setMediaFile(null);
     setMediaPreview(null);
@@ -53,12 +51,11 @@ const CreatePostForm = ({ onPostCreated }) => {
     }
   };
 
-  // Fonction pour publier le post
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!content.trim() && !mediaFile) {
-      setError('Veuillez ajouter du contenu ou un média à votre post');
+      setError('Please add text or media to your post');
       return;
     }
     
@@ -66,7 +63,6 @@ const CreatePostForm = ({ onPostCreated }) => {
       setLoading(true);
       setError(null);
       
-      // Créer un objet FormData pour envoyer le contenu et le fichier
       const formData = new FormData();
       formData.append('contenu', content);
       formData.append('visibilite', visibility);
@@ -75,39 +71,35 @@ const CreatePostForm = ({ onPostCreated }) => {
         formData.append('media', mediaFile);
       }
       
-      // Extraire les hashtags du contenu
+      // Extraire les hashtags
       const hashtags = content.match(/#[\w\u00C0-\u017F]+/g) || [];
       if (hashtags.length > 0) {
         hashtags.forEach((tag, index) => {
-          formData.append(`hashtags[${index}]`, tag.substring(1)); // Enlever le # au début
+          formData.append(`hashtags[${index}]`, tag.substring(1));
         });
       }
       
       const response = await api.post('/api/posts', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      // Réinitialiser le formulaire
+      // Reset
       setContent('');
       setMediaFile(null);
       setMediaPreview(null);
       setVisibility('PUBLIC');
       
-      // Notifier le composant parent
       if (onPostCreated) {
-        onPostCreated(response.data.data);
+        onPostCreated(response.data?.data);
       }
     } catch (err) {
       console.error('Erreur lors de la création du post:', err);
-      setError(err.response?.data?.message || 'Une erreur est survenue lors de la publication');
+      setError(err.response?.data?.message || 'An error occurred while publishing');
     } finally {
       setLoading(false);
     }
   };
 
-  // Rendu conditionnel du bouton de visibilité
   const renderVisibilityIcon = () => {
     switch (visibility) {
       case 'PUBLIC':
@@ -121,7 +113,6 @@ const CreatePostForm = ({ onPostCreated }) => {
     }
   };
 
-  // Fonction pour changer la visibilité
   const toggleVisibility = () => {
     const visibilities = ['PUBLIC', 'FRIENDS', 'PRIVATE'];
     const currentIndex = visibilities.indexOf(visibility);
@@ -156,14 +147,14 @@ const CreatePostForm = ({ onPostCreated }) => {
             {renderVisibilityIcon()}
             <span className={styles.visibilityText}>
               {visibility === 'PUBLIC' ? 'Public' : 
-               visibility === 'FRIENDS' ? 'Amis' : 'Privé'}
+               visibility === 'FRIENDS' ? 'Friends' : 'Private'}
             </span>
           </div>
         </div>
         
         <div className={styles.contentInput}>
           <textarea
-            placeholder="Partagez vos souvenirs musicaux, utilisez des #hashtags..."
+            placeholder="Share your musical memories, use #hashtags..."
             value={content}
             onChange={(e) => setContent(e.target.value)}
             disabled={loading}
@@ -183,7 +174,7 @@ const CreatePostForm = ({ onPostCreated }) => {
             </button>
             
             {mediaFile?.type?.startsWith('image/') ? (
-              <img src={mediaPreview} alt="Aperçu" className={styles.mediaPreview} />
+              <img src={mediaPreview} alt="Preview" className={styles.mediaPreview} />
             ) : mediaFile?.type?.startsWith('video/') ? (
               <video src={mediaPreview} controls className={styles.mediaPreview} />
             ) : mediaFile?.type?.startsWith('audio/') ? (
@@ -213,7 +204,7 @@ const CreatePostForm = ({ onPostCreated }) => {
               disabled={loading}
             >
               <FontAwesomeIcon icon={faVideo} />
-              <span>Vidéo</span>
+              <span>Video</span>
             </button>
             
             <button 
@@ -241,10 +232,10 @@ const CreatePostForm = ({ onPostCreated }) => {
             className={styles.submitButton}
             disabled={loading || (!content.trim() && !mediaFile)}
           >
-            {loading ? 'Publication...' : (
+            {loading ? 'Posting...' : (
               <>
                 <FontAwesomeIcon icon={faPaperPlane} />
-                <span>Publier</span>
+                <span>Post</span>
               </>
             )}
           </button>

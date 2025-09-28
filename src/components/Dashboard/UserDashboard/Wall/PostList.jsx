@@ -19,9 +19,9 @@ const PostList = ({ posts, loading, onLoadMore, hasMore, onUpdatePost, onDeleteP
     <div className={styles.postListContainer} onScroll={handleScroll}>
       {posts.length === 0 && !loading ? (
         <div className={styles.emptyState}>
-          <img src="/images/empty-posts.svg" alt="Aucun post" className={styles.emptyStateImage} />
-          <h3>Aucun post à afficher</h3>
-          <p>Soyez le premier à partager un souvenir musical !</p>
+          <img src="/images/empty-posts.svg" alt="No posts" className={styles.emptyStateImage} />
+          <h3>No posts to display</h3>
+          <p>Be the first to share a musical memory!</p>
         </div>
       ) : (
         <div className={styles.postList}>
@@ -37,7 +37,7 @@ const PostList = ({ posts, loading, onLoadMore, hasMore, onUpdatePost, onDeleteP
           {loading && (
             <div className={styles.loadingContainer}>
               <Spinner size="medium" />
-              <span>Chargement des posts...</span>
+              <span>Loading posts...</span>
             </div>
           )}
           
@@ -46,13 +46,13 @@ const PostList = ({ posts, loading, onLoadMore, hasMore, onUpdatePost, onDeleteP
               className={styles.loadMoreButton}
               onClick={onLoadMore}
             >
-              Charger plus
+              Load more
             </button>
           )}
           
           {!loading && !hasMore && posts.length > 0 && (
             <div className={styles.endMessage}>
-              Vous avez atteint la fin des posts
+              You've reached the end of the posts
             </div>
           )}
         </div>

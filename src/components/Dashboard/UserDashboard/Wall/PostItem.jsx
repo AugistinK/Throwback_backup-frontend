@@ -105,7 +105,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       const shareUrl = `${window.location.origin}/dashboard/wall/post/${post._id}`;
       await navigator.clipboard.writeText(shareUrl);
       
-      alert('Lien copié dans le presse-papier!');
+      alert('Link copied to clipboard!');
     } catch (err) {
       console.error('Erreur lors du partage:', err);
       setError(errorMessages.postShare.error);
@@ -117,7 +117,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   // Fonction pour signaler un post
   const handleReportClick = async () => {
     try {
-      const raison = prompt('Veuillez indiquer la raison du signalement:');
+      const raison = prompt('Please specify the reason for reporting:');
       
       if (!raison) return;
       
@@ -127,7 +127,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       
       await api.post(`/api/posts/${post._id}/report`, { raison });
       
-      alert('Post signalé avec succès. Notre équipe de modération va examiner ce contenu.');
+      alert('Post reported successfully. Our moderation team will review this content.');
     } catch (err) {
       console.error('Erreur lors du signalement:', err);
       setError(errorMessages.postReport.error);
@@ -223,7 +223,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
 
   // Afficher le contenu avec les hashtags cliquables
   const renderContent = (content) => {
-    // Remplacer les hashtags par des liens
     const contentWithHashtags = content.replace(
       /#[\w\u00C0-\u017F]+/g, 
       match => `<a href="/dashboard/wall?hashtag=${encodeURIComponent(match.substring(1))}" class="${styles.hashtag}">${match}</a>`
@@ -282,17 +281,17 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                     setShowDropdown(false);
                   }}>
                     <FontAwesomeIcon icon={faEdit} />
-                    <span>Modifier</span>
+                    <span>Edit</span>
                   </button>
                   <button onClick={handleDeleteClick}>
                     <FontAwesomeIcon icon={faTrash} />
-                    <span>Supprimer</span>
+                    <span>Delete</span>
                   </button>
                 </>
               )}
               <button onClick={handleReportClick}>
                 <FontAwesomeIcon icon={faFlag} />
-                <span>Signaler</span>
+                <span>Report</span>
               </button>
             </div>
           )}
@@ -310,7 +309,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                 {renderVisibilityIcon(editVisibility)}
                 <span>
                   {editVisibility === 'PUBLIC' ? 'Public' : 
-                   editVisibility === 'FRIENDS' ? 'Amis' : 'Privé'}
+                   editVisibility === 'FRIENDS' ? 'Friends' : 'Private'}
                 </span>
               </button>
             </div>
@@ -328,7 +327,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                 onClick={handleCancelEdit}
               >
                 <FontAwesomeIcon icon={faTimes} />
-                <span>Annuler</span>
+                <span>Cancel</span>
               </button>
               <button 
                 className={styles.saveButton}
@@ -336,7 +335,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                 disabled={loading || !editContent.trim()}
               >
                 <FontAwesomeIcon icon={faSave} />
-                <span>Enregistrer</span>
+                <span>Save</span>
               </button>
             </div>
           </div>
@@ -381,11 +380,11 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
         </div>
         <div className={styles.statItem}>
           <FontAwesomeIcon icon={faComment} />
-          <span>{commentCount || 0} commentaires</span>
+          <span>{commentCount || 0} comments</span>
         </div>
         <div className={styles.statItem}>
           <FontAwesomeIcon icon={faShare} />
-          <span>{post.partages || 0} partages</span>
+          <span>{post.partages || 0} shares</span>
         </div>
       </div>
       
@@ -396,7 +395,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           disabled={loading}
         >
           <FontAwesomeIcon icon={faHeart} />
-          <span>{liked ? 'Aimé' : 'J\'aime'}</span>
+          <span>{liked ? 'Liked' : 'Like'}</span>
         </button>
         
         <button 
@@ -404,7 +403,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           onClick={() => setShowComments(!showComments)}
         >
           <FontAwesomeIcon icon={faComment} />
-          <span>Commenter</span>
+          <span>Comment</span>
         </button>
         
         <button 
@@ -413,7 +412,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           disabled={loading}
         >
           <FontAwesomeIcon icon={faShare} />
-          <span>Partager</span>
+          <span>Share</span>
         </button>
       </div>
       
@@ -426,7 +425,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       
       <ConfirmDialog
         isOpen={showDeleteConfirm}
-        message="Êtes-vous sûr de vouloir supprimer ce post ?"
+        message="Are you sure you want to delete this post?"
         onConfirm={confirmDeletePost}
         onCancel={() => setShowDeleteConfirm(false)}
       />

@@ -14,66 +14,57 @@ const CommentForm = ({ postId, parentId, onCommentAdded, onCancel, onError }) =>
   const { user } = useAuth();
 
   // Handle form submission with improved error handling
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  // Form validation
-  if (!content.trim()) {
-    const errorMsg = 'Veuillez entrer un commentaire';
-    setLocalError(errorMsg);
-    if (onError) onError(errorMsg);
-    return;
-  }
-  
-  // Supprimer cette validation de limite de caractères
-  // if (content.length > 500) {
-  //   const errorMsg = 'Le commentaire ne peut pas dépasser 500 caractères';
-  //   setLocalError(errorMsg);
-  //   if (onError) onError(errorMsg);
-  //   return;
-  // }
-  
-  try {
-    setLoading(true);
-    setLocalError(null);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-    // Submit to API with proper error handling
-    const response = await api.post(`/api/posts/${postId}/comments`, {
-      contenu: content,
-      parentId: parentId || null
-    });
-    
-    // Check for successful response with data
-    if (response.data && (response.data.success || response.data.data)) {
-      const newComment = response.data.data || response.data;
-      
-      // Clear form
-      setContent('');
-      
-      // Notify parent component
-      if (onCommentAdded) {
-        onCommentAdded(newComment);
-      }
-      
-      // Close form if it's a reply
-      if (onCancel && parentId) {
-        onCancel();
-      }
-    } else {
-      throw new Error('Réponse invalide du serveur');
+    // Form validation
+    if (!content.trim()) {
+      const errorMsg = 'Please enter a comment';
+      setLocalError(errorMsg);
+      if (onError) onError(errorMsg);
+      return;
     }
-  } catch (err) {
-    console.error('Error submitting comment:', err);
-    const errorMsg = err.response?.data?.message || 
-                    'Une erreur est survenue lors de l\'envoi du commentaire';
     
-    setLocalError(errorMsg);
-    if (onError) onError(errorMsg);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      setLocalError(null);
+      
+      // Submit to API with proper error handling
+      const response = await api.post(`/api/posts/${postId}/comments`, {
+        contenu: content,
+        parentId: parentId || null
+      });
+      
+      // Check for successful response with data
+      if (response.data && (response.data.success || response.data.data)) {
+        const newComment = response.data.data || response.data;
+        
+        // Clear form
+        setContent('');
+        
+        // Notify parent component
+        if (onCommentAdded) {
+          onCommentAdded(newComment);
+        }
+        
+        // Close form if it's a reply
+        if (onCancel && parentId) {
+          onCancel();
+        }
+      } else {
+        throw new Error('Invalid server response');
+      }
+    } catch (err) {
+      console.error('Error submitting comment:', err);
+      const errorMsg = err.response?.data?.message || 
+                      'An error occurred while sending the comment';
+      
+      setLocalError(errorMsg);
+      if (onError) onError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} className={styles.commentForm}>
@@ -96,7 +87,7 @@ const handleSubmit = async (e) => {
         )}
         
         <textarea
-          placeholder="Écrivez un commentaire..."
+          placeholder="Write a comment..."
           value={content}
           onChange={(e) => {
             setContent(e.target.value);
@@ -133,7 +124,7 @@ const handleSubmit = async (e) => {
           onClick={onCancel}
         >
           <FontAwesomeIcon icon={faTimes} />
-          <span>Annuler</span>
+          <span>Cancel</span>
         </button>
       )}
     </form>
