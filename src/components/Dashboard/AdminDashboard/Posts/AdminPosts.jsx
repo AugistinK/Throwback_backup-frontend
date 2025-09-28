@@ -9,7 +9,7 @@ const AdminPosts = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // États pour stocker les données et gérer l'interface
+  // UI state
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,21 +26,21 @@ const AdminPosts = () => {
     sortBy: 'newest'
   });
   
-  // États pour les actions en masse
+  // Bulk actions
   const [selectedPosts, setSelectedPosts] = useState([]);
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
   const [showBulkModerationModal, setShowBulkModerationModal] = useState(false);
   const [bulkModerationReason, setBulkModerationReason] = useState('');
   const [bulkActionType, setBulkActionType] = useState('');
   
-  // États pour les actions individuelles
+  // Individual actions
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
   const [showModerationModal, setShowModerationModal] = useState(false);
   const [postToModerate, setPostToModerate] = useState(null);
   const [moderationReason, setModerationReason] = useState('');
   
-  // Statistiques
+  // Stats
   const [stats, setStats] = useState({
     total: 0,
     reported: 0,
@@ -48,25 +48,20 @@ const AdminPosts = () => {
     active: 0
   });
 
-  // Références pour optimisation
   const searchTimeoutRef = React.useRef(null);
 
-  // Chargement initial et gestion des effets
   useEffect(() => {
     fetchPosts();
     fetchStats();
   }, [currentPage, filters]);
 
-  // Gestion des messages de succès depuis la navigation
   useEffect(() => {
     if (location.state?.message) {
       setSuccessMessage(location.state.message);
-      // Nettoyer l'état de navigation
       navigate(location.pathname, { replace: true });
     }
   }, [location.state, navigate, location.pathname]);
 
-  // Auto-clear des messages
   useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => setSuccessMessage(''), 5000);
@@ -81,7 +76,6 @@ const AdminPosts = () => {
     }
   }, [error]);
 
-  // Récupérer les statistiques
   const fetchStats = useCallback(async () => {
     try {
       const response = await socialAPI.getModerationStats();
@@ -92,18 +86,15 @@ const AdminPosts = () => {
         active: 0
       });
     } catch (err) {
-      console.error('Erreur lors du chargement des statistiques:', err);
-      // Ne pas afficher d'erreur pour les stats, ce n'est pas critique
+      console.error('Error loading statistics:', err);
     }
   }, []);
 
-  // Fonction pour récupérer les posts avec gestion d'erreur améliorée
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Construction des paramètres de requête avec isAdmin pour utiliser l'endpoint admin
       const params = {
         page: currentPage,
         limit: 10,
@@ -113,51 +104,42 @@ const AdminPosts = () => {
         hasMedia: filters.hasMedia || undefined,
         hasReports: filters.hasReports === 'true' ? true : undefined,
         sortBy: filters.sortBy || 'newest',
-        isAdmin: true // Important: utilise l'endpoint admin
+        isAdmin: true
       };
       
-      // Appel à l'API
       const response = await socialAPI.getAllPosts(params);
       
-      // Mise à jour de l'état avec vérification des données
       setPosts(Array.isArray(response.data) ? response.data : []);
       setTotalPages(response.pagination?.totalPages || 1);
       setTotalPosts(response.pagination?.total || 0);
       
     } catch (err) {
-      console.error('Erreur lors du chargement des posts:', err);
+      console.error('Error loading posts:', err);
       const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors du chargement des posts');
+      setError(formattedError.message || 'An error occurred while loading posts');
       setPosts([]);
     } finally {
       setLoading(false);
     }
   }, [currentPage, searchTerm, filters]);
 
-  // Gestionnaire de recherche avec debounce
   const handleSearchChange = useCallback((e) => {
     const value = e.target.value;
     setSearchTerm(value);
-    
-    // Debounce pour éviter trop de requêtes
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
     searchTimeoutRef.current = setTimeout(() => {
       setCurrentPage(1);
-      // fetchPosts sera appelé automatiquement via useEffect
     }, 500);
   }, []);
 
-  // Gestionnaire de soumission de recherche
   const handleSearch = useCallback((e) => {
     e.preventDefault();
     setCurrentPage(1);
     fetchPosts();
   }, [fetchPosts]);
 
-  // Réinitialiser les filtres
   const resetFilters = useCallback(() => {
     setFilters({
       visibility: '',
@@ -170,7 +152,6 @@ const AdminPosts = () => {
     setCurrentPage(1);
   }, []);
 
-  // Gestionnaire de changement de filtre
   const handleFilterChange = useCallback((filterName, value) => {
     setFilters(prev => ({
       ...prev,
@@ -179,13 +160,11 @@ const AdminPosts = () => {
     setCurrentPage(1);
   }, []);
 
-  // Gestionnaire de changement de page
   const handlePageChange = useCallback((page) => {
     if (page < 1 || page > totalPages || page === currentPage) return;
     setCurrentPage(page);
   }, [totalPages, currentPage]);
 
-  // Gestion des sélections
   const handleSelectAll = useCallback((e) => {
     if (e.target.checked) {
       setSelectedPosts(posts.map(post => post._id));
@@ -202,15 +181,12 @@ const AdminPosts = () => {
     }
   }, []);
 
-  // Préparer l'action en masse
   const prepareBulkAction = useCallback((action) => {
     if (selectedPosts.length === 0) {
-      setError('Aucun post sélectionné');
+      setError('No post selected');
       return;
     }
-    
     setBulkActionType(action);
-    
     if (action === 'moderate') {
       setShowBulkModerationModal(true);
     } else {
@@ -218,7 +194,6 @@ const AdminPosts = () => {
     }
   }, [selectedPosts.length]);
 
-  // Actions en masse avec gestion d'erreur améliorée
   const performBulkAction = useCallback(async (action, reason = '') => {
     if (selectedPosts.length === 0) return;
     
@@ -238,39 +213,34 @@ const AdminPosts = () => {
           response = await socialAPI.bulkActionPosts('delete', selectedPosts);
           break;
         default:
-          throw new Error('Action non reconnue');
+          throw new Error('Unknown action');
       }
       
-      // Rafraîchir la liste et les stats
       await Promise.all([fetchPosts(), fetchStats()]);
       
-      // Réinitialiser les états
       setSelectedPosts([]);
       setBulkActionOpen(false);
       setShowBulkModerationModal(false);
       setBulkModerationReason('');
       
-      // Message de succès
-      const actionText = action === 'moderate' ? 'modérés' : 
-                        action === 'restore' ? 'restaurés' : 'supprimés';
-      setSuccessMessage(`${selectedPosts.length} post(s) ${actionText} avec succès`);
+      const actionText = action === 'moderate' ? 'moderated' : 
+                         action === 'restore' ? 'restored' : 'deleted';
+      setSuccessMessage(`${selectedPosts.length} post(s) ${actionText} successfully`);
       
     } catch (err) {
-      console.error(`Erreur lors de l'action en masse "${action}":`, err);
+      console.error(`Error during bulk action "${action}":`, err);
       const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || `Une erreur est survenue lors de l'action en masse`);
+      setError(formattedError.message || 'An error occurred during the bulk action');
     } finally {
       setLoading(false);
     }
   }, [selectedPosts, fetchPosts, fetchStats]);
 
-  // Confirmation de suppression
   const confirmDeletePost = useCallback((postId) => {
     setPostToDelete(postId);
     setConfirmDelete(true);
   }, []);
 
-  // Supprimer un post
   const deletePost = useCallback(async () => {
     if (!postToDelete) return;
     
@@ -280,46 +250,41 @@ const AdminPosts = () => {
       
       await socialAPI.adminDeletePost(postToDelete);
       
-      // Rafraîchir la liste et les stats
       await Promise.all([fetchPosts(), fetchStats()]);
       
       setPostToDelete(null);
       setConfirmDelete(false);
-      setSuccessMessage('Post supprimé avec succès');
+      setSuccessMessage('Post deleted successfully');
       
     } catch (err) {
-      console.error('Erreur lors de la suppression du post:', err);
+      console.error('Error deleting post:', err);
       const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors de la suppression du post');
+      setError(formattedError.message || 'An error occurred while deleting the post');
     } finally {
       setLoading(false);
     }
   }, [postToDelete, fetchPosts, fetchStats]);
 
-  // Modérer/Restaurer un post individuel
   const togglePostModeration = useCallback(async (postId, isModerated) => {
     if (isModerated) {
-      // Restaurer directement
       try {
         setLoading(true);
         await socialAPI.restorePost(postId);
         await Promise.all([fetchPosts(), fetchStats()]);
-        setSuccessMessage('Post restauré avec succès');
+        setSuccessMessage('Post restored successfully');
       } catch (err) {
-        console.error('Erreur lors de la restauration:', err);
+        console.error('Error restoring post:', err);
         const formattedError = socialAPI.formatApiError(err);
-        setError(formattedError.message || 'Une erreur est survenue lors de la restauration');
+        setError(formattedError.message || 'An error occurred while restoring the post');
       } finally {
         setLoading(false);
       }
     } else {
-      // Demander la raison pour la modération
       setPostToModerate(postId);
       setShowModerationModal(true);
     }
   }, [fetchPosts, fetchStats]);
 
-  // Modérer un post avec raison
   const moderatePost = useCallback(async () => {
     if (!postToModerate || !moderationReason.trim()) return;
     
@@ -329,44 +294,27 @@ const AdminPosts = () => {
       
       await socialAPI.moderatePost(postToModerate, moderationReason);
       
-      // Rafraîchir la liste et les stats
       await Promise.all([fetchPosts(), fetchStats()]);
       
       setPostToModerate(null);
       setShowModerationModal(false);
       setModerationReason('');
-      setSuccessMessage('Post modéré avec succès');
+      setSuccessMessage('Post moderated successfully');
       
     } catch (err) {
-      console.error('Erreur lors de la modération:', err);
+      console.error('Error moderating post:', err);
       const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors de la modération');
+      setError(formattedError.message || 'An error occurred while moderating the post');
     } finally {
       setLoading(false);
     }
   }, [postToModerate, moderationReason, fetchPosts, fetchStats]);
 
-  // // Export CSV avec gestion d'erreur
-  // const handleExportCSV = useCallback(async () => {
-  //   try {
-  //     setLoading(true);
-  //     await socialAPI.exportPostsCSV();
-  //     setSuccessMessage('Export CSV téléchargé avec succès');
-  //   } catch (err) {
-  //     console.error('Erreur lors de l\'export:', err);
-  //     const formattedError = socialAPI.formatApiError(err);
-  //     setError(formattedError.message || 'Une erreur est survenue lors de l\'export');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }, []);
-
-  // Utilitaires de formatage
   const formatDate = useCallback((dateString) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy HH:mm');
     } catch (e) {
-      return 'Date inconnue';
+      return 'Unknown date';
     }
   }, []);
 
@@ -375,35 +323,35 @@ const AdminPosts = () => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   }, []);
 
-  // Raisons de modération prédéfinies
+  // Preset moderation reasons
   const moderationReasons = [
-    'Contenu inapproprié',
-    'Violation des conditions d\'utilisation',
-    'Contenu offensant',
-    'Informations erronées',
-    'Spam ou contenu indésirable',
-    'Contenu dupliqué'
+    'Inappropriate content',
+    'Terms of use violation',
+    'Offensive content',
+    'Misinformation',
+    'Spam or unwanted content',
+    'Duplicate content'
   ];
 
   return (
     <div className={styles.adminPosts}>
-      {/* En-tête avec statistiques */}
+      {/* Header with stats */}
       <div className={styles.header}>
         <div className={styles.titleSection}>
-          <h1 className={styles.title}>Gestion des Posts</h1>
+          <h1 className={styles.title}>Posts Management</h1>
           {stats && (
             <div className={styles.quickStats}>
               <span className={styles.statItem}>
                 Total: <strong>{stats.total || 0}</strong>
               </span>
               <span className={styles.statItem}>
-                Signalés: <strong>{stats.reported || 0}</strong>
+                Reported: <strong>{stats.reported || 0}</strong>
               </span>
               <span className={styles.statItem}>
-                Modérés: <strong>{stats.moderated || 0}</strong>
+                Moderated: <strong>{stats.moderated || 0}</strong>
               </span>
               <span className={styles.statItem}>
-                Actifs: <strong>{stats.active || 0}</strong>
+                Active: <strong>{stats.active || 0}</strong>
               </span>
             </div>
           )}
@@ -422,13 +370,13 @@ const AdminPosts = () => {
               {bulkActionOpen && (
                 <div className={styles.bulkActionDropdown}>
                   <button onClick={() => prepareBulkAction('restore')}>
-                    <i className="fas fa-check"></i> Restaurer
+                    <i className="fas fa-check"></i> Restore
                   </button>
                   <button onClick={() => prepareBulkAction('moderate')}>
-                    <i className="fas fa-shield-alt"></i> Modérer
+                    <i className="fas fa-shield-alt"></i> Moderate
                   </button>
                   <button onClick={() => prepareBulkAction('delete')}>
-                    <i className="fas fa-trash"></i> Supprimer
+                    <i className="fas fa-trash"></i> Delete
                   </button>
                 </div>
               )}
@@ -438,7 +386,7 @@ const AdminPosts = () => {
             className={styles.exportButton}
             onClick={handleExportCSV}
             disabled={loading}
-            title="Exporter en CSV"
+            title="Export CSV"
           >
             <i className="fas fa-download"></i>
             Export CSV
@@ -446,10 +394,10 @@ const AdminPosts = () => {
           <button 
             className={styles.moderationButton}
             onClick={() => navigate('/admin/posts/moderation')}
-            title="Page de modération"
+            title="Moderation page"
           >
             <i className="fas fa-shield-alt"></i>
-            Modération
+            Moderation
           </button>
           <button 
             className={styles.refreshButton}
@@ -458,15 +406,15 @@ const AdminPosts = () => {
               fetchStats();
             }}
             disabled={loading}
-            title="Rafraîchir"
+            title="Refresh"
           >
             <i className={`fas fa-sync ${loading ? styles.spinning : ''}`}></i>
-            Rafraîchir
+            Refresh
           </button>
         </div>
       </div>
 
-      {/* Messages de succès et d'erreur */}
+      {/* Messages */}
       {successMessage && (
         <div className={styles.successMessage}>
           <i className="fas fa-check-circle"></i>
@@ -487,13 +435,13 @@ const AdminPosts = () => {
         </div>
       )}
 
-      {/* Filtres et recherche */}
+      {/* Filters & search */}
       <div className={styles.filters}>
         <form onSubmit={handleSearch} className={styles.searchForm}>
           <div className={styles.searchInputContainer}>
             <input 
               type="text" 
-              placeholder="Rechercher par contenu, auteur..." 
+              placeholder="Search by content, author..." 
               value={searchTerm}
               onChange={handleSearchChange}
               className={styles.searchInput}
@@ -510,10 +458,10 @@ const AdminPosts = () => {
             onChange={(e) => handleFilterChange('visibility', e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="">Tous les types de visibilité</option>
+            <option value="">All visibility types</option>
             <option value="PUBLIC">Public</option>
-            <option value="FRIENDS">Amis uniquement</option>
-            <option value="PRIVATE">Privé</option>
+            <option value="FRIENDS">Friends only</option>
+            <option value="PRIVATE">Private</option>
           </select>
           
           <select 
@@ -521,10 +469,10 @@ const AdminPosts = () => {
             onChange={(e) => handleFilterChange('status', e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="">Tous les statuts</option>
-            <option value="active">Actif</option>
-            <option value="moderated">Modéré</option>
-            <option value="reported">Signalé</option>
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="moderated">Moderated</option>
+            <option value="reported">Reported</option>
           </select>
           
           <select 
@@ -532,9 +480,9 @@ const AdminPosts = () => {
             onChange={(e) => handleFilterChange('hasMedia', e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="">Tous les médias</option>
-            <option value="true">Avec média</option>
-            <option value="false">Sans média</option>
+            <option value="">All media</option>
+            <option value="true">With media</option>
+            <option value="false">Without media</option>
           </select>
           
           <select 
@@ -542,9 +490,9 @@ const AdminPosts = () => {
             onChange={(e) => handleFilterChange('hasReports', e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="">Tous les signalements</option>
-            <option value="true">Avec signalements</option>
-            <option value="false">Sans signalement</option>
+            <option value="">All reports</option>
+            <option value="true">With reports</option>
+            <option value="false">Without reports</option>
           </select>
           
           <select 
@@ -552,25 +500,25 @@ const AdminPosts = () => {
             onChange={(e) => handleFilterChange('sortBy', e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="newest">Plus récents</option>
-            <option value="oldest">Plus anciens</option>
-            <option value="most_liked">Plus likés</option>
-            <option value="most_commented">Plus commentés</option>
-            <option value="most_reported">Plus signalés</option>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="most_liked">Most liked</option>
+            <option value="most_commented">Most commented</option>
+            <option value="most_reported">Most reported</option>
           </select>
           
           <button 
             onClick={resetFilters}
             className={styles.resetButton}
-            title="Réinitialiser les filtres"
+            title="Reset filters"
           >
             <i className="fas fa-times"></i>
-            Réinitialiser
+            Reset
           </button>
         </div>
       </div>
 
-      {/* Tableau des posts */}
+      {/* Table */}
       <div className={styles.tableContainer}>
         <table className={styles.postsTable}>
           <thead>
@@ -583,14 +531,14 @@ const AdminPosts = () => {
                 />
               </th>
               <th>ID</th>
-              <th>Contenu</th>
-              <th>Auteur</th>
-              <th>Visibilité</th>
+              <th>Content</th>
+              <th>Author</th>
+              <th>Visibility</th>
               <th>Date</th>
               <th>Likes</th>
-              <th>Commentaires</th>
-              <th>Signalements</th>
-              <th>Statut</th>
+              <th>Comments</th>
+              <th>Reports</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -599,15 +547,15 @@ const AdminPosts = () => {
               <tr>
                 <td colSpan="11" className={styles.loadingCell}>
                   <div className={styles.loadingSpinner}></div>
-                  Chargement des posts...
+                  Loading posts...
                 </td>
               </tr>
             ) : posts.length === 0 ? (
               <tr>
                 <td colSpan="11" className={styles.noDataCell}>
                   {searchTerm || Object.values(filters).some(f => f) ? 
-                    'Aucun post trouvé avec ces critères' : 
-                    'Aucun post trouvé'
+                    'No posts found with these criteria' : 
+                    'No posts found'
                   }
                 </td>
               </tr>
@@ -659,7 +607,7 @@ const AdminPosts = () => {
                         </Link>
                       </div>
                     ) : (
-                      <span className={styles.unknownAuthor}>Utilisateur inconnu</span>
+                      <span className={styles.unknownAuthor}>Unknown user</span>
                     )}
                   </td>
                   <td>
@@ -688,7 +636,7 @@ const AdminPosts = () => {
                   </td>
                   <td>
                     <span className={`${styles.statusBadge} ${styles[`status_${post.modere ? 'moderated' : 'active'}`]}`}>
-                      {post.modere ? 'Modéré' : 'Actif'}
+                      {post.modere ? 'Moderated' : 'Active'}
                     </span>
                   </td>
                   <td className={styles.actionsCell}>
@@ -696,13 +644,13 @@ const AdminPosts = () => {
                       <Link 
                         to={`/admin/posts/${post._id}`} 
                         className={styles.actionButton}
-                        title="Voir détails"
+                        title="View details"
                       >
                         <i className="fas fa-eye"></i>
                       </Link>
                       <button 
                         className={styles.actionButton}
-                        title={post.modere ? 'Restaurer' : 'Modérer'}
+                        title={post.modere ? 'Restore' : 'Moderate'}
                         onClick={() => togglePostModeration(post._id, post.modere)}
                         disabled={loading}
                       >
@@ -710,7 +658,7 @@ const AdminPosts = () => {
                       </button>
                       <button 
                         className={`${styles.actionButton} ${styles.deleteButton}`}
-                        title="Supprimer"
+                        title="Delete"
                         onClick={() => confirmDeletePost(post._id)}
                         disabled={loading}
                       >
@@ -744,7 +692,7 @@ const AdminPosts = () => {
           </button>
           
           <div className={styles.pageInfo}>
-            Page {currentPage} sur {totalPages} ({totalPosts} posts)
+            Page {currentPage} of {totalPages} ({totalPosts} posts)
           </div>
           
           <button 
@@ -764,12 +712,12 @@ const AdminPosts = () => {
         </div>
       )}
 
-      {/* Modale de confirmation de suppression */}
+      {/* Delete confirmation modal */}
       {confirmDelete && (
         <div className={styles.modal}>
           <div className={styles.modalContent}>
-            <h3>Confirmer la suppression</h3>
-            <p>Êtes-vous sûr de vouloir supprimer ce post ? Cette action est irréversible.</p>
+            <h3>Confirm deletion</h3>
+            <p>Are you sure you want to delete this post? This action is irreversible.</p>
             <div className={styles.modalActions}>
               <button 
                 className={styles.cancelButton}
@@ -778,29 +726,29 @@ const AdminPosts = () => {
                   setPostToDelete(null);
                 }}
               >
-                Annuler
+                Cancel
               </button>
               <button 
                 className={styles.deleteConfirmButton}
                 onClick={deletePost}
                 disabled={loading}
               >
-                Supprimer
+                Delete
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modale de modération individuelle */}
+      {/* Individual moderation modal */}
       {showModerationModal && (
         <div className={styles.modal}>
           <div className={styles.modalContent}>
-            <h3>Modérer le post</h3>
-            <p>Veuillez indiquer la raison de la modération :</p>
+            <h3>Moderate post</h3>
+            <p>Please provide the moderation reason:</p>
             <textarea
               className={styles.moderationTextarea}
-              placeholder="Raison de la modération..."
+              placeholder="Moderation reason..."
               value={moderationReason}
               onChange={(e) => setModerationReason(e.target.value)}
             />
@@ -824,29 +772,29 @@ const AdminPosts = () => {
                   setModerationReason('');
                 }}
               >
-                Annuler
+                Cancel
               </button>
               <button 
                 className={styles.deleteConfirmButton}
                 onClick={moderatePost}
                 disabled={!moderationReason.trim() || loading}
               >
-                Modérer
+                Moderate
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modale de modération en masse */}
+      {/* Bulk moderation modal */}
       {showBulkModerationModal && (
         <div className={styles.modal}>
           <div className={styles.modalContent}>
-            <h3>Modération en masse</h3>
-            <p>Vous allez modérer {selectedPosts.length} post(s). Veuillez indiquer la raison :</p>
+            <h3>Bulk moderation</h3>
+            <p>You are about to moderate {selectedPosts.length} post(s). Please provide the reason:</p>
             <textarea
               className={styles.moderationTextarea}
-              placeholder="Raison de la modération..."
+              placeholder="Moderation reason..."
               value={bulkModerationReason}
               onChange={(e) => setBulkModerationReason(e.target.value)}
             />
@@ -869,14 +817,14 @@ const AdminPosts = () => {
                   setBulkModerationReason('');
                 }}
               >
-                Annuler
+                Cancel
               </button>
               <button 
                 className={styles.deleteConfirmButton}
                 onClick={() => performBulkAction('moderate', bulkModerationReason)}
                 disabled={!bulkModerationReason.trim() || loading}
               >
-                Modérer
+                Moderate
               </button>
             </div>
           </div>

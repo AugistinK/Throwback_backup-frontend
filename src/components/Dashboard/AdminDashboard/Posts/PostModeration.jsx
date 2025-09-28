@@ -9,13 +9,13 @@ const PostModeration = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // États principaux
+  // Main states
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   
-  // Pagination et filtres
+  // Pagination & filters
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalPosts, setTotalPosts] = useState(0);
@@ -23,20 +23,20 @@ const PostModeration = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   
-  // États pour les actions
+  // Action states
   const [showReason, setShowReason] = useState(false);
   const [moderationReason, setModerationReason] = useState('');
   const [postToModerate, setPostToModerate] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   
-  // Actions en masse
+  // Bulk actions
   const [selectedPosts, setSelectedPosts] = useState([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [bulkActionType, setBulkActionType] = useState('');
   const [showBulkModerationModal, setShowBulkModerationModal] = useState(false);
   const [bulkModerationReason, setBulkModerationReason] = useState('');
   
-  // Statistiques détaillées
+  // Detailed stats
   const [stats, setStats] = useState({
     total: 0,
     reported: 0,
@@ -47,13 +47,13 @@ const PostModeration = () => {
     dismissed: 0
   });
 
-  // Chargement initial
+  // Initial load
   useEffect(() => {
     fetchModerationStats();
     fetchPostsToModerate();
   }, [currentPage, selectedTab, searchTerm, sortBy]);
 
-  // Gestion des messages de succès depuis la navigation
+  // Success message from navigation
   useEffect(() => {
     if (location.state?.message) {
       setSuccessMessage(location.state.message);
@@ -61,7 +61,7 @@ const PostModeration = () => {
     }
   }, [location.state, navigate, location.pathname]);
 
-  // Auto-clear des messages
+  // Auto-clear messages
   useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => setSuccessMessage(''), 5000);
@@ -76,7 +76,7 @@ const PostModeration = () => {
     }
   }, [error]);
 
-  // Récupérer les statistiques de modération
+  // Load moderation stats
   const fetchModerationStats = useCallback(async () => {
     try {
       const response = await socialAPI.getModerationStats();
@@ -90,18 +90,16 @@ const PostModeration = () => {
         dismissed: 0
       });
     } catch (err) {
-      console.error('Erreur lors du chargement des statistiques:', err);
-      // Les stats ne sont pas critiques, on ne bloque pas l'interface
+      console.error('Error loading statistics:', err);
     }
   }, []);
 
-  // Récupérer les posts à modérer avec gestion d'erreur améliorée
+  // Load posts to moderate
   const fetchPostsToModerate = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Construire les paramètres selon l'onglet sélectionné
       const params = {
         page: currentPage,
         limit: 12,
@@ -138,7 +136,6 @@ const PostModeration = () => {
           break;
       }
       
-      // Appel API pour récupérer les posts
       const response = await socialAPI.getAllPosts(params);
       
       setPosts(Array.isArray(response.data) ? response.data : []);
@@ -146,16 +143,16 @@ const PostModeration = () => {
       setTotalPosts(response.pagination?.total || 0);
       
     } catch (err) {
-      console.error('Erreur lors du chargement des posts:', err);
+      console.error('Error loading posts:', err);
       const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors du chargement des posts');
+      setError(formattedError.message || 'An error occurred while loading posts');
       setPosts([]);
     } finally {
       setLoading(false);
     }
   }, [currentPage, selectedTab, searchTerm, sortBy]);
 
-  // Fonction pour modérer un post
+  // Moderate a post
   const moderatePost = useCallback(async () => {
     if (!postToModerate || !moderationReason.trim()) return;
     
@@ -165,44 +162,43 @@ const PostModeration = () => {
       
       await socialAPI.moderatePost(postToModerate, moderationReason);
       
-      // Réinitialiser l'état et rafraîchir
       setShowReason(false);
       setModerationReason('');
       setPostToModerate(null);
-      setSuccessMessage('Post modéré avec succès');
+      setSuccessMessage('Post moderated successfully');
       
       await Promise.all([fetchPostsToModerate(), fetchModerationStats()]);
     } catch (err) {
-      console.error('Erreur lors de la modération du post:', err);
+      console.error('Error moderating post:', err);
       const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors de la modération du post');
+      setError(formattedError.message || 'An error occurred while moderating the post');
     } finally {
       setActionLoading(false);
     }
   }, [postToModerate, moderationReason, fetchPostsToModerate, fetchModerationStats]);
 
-  // Fonction pour restaurer un post modéré
+  // Restore a moderated post
   const restorePost = useCallback(async (postId) => {
     try {
       setActionLoading(true);
       setError(null);
       
       await socialAPI.restorePost(postId);
-      setSuccessMessage('Post restauré avec succès');
+      setSuccessMessage('Post restored successfully');
       
       await Promise.all([fetchPostsToModerate(), fetchModerationStats()]);
     } catch (err) {
-      console.error('Erreur lors de la restauration du post:', err);
+      console.error('Error restoring post:', err);
       const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors de la restauration du post');
+      setError(formattedError.message || 'An error occurred while restoring the post');
     } finally {
       setActionLoading(false);
     }
   }, [fetchPostsToModerate, fetchModerationStats]);
 
-  // Fonction pour supprimer un post
+  // Delete a post
   const deletePost = useCallback(async (postId) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce post ? Cette action est irréversible.')) {
+    if (!window.confirm('Are you sure you want to delete this post? This action is irreversible.')) {
       return;
     }
     
@@ -211,41 +207,41 @@ const PostModeration = () => {
       setError(null);
       
       await socialAPI.adminDeletePost(postId);
-      setSuccessMessage('Post supprimé avec succès');
+      setSuccessMessage('Post deleted successfully');
       
       await Promise.all([fetchPostsToModerate(), fetchModerationStats()]);
     } catch (err) {
-      console.error('Erreur lors de la suppression du post:', err);
+      console.error('Error deleting post:', err);
       const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors de la suppression du post');
+      setError(formattedError.message || 'An error occurred while deleting the post');
     } finally {
       setActionLoading(false);
     }
   }, [fetchPostsToModerate, fetchModerationStats]);
 
-  // Rejeter les signalements d'un post
+  // Dismiss reports for a post
   const dismissReports = useCallback(async (postId) => {
     try {
       setActionLoading(true);
       setError(null);
       
       await socialAPI.dismissPostReports(postId);
-      setSuccessMessage('Signalements rejetés avec succès');
+      setSuccessMessage('Reports dismissed successfully');
       
       await Promise.all([fetchPostsToModerate(), fetchModerationStats()]);
     } catch (err) {
-      console.error('Erreur lors du rejet des signalements:', err);
+      console.error('Error dismissing reports:', err);
       const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || 'Une erreur est survenue lors du rejet des signalements');
+      setError(formattedError.message || 'An error occurred while dismissing reports');
     } finally {
       setActionLoading(false);
     }
   }, [fetchPostsToModerate, fetchModerationStats]);
 
-  // Actions en masse
+  // Bulk actions
   const performBulkAction = useCallback(async (action, reason = '') => {
     if (selectedPosts.length === 0) {
-      setError('Aucun post sélectionné');
+      setError('No post selected');
       return;
     }
     
@@ -255,31 +251,30 @@ const PostModeration = () => {
       
       await socialAPI.bulkActionPosts(action, selectedPosts, reason);
       
-      // Réinitialiser les sélections et rafraîchir
       setSelectedPosts([]);
       setShowBulkActions(false);
       setShowBulkModerationModal(false);
       setBulkModerationReason('');
       
-      const actionText = action === 'moderate' ? 'modérés' : 
-                        action === 'restore' ? 'restaurés' : 
-                        action === 'delete' ? 'supprimés' : 'traités';
-      setSuccessMessage(`${selectedPosts.length} post(s) ${actionText} avec succès`);
+      const actionText = action === 'moderate' ? 'moderated' : 
+                        action === 'restore' ? 'restored' : 
+                        action === 'delete' ? 'deleted' : 'processed';
+      setSuccessMessage(`${selectedPosts.length} post(s) ${actionText} successfully`);
       
       await Promise.all([fetchPostsToModerate(), fetchModerationStats()]);
     } catch (err) {
-      console.error(`Erreur lors de l'action en masse "${action}":`, err);
+      console.error(`Error during bulk action "${action}":`, err);
       const formattedError = socialAPI.formatApiError(err);
-      setError(formattedError.message || `Une erreur est survenue lors de l'action en masse`);
+      setError(formattedError.message || 'An error occurred during the bulk action');
     } finally {
       setActionLoading(false);
     }
   }, [selectedPosts, fetchPostsToModerate, fetchModerationStats]);
 
-  // Préparer une action en masse
+  // Prepare a bulk action
   const prepareBulkAction = useCallback((action) => {
     if (selectedPosts.length === 0) {
-      setError('Aucun post sélectionné');
+      setError('No post selected');
       return;
     }
     
@@ -292,7 +287,7 @@ const PostModeration = () => {
     }
   }, [selectedPosts.length, performBulkAction]);
 
-  // Gestion des sélections
+  // Selections
   const handleSelectAll = useCallback((e) => {
     if (e.target.checked) {
       setSelectedPosts(posts.map(post => post._id));
@@ -309,7 +304,7 @@ const PostModeration = () => {
     }
   }, []);
 
-  // Fonction pour changer d'onglet
+  // Tabs
   const handleTabChange = useCallback((tab) => {
     setSelectedTab(tab);
     setCurrentPage(1);
@@ -317,25 +312,25 @@ const PostModeration = () => {
     setShowBulkActions(false);
   }, []);
 
-  // Fonction pour changer de page
+  // Pagination
   const handlePageChange = useCallback((page) => {
     if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
   }, [totalPages]);
 
-  // Recherche avec debounce
+  // Search
   const handleSearchChange = useCallback((e) => {
     const value = e.target.value;
     setSearchTerm(value);
     setCurrentPage(1);
   }, []);
 
-  // Fonctions utilitaires pour le formatage
+  // Utils
   const formatDate = useCallback((dateString) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy HH:mm');
     } catch (e) {
-      return 'Date inconnue';
+      return 'Unknown date';
     }
   }, []);
 
@@ -344,32 +339,32 @@ const PostModeration = () => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   }, []);
 
-  // Fonction pour obtenir le badge de statut d'un post
+  // Status badge
   const getStatusBadge = useCallback((post) => {
     if (post.modere) {
       return <span className={`${styles.statusBadge} ${styles.moderated}`}>
         <i className="fas fa-shield-alt"></i>
-        Modéré
+        Moderated
       </span>;
     } else if (post.signalements && post.signalements.length > 0) {
       return <span className={`${styles.statusBadge} ${styles.reported}`}>
         <i className="fas fa-flag"></i>
-        Signalé ({post.signalements.length})
+        Reported ({post.signalements.length})
       </span>;
     } else if (post.autoModerated) {
       return <span className={`${styles.statusBadge} ${styles.autoModerated}`}>
         <i className="fas fa-robot"></i>
-        Auto-modéré
+        Auto-moderated
       </span>;
     } else {
       return <span className={`${styles.statusBadge} ${styles.active}`}>
         <i className="fas fa-check-circle"></i>
-        Actif
+        Active
       </span>;
     }
   }, []);
 
-  // Obtenir la priorité d'un post
+  // Priority
   const getPostPriority = useCallback((post) => {
     const reportCount = post.signalements?.length || 0;
     if (reportCount >= 5) return 'high';
@@ -377,26 +372,26 @@ const PostModeration = () => {
     return 'low';
   }, []);
 
-  // Raisons de modération prédéfinies
+  // Preset moderation reasons
   const moderationReasons = [
-    'Contenu inapproprié',
-    'Violation des conditions d\'utilisation',
-    'Contenu offensant',
-    'Informations erronées',
-    'Spam ou contenu indésirable',
-    'Contenu dupliqué',
-    'Harcèlement',
-    'Contenu violent'
+    'Inappropriate content',
+    'Terms of use violation',
+    'Offensive content',
+    'Misinformation',
+    'Spam or unwanted content',
+    'Duplicate content',
+    'Harassment',
+    'Violent content'
   ];
 
   return (
     <div className={styles.moderationPage}>
-      {/* En-tête */}
+      {/* Header */}
       <div className={styles.header}>
         <div className={styles.titleSection}>
-          <h1 className={styles.title}>Centre de Modération</h1>
+          <h1 className={styles.title}>Moderation Center</h1>
           <p className={styles.subtitle}>
-            Gérez et modérez le contenu de la plateforme ThrowBack
+            Manage and moderate content on the ThrowBack platform
           </p>
         </div>
         <div className={styles.actions}>
@@ -414,16 +409,16 @@ const PostModeration = () => {
               {showBulkActions && (
                 <div className={styles.bulkActionDropdown}>
                   <button onClick={() => prepareBulkAction('restore')}>
-                    <i className="fas fa-check"></i> Approuver
+                    <i className="fas fa-check"></i> Approve
                   </button>
                   <button onClick={() => prepareBulkAction('moderate')}>
-                    <i className="fas fa-shield-alt"></i> Modérer
+                    <i className="fas fa-shield-alt"></i> Moderate
                   </button>
                   <button onClick={() => prepareBulkAction('delete')}>
-                    <i className="fas fa-trash"></i> Supprimer
+                    <i className="fas fa-trash"></i> Delete
                   </button>
                   <button onClick={() => prepareBulkAction('dismiss')}>
-                    <i className="fas fa-times"></i> Rejeter signalements
+                    <i className="fas fa-times"></i> Dismiss reports
                   </button>
                 </div>
               )}
@@ -438,14 +433,14 @@ const PostModeration = () => {
             disabled={loading || actionLoading}
           >
             <i className={`fas fa-sync ${(loading || actionLoading) ? styles.spinning : ''}`}></i>
-            Rafraîchir
+            Refresh
           </button>
           <button 
             className={styles.backButton}
             onClick={() => navigate('/admin/posts')}
           >
             <i className="fas fa-list"></i>
-            Liste des posts
+            Posts list
           </button>
         </div>
       </div>
@@ -471,7 +466,7 @@ const PostModeration = () => {
         </div>
       )}
 
-      {/* Statistiques de modération */}
+      {/* Moderation stats */}
       <div className={styles.statsGrid}>
         <div className={`${styles.statCard} ${styles.statTotal}`}>
           <div className={styles.statIcon}>
@@ -479,7 +474,7 @@ const PostModeration = () => {
           </div>
           <div className={styles.statInfo}>
             <h3>{stats.total}</h3>
-            <p>Total des posts</p>
+            <p>Total posts</p>
           </div>
         </div>
         
@@ -489,7 +484,7 @@ const PostModeration = () => {
           </div>
           <div className={styles.statInfo}>
             <h3>{stats.reported}</h3>
-            <p>Posts signalés</p>
+            <p>Reported posts</p>
           </div>
         </div>
         
@@ -499,7 +494,7 @@ const PostModeration = () => {
           </div>
           <div className={styles.statInfo}>
             <h3>{stats.moderated}</h3>
-            <p>Posts modérés</p>
+            <p>Moderated posts</p>
           </div>
         </div>
         
@@ -509,7 +504,7 @@ const PostModeration = () => {
           </div>
           <div className={styles.statInfo}>
             <h3>{stats.pending}</h3>
-            <p>En attente</p>
+            <p>Pending</p>
           </div>
         </div>
         
@@ -519,7 +514,7 @@ const PostModeration = () => {
           </div>
           <div className={styles.statInfo}>
             <h3>{stats.recent}</h3>
-            <p>Dernières 24h</p>
+            <p>Last 24h</p>
           </div>
         </div>
         
@@ -529,18 +524,18 @@ const PostModeration = () => {
           </div>
           <div className={styles.statInfo}>
             <h3>{stats.autoModerated || 0}</h3>
-            <p>Auto-modérés</p>
+            <p>Auto-moderated</p>
           </div>
         </div>
       </div>
 
-      {/* Filtres et recherche */}
+      {/* Filters & search */}
       <div className={styles.filtersSection}>
         <div className={styles.searchContainer}>
           <div className={styles.searchInputContainer}>
             <input 
               type="text"
-              placeholder="Rechercher par contenu, auteur..."
+              placeholder="Search by content, author..."
               value={searchTerm}
               onChange={handleSearchChange}
               className={styles.searchInput}
@@ -555,33 +550,33 @@ const PostModeration = () => {
             onChange={(e) => setSortBy(e.target.value)}
             className={styles.sortSelect}
           >
-            <option value="newest">Plus récents</option>
-            <option value="oldest">Plus anciens</option>
-            <option value="most_reported">Plus signalés</option>
-            <option value="most_liked">Plus likés</option>
-            <option value="most_commented">Plus commentés</option>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="most_reported">Most reported</option>
+            <option value="most_liked">Most liked</option>
+            <option value="most_commented">Most commented</option>
           </select>
           
           {selectedPosts.length > 0 && (
             <div className={styles.selectionInfo}>
-              <span>{selectedPosts.length} post(s) sélectionné(s)</span>
+              <span>{selectedPosts.length} post(s) selected</span>
               <button onClick={() => setSelectedPosts([])}>
                 <i className="fas fa-times"></i>
-                Désélectionner
+                Deselect
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Onglets de modération */}
+      {/* Moderation tabs */}
       <div className={styles.moderationTabs}>
         <button 
           className={`${styles.tabButton} ${selectedTab === 'reported' ? styles.activeTab : ''}`}
           onClick={() => handleTabChange('reported')}
         >
           <i className="fas fa-flag"></i>
-          Signalés
+          Reported
           {stats.reported > 0 && <span className={styles.tabBadge}>{stats.reported}</span>}
         </button>
         <button 
@@ -589,7 +584,7 @@ const PostModeration = () => {
           onClick={() => handleTabChange('pending')}
         >
           <i className="fas fa-exclamation-triangle"></i>
-          En attente
+          Pending
           {stats.pending > 0 && <span className={styles.tabBadge}>{stats.pending}</span>}
         </button>
         <button 
@@ -597,56 +592,56 @@ const PostModeration = () => {
           onClick={() => handleTabChange('recent')}
         >
           <i className="fas fa-clock"></i>
-          Récents
+          Recent
         </button>
         <button 
           className={`${styles.tabButton} ${selectedTab === 'moderated' ? styles.activeTab : ''}`}
           onClick={() => handleTabChange('moderated')}
         >
           <i className="fas fa-shield-alt"></i>
-          Modérés
+          Moderated
         </button>
         <button 
           className={`${styles.tabButton} ${selectedTab === 'auto' ? styles.activeTab : ''}`}
           onClick={() => handleTabChange('auto')}
         >
           <i className="fas fa-robot"></i>
-          Auto-modérés
+          Auto-moderated
         </button>
         <button 
           className={`${styles.tabButton} ${selectedTab === 'dismissed' ? styles.activeTab : ''}`}
           onClick={() => handleTabChange('dismissed')}
         >
           <i className="fas fa-check"></i>
-          Signalements rejetés
+          Dismissed reports
         </button>
       </div>
 
-      {/* Liste des posts à modérer */}
+      {/* Posts list */}
       <div className={styles.moderationContent}>
         {loading && !posts.length ? (
           <div className={styles.loadingContainer}>
             <div className={styles.loadingSpinner}></div>
-            <h3>Chargement des posts...</h3>
-            <p>Veuillez patienter pendant que nous récupérons les données</p>
+            <h3>Loading posts...</h3>
+            <p>Please wait while we fetch data</p>
           </div>
         ) : posts.length === 0 ? (
           <div className={styles.emptyContainer}>
             <div className={styles.emptyIcon}>
               <i className="fas fa-check-circle"></i>
             </div>
-            <h3>Aucun post à modérer</h3>
-            <p>Il n'y a actuellement aucun post nécessitant votre attention dans cette catégorie.</p>
+            <h3>No posts to moderate</h3>
+            <p>There are currently no posts requiring your attention in this category.</p>
             <button 
               className={styles.emptyAction}
               onClick={() => handleTabChange('recent')}
             >
-              Voir les posts récents
+              View recent posts
             </button>
           </div>
         ) : (
           <>
-            {/* Options de sélection en masse */}
+            {/* Bulk selection bar */}
             <div className={styles.bulkSelectionBar}>
               <label className={styles.selectAllLabel}>
                 <input 
@@ -654,14 +649,14 @@ const PostModeration = () => {
                   checked={selectedPosts.length === posts.length && posts.length > 0}
                   onChange={handleSelectAll}
                 />
-                Sélectionner tout
+                Select all
               </label>
               <span className={styles.resultCount}>
-                {totalPosts} post(s) au total
+                {totalPosts} post(s) total
               </span>
             </div>
 
-            {/* Grille des posts */}
+            {/* Cards grid */}
             <div className={styles.moderationCards}>
               {posts.map(post => (
                 <div 
@@ -720,19 +715,19 @@ const PostModeration = () => {
                         {post.type_media === 'IMAGE' && (
                           <img 
                             src={post.media.startsWith('/') ? `${process.env.REACT_APP_API_URL || ''}${post.media}` : post.media}
-                            alt="Contenu du post" 
+                            alt="Post content" 
                             className={styles.previewImage}
                           />
                         )}
                       </div>
                     )}
                     
-                    {/* Résumé des signalements */}
+                    {/* Reports summary */}
                     {post.signalements && post.signalements.length > 0 && (
                       <div className={styles.reportsSection}>
                         <h4>
                           <i className="fas fa-flag"></i>
-                          {post.signalements.length} signalement{post.signalements.length > 1 ? 's' : ''}
+                          {post.signalements.length} report{post.signalements.length > 1 ? 's' : ''}
                         </h4>
                         <div className={styles.reportsList}>
                           {post.signalements.slice(0, 3).map((report, index) => (
@@ -752,23 +747,23 @@ const PostModeration = () => {
                           ))}
                           {post.signalements.length > 3 && (
                             <div className={styles.moreReports}>
-                              + {post.signalements.length - 3} autre{post.signalements.length - 3 > 1 ? 's' : ''}
+                              + {post.signalements.length - 3} other{post.signalements.length - 3 > 1 ? 's' : ''}
                             </div>
                           )}
                         </div>
                       </div>
                     )}
                     
-                    {/* Info de modération si modéré */}
+                    {/* Moderation info */}
                     {post.modere && (
                       <div className={styles.moderationInfo}>
                         <div className={styles.moderationHeader}>
                           <i className="fas fa-shield-alt"></i>
-                          <span>Modéré {post.date_moderation ? `le ${formatDate(post.date_moderation)}` : ''}</span>
+                          <span>Moderated {post.date_moderation ? `on ${formatDate(post.date_moderation)}` : ''}</span>
                         </div>
                         {post.raison_moderation && (
                           <div className={styles.moderationReason}>
-                            <span>Raison:</span> {post.raison_moderation}
+                            <span>Reason:</span> {post.raison_moderation}
                           </div>
                         )}
                       </div>
@@ -799,7 +794,7 @@ const PostModeration = () => {
                       <Link 
                         to={`/admin/posts/${post._id}`} 
                         className={styles.actionButton}
-                        title="Voir détails"
+                        title="View details"
                       >
                         <i className="fas fa-eye"></i>
                       </Link>
@@ -807,7 +802,7 @@ const PostModeration = () => {
                       {post.signalements && post.signalements.length > 0 && (
                         <button 
                           className={`${styles.actionButton} ${styles.dismissButton}`}
-                          title="Rejeter signalements"
+                          title="Dismiss reports"
                           onClick={() => dismissReports(post._id)}
                           disabled={actionLoading}
                         >
@@ -818,7 +813,7 @@ const PostModeration = () => {
                       {post.modere ? (
                         <button 
                           className={`${styles.actionButton} ${styles.restoreButton}`}
-                          title="Restaurer"
+                          title="Restore"
                           onClick={() => restorePost(post._id)}
                           disabled={actionLoading}
                         >
@@ -827,7 +822,7 @@ const PostModeration = () => {
                       ) : (
                         <button 
                           className={`${styles.actionButton} ${styles.moderateButton}`}
-                          title="Modérer"
+                          title="Moderate"
                           onClick={() => {
                             setPostToModerate(post._id);
                             setShowReason(true);
@@ -840,7 +835,7 @@ const PostModeration = () => {
                       
                       <button 
                         className={`${styles.actionButton} ${styles.deleteButton}`}
-                        title="Supprimer"
+                        title="Delete"
                         onClick={() => deletePost(post._id)}
                         disabled={actionLoading}
                       >
@@ -874,7 +869,7 @@ const PostModeration = () => {
           </button>
           
           <div className={styles.pageInfo}>
-            Page {currentPage} sur {totalPages} ({totalPosts} posts)
+            Page {currentPage} of {totalPages} ({totalPosts} posts)
           </div>
           
           <button 
@@ -894,12 +889,12 @@ const PostModeration = () => {
         </div>
       )}
 
-      {/* Modale de modération individuelle */}
+      {/* Individual moderation modal */}
       {showReason && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
-              <h3>Modérer le post</h3>
+              <h3>Moderate post</h3>
               <button 
                 className={styles.modalCloseButton}
                 onClick={() => {
@@ -912,10 +907,10 @@ const PostModeration = () => {
               </button>
             </div>
             <div className={styles.modalBody}>
-              <p>Veuillez indiquer la raison de la modération:</p>
+              <p>Please provide the moderation reason:</p>
               <textarea 
                 className={styles.reasonTextarea}
-                placeholder="Raison de la modération..."
+                placeholder="Moderation reason..."
                 value={moderationReason}
                 onChange={(e) => setModerationReason(e.target.value)}
               ></textarea>
@@ -940,26 +935,26 @@ const PostModeration = () => {
                   setModerationReason('');
                 }}
               >
-                Annuler
+                Cancel
               </button>
               <button 
                 className={styles.moderateButton}
                 onClick={moderatePost}
                 disabled={!moderationReason.trim() || actionLoading}
               >
-                {actionLoading ? 'Modération...' : 'Modérer'}
+                {actionLoading ? 'Moderating...' : 'Moderate'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modale de modération en masse */}
+      {/* Bulk moderation modal */}
       {showBulkModerationModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
-              <h3>Modération en masse</h3>
+              <h3>Bulk moderation</h3>
               <button 
                 className={styles.modalCloseButton}
                 onClick={() => {
@@ -971,10 +966,10 @@ const PostModeration = () => {
               </button>
             </div>
             <div className={styles.modalBody}>
-              <p>Vous allez modérer {selectedPosts.length} post(s). Veuillez indiquer la raison :</p>
+              <p>You are about to moderate {selectedPosts.length} post(s). Please provide the reason:</p>
               <textarea
                 className={styles.reasonTextarea}
-                placeholder="Raison de la modération..."
+                placeholder="Moderation reason..."
                 value={bulkModerationReason}
                 onChange={(e) => setBulkModerationReason(e.target.value)}
               />
@@ -998,14 +993,14 @@ const PostModeration = () => {
                   setBulkModerationReason('');
                 }}
               >
-                Annuler
+                Cancel
               </button>
               <button 
                 className={styles.moderateButton}
                 onClick={() => performBulkAction('moderate', bulkModerationReason)}
                 disabled={!bulkModerationReason.trim() || actionLoading}
               >
-                {actionLoading ? 'Modération...' : 'Modérer'}
+                {actionLoading ? 'Moderating...' : 'Moderate'}
               </button>
             </div>
           </div>
