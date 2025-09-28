@@ -447,14 +447,16 @@ export default function MyProfile() {
           </div>
         </section>
 
-        {/* Row 1: Security (Change Password) */}
-        <ChangePasswordCard />
+       {/* Row 2: Privacy & Account */}
+        <SecurityExtras />
 
         {/* Row 2: Contact & Profile */}
         <EditProfile me={me} onUpdated={(u) => setMe((m) => ({ ...m, ...u }))} />
 
-        {/* Row 2: Privacy & Account */}
-        <SecurityExtras />
+
+        {/* Row 1: Security (Change Password) */}
+        <ChangePasswordCard /> 
+
       </div>
     </div>
   );
