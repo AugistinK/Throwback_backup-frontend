@@ -1,7 +1,7 @@
 // components/Dashboard/AdminDashboard/Profile/MyProfile.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../../../utils/api';
+import api from '../../../utils/api';
 import styles from './MyProfile.module.css';
 
 /* ---------- Reusable ---------- */
@@ -242,7 +242,8 @@ function SecurityExtras() {
     } finally { setSaving(false); }
   };
 
-const disableAccount = async () => {
+
+  const disableAccount = async () => {
   if (!window.confirm('Disable your account?')) return;
   setBusyDisable(true);
   try {
@@ -272,10 +273,7 @@ const deleteAccount = async () => {
     setBusyDelete(false);
   }
 };
-
-
-
-
+ 
   if (loading) return <div className={styles.card}><div className={styles.skeleton}><div className={styles.skeletonRow}/><div className={styles.skeletonRow}/><div className={styles.skeletonRow}/></div></div>;
 
   return (
@@ -377,12 +375,49 @@ export default function MyProfile() {
       <div className={styles.container}>
         <div className={styles.header}><h1>My Profile</h1></div>
         <div className={styles.grid}>
-          <div className={styles.card}><Skeleton rows={5} /></div>
-          <div className={styles.card}><Skeleton rows={9} /></div>
-          <div className={styles.card}><Skeleton rows={6} /></div>
+        {/* LEFT COLUMN */}
+        <div className={styles.col}>
+          {/* Overview */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}><i className="fas fa-user-circle"/> Overview</h2>
+            </div>
+            <div className={styles.avatarRow}>
+              {me?.photo_profil ? (
+                <img src={me.photo_profil} alt="Avatar" className={styles.avatarImg} />
+              ) : (
+                <div className={styles.avatar}>{initials}</div>
+              )}
+              <div className={styles.avatarMeta}>
+                <div className={`${styles.nameLine} ${styles.truncate}`} title={`${me?.prenom||''} ${me?.nom||''}`}>{me?.prenom} {me?.nom}</div>
+                <div className={styles.roleLine}><i className="fas fa-shield-alt"/> {me?.role ? String(me.role).charAt(0).toUpperCase() + String(me.role).slice(1) : 'Administrator'}</div>
+                <div className={styles.actionsStack}>
+                  <button className={styles.ghostBtn} onClick={() => fileRef.current?.click()} disabled={avatarUploading}>
+                    {avatarUploading ? (<><i className="fas fa-spinner fa-spin"/> Uploading...</>) : (<><i className="fas fa-camera"/> Change avatar</>)}
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e)=>uploadAvatar(e.target.files?.[0])} />
+                </div>
+              </div>
+            </div>
+            <div className={styles.meta}>
+              <Stat icon="fas fa-check-circle" label="Verification" value={me?.statut_verification ? 'Verified' : 'Not verified'} />
+              <Stat icon="fas fa-user-lock" label="Account Status" value={me?.statut_compte || '—'} />
+              <Stat icon="fas fa-sign-in-alt" label="Last Login" value={me?.derniere_connexion ? new Date(me.derniere_connexion).toLocaleString() : '—'} />
+            </div>
+          </div>
+
+          {/* Contact & Profile (editable) */}
+          <EditProfile me={me} onUpdated={(u)=> setMe((m)=> ({...m, ...u}))} />
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className={`${styles.col} ${styles.colRight}`}>
+          <ChangePasswordCard />
+          <SecurityExtras />
         </div>
       </div>
-    );
+    </div>
+  );
   }
 
   if (error) {
