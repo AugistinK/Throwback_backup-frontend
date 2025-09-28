@@ -460,12 +460,6 @@ export default function MyProfile() {
                 hint="Shown in your local timezone"
             />
             <Stat
-                icon="fas fa-envelope"
-                label="Email"
-                value={me?.email || '—'}
-                hint="Primary contact address"
-            />
-            <Stat
                 icon="fas fa-user-shield"
                 label="Role"
                 value={me?.role ? String(me.role).charAt(0).toUpperCase() + String(me.role).slice(1) : '—'}
@@ -477,25 +471,11 @@ export default function MyProfile() {
                 value={[me?.ville, me?.pays].filter(Boolean).join(', ') || '—'}
                 hint="City & country (optional)"
             />
-            <Stat
-                icon="fas fa-calendar-check"
-                label="Member Since"
-                value={
-                me?.createdAt
-                    ? new Date(me.createdAt).toLocaleDateString()
-                    : me?.created_at
-                    ? new Date(me.created_at).toLocaleDateString()
-                    : me?.date_creation
-                    ? new Date(me.date_creation).toLocaleDateString()
-                    : '—'
-                }
-                hint="Account creation date"
-            />
-            <Stat
-                icon="fas fa-id-badge"
-                label="User ID"
-                value={String(me?._id || me?.id || '—')}
-                hint="Internal reference identifier"
+                <Stat
+                icon="fas fa-envelope"
+                label="Email"
+                value={me?.email || '—'}
+                hint="Primary contact address"
             />
             </div>
 
