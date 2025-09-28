@@ -128,7 +128,7 @@ export default function AdminLikes() {
       <div className={styles.header}>
         <div>
           <h1>Likes</h1>
-          <p className={styles.subtitle}>Filter & moderation on videos, posts, comments, memories, playlists and podcasts.</p>
+          <p className={styles.subtitle}>Filter & moderation on videos and comments.</p>
         </div>
         <div className={styles.headerKpis}>
           <div className={styles.kpi}>

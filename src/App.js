@@ -51,6 +51,7 @@ import PlaylistEdit from './components/Dashboard/AdminDashboard/Playlists/Playli
 import { AdminPosts, PostDetails, PostModeration } from './components/Dashboard/AdminDashboard/Posts';
 import Comments from './components/Dashboard/AdminDashboard/Comments/Comments';
 import { AdminLikes } from './components/Dashboard/AdminDashboard/Likes';
+import MyProfile from './components/Dashboard/AdminDashboard/Profile/MyProfile';
 
 // Composant temporaire pour les pages admin
 const TempPage = ({ title }) => (
@@ -180,13 +181,13 @@ function App() {
             <Route path="likes" element={<AdminLikes />} />
             <Route path="messages" element={<TempPage title="Gestion des Messages" />} />
             <Route path="friends" element={<TempPage title="Gestion des Amis" />} />
-            <Route path="security" element={<TempPage title="Sécurité" />} />
+            {/* <Route path="security" element={<TempPage title="Sécurité" />} /> */}
             <Route path="logs" element={<TempPage title="Logs Système" />} />
-            <Route path="profile" element={<TempPage title="My Profile" />} />
-            <Route path="settings" element={<TempPage title="Account Settings" />} />
+            <Route path="profile" element={<MyProfile />} />
+            {/* <Route path="settings" element={<TempPage title="Account Settings" />} />
             <Route path="preferences" element={<TempPage title="Preferences" />} />
-            <Route path="help" element={<TempPage title="Help & Support" />} />
-            <Route path="notifications" element={<TempPage title="Notifications" />} />
+            <Route path="help" element={<TempPage title="Help & Support" />} /> */}
+            {/* <Route path="notifications" element={<TempPage title="Notifications" />} /> */}
           </Route>
 
           {/* Fallbacks */}

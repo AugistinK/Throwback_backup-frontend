@@ -396,7 +396,7 @@ const Podcasts = () => {
         <div>
           <h1>Podcast Management</h1>
           <br/>
-          <p>Welcome to the podcast management panel 👋</p>
+          <p>Welcome to the podcast management panel</p>
         </div>
   
         <div className={styles.headerActions}>

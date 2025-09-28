@@ -121,6 +121,7 @@ const Playlists = () => {
     <div className={styles.playlistsContainer}>
       <div className={styles.header}>
         <h1>Playlist Management</h1>
+        <br/>
         <p>Create and manage your Playlists</p>
         <div className={styles.actions}>
           <button className={`${styles.viewModeButton} ${viewMode === 'stats' ? styles.active : ''}`} onClick={toggleViewMode}>
