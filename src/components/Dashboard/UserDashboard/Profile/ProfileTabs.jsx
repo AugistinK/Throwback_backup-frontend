@@ -387,7 +387,7 @@ const ProfileTabs = () => {
                   {isEditingBio ? 'Cancel' : 'Edit'}
                 </button>
               </div>
-              <form onSubmit={handleBioSubmit} className={styles.form}>
+              <form onSubmit={handleBioSubmit} className={styles.form} encType='multipart/form-data'>
                 <div className={styles.formGrid}>
                   <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                     <label>Profile Picture</label>
