@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styles from './Search.module.css';
-import searchAPI from '../../../../utils/searchAPI'; 
+import searchAPI from '../../../../utils/searchAPI';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
   faFilter,
   faTimes,
   faSpinner,
-  faMusic,
   faVideo,
   faList,
   faMicrophone,
@@ -31,7 +30,7 @@ const Search = () => {
   const [results, setResults] = useState({});
   const [showFilters, setShowFilters] = useState(false);
 
-  // NEW: suggestions state
+  // Suggestions
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggest, setShowSuggest] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -45,17 +44,44 @@ const Search = () => {
     livestreams: { status: 'all', category: null }
   });
 
+  // -------- Helpers de normalisation --------
+  const normalizeList = (payload) => {
+    // payload peut être un tableau simple (backend actuel) ou déjà {items,total,...}
+    if (Array.isArray(payload)) {
+      return { items: payload, total: payload.length, totalPages: 1 };
+    }
+    if (payload && typeof payload === 'object') {
+      return {
+        items: Array.isArray(payload.items) ? payload.items : [],
+        total: typeof payload.total === 'number' ? payload.total : (Array.isArray(payload.items) ? payload.items.length : 0),
+        totalPages: typeof payload.totalPages === 'number' ? payload.totalPages : 1
+      };
+    }
+    return { items: [], total: 0, totalPages: 1 };
+  };
+
+  const normalizeAll = (payload) => {
+    // payload attendu du backend: { videos: [], playlists: [], podcasts: [], livestreams: [] }
+    const v = normalizeList(payload?.videos || []);
+    const p = normalizeList(payload?.playlists || []);
+    const pc = normalizeList(payload?.podcasts || []);
+    const l = normalizeList(payload?.livestreams || []);
+    return { videos: v, playlists: p, podcasts: pc, livestreams: l };
+  };
+
+  // ------------------------------------------
+
   // Initial search on load
   useEffect(() => {
     if (searchQuery) performSearch(searchQuery, activeTab);
-  }, [searchQuery, activeTab]); // garde le comportement existant :contentReference[oaicite:3]{index=3}
+  }, [searchQuery, activeTab]); // :contentReference[oaicite:3]{index=3}
 
   // Sync type in URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     params.set('type', activeTab);
     navigate(`${location.pathname}?${params.toString()}`, { replace: true });
-  }, [activeTab, location.pathname, navigate]); // idem existant :contentReference[oaicite:4]{index=4}
+  }, [activeTab, location.pathname, navigate]); // :contentReference[oaicite:4]{index=4}
 
   // Debounced suggestions on typing
   useEffect(() => {
@@ -68,7 +94,6 @@ const Search = () => {
     }
     debounceRef.current = setTimeout(async () => {
       const res = await searchAPI.getSearchSuggestions(searchTerm, 8);
-      // format attendu: { success: true, data: [...] } :contentReference[oaicite:5]{index=5}
       setSuggestions(res?.data || []);
       setShowSuggest(true);
       setActiveIndex(-1);
@@ -90,24 +115,31 @@ const Search = () => {
       switch (type) {
         case 'videos':
           response = await searchAPI.searchVideos(query, { page: 1, limit: 12, ...filters.videos });
+          // response = { success, data: [...] }
+          setResults(normalizeList(response.data));
           break;
         case 'playlists':
           response = await searchAPI.searchPlaylists(query, { page: 1, limit: 12, ...filters.playlists });
+          setResults(normalizeList(response.data));
           break;
         case 'podcasts':
           response = await searchAPI.searchPodcasts(query, { page: 1, limit: 12, ...filters.podcasts });
+          setResults(normalizeList(response.data));
           break;
         case 'livestreams':
           response = await searchAPI.searchLivestreams(query, { page: 1, limit: 12, ...filters.livestreams });
+          setResults(normalizeList(response.data));
           break;
         case 'all':
         default:
           response = await searchAPI.globalSearch(query, { page: 1, limit: 10, type: 'all' });
+          // response = { success, data: { videos: [], playlists: [], podcasts: [], livestreams: [] } }
+          setResults(normalizeAll(response.data));
           break;
       }
-      setResults(response.data);
     } catch (e) {
       console.error('Error during search:', e);
+      setResults({});
     } finally {
       setIsLoading(false);
     }
@@ -164,13 +196,11 @@ const Search = () => {
   };
 
   const pickSuggestion = (s) => {
-    // Sugg renvoie { type: 'video' | 'playlist' | 'artist', text, query } :contentReference[oaicite:6]{index=6}
     const nextQ = s.query || s.text || searchTerm;
     setSearchTerm(nextQ);
     const params = new URLSearchParams(location.search);
     params.set('q', nextQ);
 
-    // Si c’est un artiste, on reste en "videos" pour capter ses titres
     const nextType =
       s.type === 'playlist' ? 'playlists'
       : s.type === 'video' ? 'videos'
@@ -201,7 +231,6 @@ const Search = () => {
                 if (suggestions.length > 0) setShowSuggest(true);
               }}
               onBlur={() => {
-                // petit délai pour laisser le onMouseDown de l’item s’exécuter
                 setTimeout(() => setShowSuggest(false), 120);
               }}
               onKeyDown={onKeyDown}
@@ -211,7 +240,6 @@ const Search = () => {
               aria-controls="search-suggest"
             />
 
-            {/* Clear */}
             {searchTerm && (
               <button
                 type="button"
@@ -223,7 +251,6 @@ const Search = () => {
               </button>
             )}
 
-            {/* Suggestions dropdown */}
             <SearchSuggestions
               visible={showSuggest}
               query={searchTerm}
