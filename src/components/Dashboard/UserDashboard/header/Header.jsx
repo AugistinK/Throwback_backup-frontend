@@ -22,9 +22,7 @@ import {
   faUsers,
   faFilm
 } from '@fortawesome/free-solid-svg-icons';
-// import Logo from '../../../../images/Logo.png';
 import { useAuth } from '../../../../contexts/AuthContext';
-// Importer le service de recherche
 import { searchAPI } from '../../../../utils/api';
 
 // Styles pour le badge "Coming Soon"
@@ -50,7 +48,6 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
   const [unreadNotifications, setUnreadNotifications] = useState(3);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
-  // Nouveaux états pour l'auto-complétion
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -61,17 +58,28 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
   const suggestionsRef = useRef(null);
   const navigate = useNavigate();
 
-  // Fonction pour convertir les chemins relatifs en URLs absolues
-  const getImageUrl = (path) => {
-    if (!path) return 'https://via.placeholder.com/32';
-    if (path.startsWith('http')) return path;
-    
-    // Assurez-vous que le chemin commence par un slash
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    
-    // Utiliser l'URL complète du backend
-    const backendUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com ';
-    return `${backendUrl}${normalizedPath}`;
+  // Base URL backend normalisée (trim + sans slash final)
+  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
+    .trim()
+    .replace(/\/+$/, '');
+
+  // Construit une URL absolue à partir d'un chemin/endpoint
+  const toAbsoluteUrl = (path) => {
+    if (!path) return null;
+    if (String(path).startsWith('http')) return path;
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return `${baseUrl}${normalized}`.replace(/\s+/g, '');
+  };
+
+  // URL finale de l'avatar en suivant la nouvelle logique MongoDB
+  const getAvatarUrl = (u) => {
+    if (!u) return '/images/default-avatar.png';
+    if (u.photo_profil_url) return toAbsoluteUrl(u.photo_profil_url) || '/images/default-avatar.png';
+    const uid = u._id || u.id;
+    if (uid) return `${baseUrl}/api/users/${uid}/photo`;
+    // Compat ancien champ (si jamais un chemin relatif reste en DB)
+    if (u.photo_profil) return toAbsoluteUrl(u.photo_profil) || '/images/default-avatar.png';
+    return '/images/default-avatar.png';
   };
 
   // Détecter la taille de l'écran
@@ -82,11 +90,8 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
         setShowMobileSearch(false);
       }
     };
-
     window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+    return () => { window.removeEventListener('resize', handleResize); };
   }, []);
 
   // Detect clicks outside dropdowns
@@ -103,11 +108,8 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
         setShowSuggestions(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => { document.removeEventListener('mousedown', handleClickOutside); };
   }, []);
 
   // Focus sur l'input quand la recherche mobile est activée
@@ -117,18 +119,16 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     }
   }, [showMobileSearch]);
 
-  // Fonction pour récupérer les suggestions de recherche
+  // Suggestions de recherche
   const fetchSuggestions = async (value) => {
     if (!value || value.length < 2) {
       setSuggestions([]);
       setIsLoadingSuggestions(false);
       return;
     }
-    
     try {
       setIsLoadingSuggestions(true);
       const response = await searchAPI.getSearchSuggestions(value);
-      
       if (response.success) {
         setSuggestions(response.data || []);
       } else {
@@ -142,7 +142,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     }
   };
   
-  // Debounce pour les suggestions de recherche
+  // Debounce suggestions
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchTerm.trim()) {
@@ -151,44 +151,35 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
         setSuggestions([]);
       }
     }, 300);
-    
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Handle search input change
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     setShowClearButton(e.target.value.length > 0);
     setShowSuggestions(e.target.value.length > 0);
   };
 
-  // Clear search input
   const clearSearch = () => {
     setSearchTerm('');
     setShowClearButton(false);
     setSuggestions([]);
     setShowSuggestions(false);
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+    if (searchInputRef.current) searchInputRef.current.focus();
   };
 
-  // Sélectionner une suggestion
   const handleSelectSuggestion = (suggestion) => {
     setSearchTerm(suggestion.query || suggestion.text);
     setShowSuggestions(false);
     navigate(`/dashboard/search?q=${encodeURIComponent(suggestion.query || suggestion.text)}&type=${suggestion.type !== 'artist' ? suggestion.type : 'videos'}`);
   };
 
-  // Handle search submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
       navigate(`/dashboard/search?q=${encodeURIComponent(searchTerm.trim())}`);
       setShowSuggestions(false);
-      if (isMobile) {
-        setShowMobileSearch(false);
-      }
+      if (isMobile) setShowMobileSearch(false);
     }
   };
 
@@ -208,57 +199,18 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     navigate('/login');
   };
 
-  // Modifié pour rediriger vers la page temporaire
   const handleNotificationsClick = () => {
     navigate('/dashboard/notifications', { state: { title: 'Notifications' } });
   };
 
-  // Modifié pour simplement ouvrir/fermer le dropdown
-  // const handleCreateClick = () => {
-  //   setIsCreateDropdownOpen(!isCreateDropdownOpen);
-  // };
-
-  // Handle menu button click to toggle sidebar
   const handleMenuButtonClick = () => {
     toggleSidebar();
   };
 
-  // Fermer la recherche mobile
   const handleCloseMobileSearch = () => {
     setShowMobileSearch(false);
     setShowSuggestions(false);
   };
-
-  // // Modifiés pour rediriger vers la page temporaire
-  // const handleUploadShortClick = () => {
-  //   navigate('/dashboard/upload/short', { state: { title: 'Upload Short' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleUploadVideoClick = () => {
-  //   navigate('/dashboard/upload/video', { state: { title: 'Upload Video' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleCreatePlaylistClick = () => {
-  //   navigate('/dashboard/playlistsquick/create', { state: { title: 'Create Playlist' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleCreatePostClick = () => {
-  //   navigate('/dashboard/posts/create', { state: { title: 'Create Post' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleCreateGroupClick = () => {
-  //   navigate('/dashboard/groups/create', { state: { title: 'Create Group' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleHistoryClick = () => {
-  //   navigate('/dashboard/history', { state: { title: 'History' } });
-  //   setIsDropdownOpen(false);
-  // };
 
   return (
     <header className={styles.header}>
@@ -358,49 +310,6 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       )}
 
       <div className={styles.headerRight}>
-        {/* <div className={styles.createContainer} ref={createDropdownRef}>
-          <button 
-            className={styles.createButton} 
-            onClick={handleCreateClick}
-            aria-label="Create"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-            <span className={styles.createText}>Create</span>
-            <span style={comingSoonStyle}>Coming Soon</span>
-          </button>
-          
-          {isCreateDropdownOpen && (
-            <div className={styles.dropdown}>
-              <div className={styles.dropdownBody}>
-                <button className={styles.dropdownItem} onClick={handleUploadShortClick}>
-                  <FontAwesomeIcon icon={faFilm} className={styles.dropdownIcon} />
-                  <span>Upload Short</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-                
-                <button className={styles.dropdownItem} onClick={handleCreatePlaylistClick}>
-                  <FontAwesomeIcon icon={faList} className={styles.dropdownIcon} />
-                  <span>Create Playlist</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-                
-                <button className={styles.dropdownItem} onClick={handleCreatePostClick}>
-                  <FontAwesomeIcon icon={faEdit} className={styles.dropdownIcon} />
-                  <span>Create Post</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-                
-                <button className={styles.dropdownItem} onClick={handleCreateGroupClick}>
-                  <FontAwesomeIcon icon={faUsers} className={styles.dropdownIcon} />
-                  <span>Create Group</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div> */}
-        
-        {/* Les notifications */}
         <button 
           className={styles.notificationButton} 
           onClick={handleNotificationsClick}
@@ -427,7 +336,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
             aria-label="Profile menu"
           >
             <img 
-              src={getImageUrl(user?.photo_profil)} 
+              src={getAvatarUrl(user)} 
               alt="Profile" 
               className={styles.profileImage}
               crossOrigin="anonymous"
@@ -438,7 +347,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
             <div className={styles.dropdown}>
               <div className={styles.dropdownHeader}>
                 <img 
-                  src={getImageUrl(user?.photo_profil)} 
+                  src={getAvatarUrl(user)} 
                   alt="Profile" 
                   className={styles.dropdownProfileImage} 
                   crossOrigin="anonymous"
@@ -463,12 +372,6 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
                   <FontAwesomeIcon icon={faMusic} className={styles.dropdownIcon} />
                   <span>Your Playlists</span>
                 </button>
-                
-                {/* <button className={styles.dropdownItem} onClick={handleHistoryClick}>
-                  <FontAwesomeIcon icon={faHistory} className={styles.dropdownIcon} />
-                  <span>History</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button> */}
                 
                 <div className={styles.dropdownDivider}></div>
                 
