@@ -58,28 +58,41 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
   const suggestionsRef = useRef(null);
   const navigate = useNavigate();
 
-  // Base URL backend normalisée (trim + sans slash final)
-  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
-    .trim()
-    .replace(/\/+$/, '');
+  // Base URL backend normalisée (toujours string, trim + sans slash final)
+  const rawBase = process.env.REACT_APP_API_URL ?? 'https://throwback-backup-backend.onrender.com';
+  const baseUrl = String(rawBase).trim().replace(/\/+$/, '');
 
-  // Construit une URL absolue à partir d'un chemin/endpoint
-  const toAbsoluteUrl = (path) => {
-    if (!path) return null;
-    if (String(path).startsWith('http')) return path;
-    const normalized = path.startsWith('/') ? path : `/${path}`;
+  /** Transforme un chemin/endpoint en URL absolue — ultra tolérante */
+  const toAbsoluteUrl = (input) => {
+    if (input == null) return null;
+    const raw =
+      typeof input === 'string'
+        ? input
+        : (input && (input.url ?? input.path ?? input.href)) || '';
+
+    const s = String(raw).trim();
+    if (!s) return null;
+
+    if (/^https?:\/\//i.test(s)) return s.replace(/\s+/g, '');
+    const normalized = s.startsWith('/') ? s : `/${s}`;
     return `${baseUrl}${normalized}`.replace(/\s+/g, '');
   };
 
-  // URL finale de l'avatar en suivant la nouvelle logique MongoDB
+  // URL finale de l'avatar (nouvelle logique MongoDB)
   const getAvatarUrl = (u) => {
     if (!u) return '/images/default-avatar.png';
-    if (u.photo_profil_url) return toAbsoluteUrl(u.photo_profil_url) || '/images/default-avatar.png';
+
+    // 1) Nouveau champ API (peut être string/objet/bool → toAbsoluteUrl gère)
+    const candidate = toAbsoluteUrl(u.photo_profil_url);
+    if (candidate) return candidate;
+
+    // 2) Endpoint de lecture BD
     const uid = u._id || u.id;
     if (uid) return `${baseUrl}/api/users/${uid}/photo`;
-    // Compat ancien champ (si jamais un chemin relatif reste en DB)
-    if (u.photo_profil) return toAbsoluteUrl(u.photo_profil) || '/images/default-avatar.png';
-    return '/images/default-avatar.png';
+
+    // 3) Compat ancien champ (chemin relatif)
+    const legacy = toAbsoluteUrl(u.photo_profil);
+    return legacy || '/images/default-avatar.png';
   };
 
   // Détecter la taille de l'écran
