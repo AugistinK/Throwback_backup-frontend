@@ -18,24 +18,24 @@ const ProfileTabs = () => {
   const [success, setSuccess] = useState('');
 
   const [formData, setFormData] = useState({
-    prenom: user.prenom || '',
-    nom: user.nom || '',
-    email: user.email || '',
-    telephone: user.telephone ? (user.telephone.replace(/^\+\d{1,4}/, '')) : '',
-    date_naissance: user.date_naissance ? user.date_naissance.slice(0, 10) : '',
-    ville: user.ville || '',
-    adresse: user.adresse || '',
-    code_postal: user.code_postal || '',
-    pays: user.pays || '',
-    genre: user.genre ? user.genre.toUpperCase() : ''
+    prenom: user?.prenom || '',
+    nom: user?.nom || '',
+    email: user?.email || '',
+    telephone: user?.telephone ? String(user.telephone).replace(/^\+\d{1,4}/, '') : '',
+    date_naissance: user?.date_naissance ? String(user.date_naissance).slice(0, 10) : '',
+    ville: user?.ville || '',
+    adresse: user?.adresse || '',
+    code_postal: user?.code_postal || '',
+    pays: user?.pays || '',
+    genre: user?.genre ? String(user.genre).toUpperCase() : '',
   });
 
   const [bioData, setBioData] = useState({
-    bio: user.bio || '',
-    profession: user.profession || '',
-    // on garde le champ pour compat mais on affichera l'URL finale calculée
-    photo_profil: user.photo_profil || '',
-    compte_prive: user.compte_prive === true
+    bio: user?.bio || '',
+    profession: user?.profession || '',
+    // compat ancien champ (chemin relatif)
+    photo_profil: user?.photo_profil || '',
+    compte_prive: user?.compte_prive === true,
   });
 
   // 2-temps : photo en attente + preview
@@ -60,22 +60,23 @@ const ProfileTabs = () => {
     partage_automatique: false,
     autoriser_suggestions_amis: true,
     langue: 'en',
-    theme: 'auto'
+    theme: 'auto',
   });
 
-  const [indicatif, setIndicatif] = useState(user.indicatif || '+221');
+  const [indicatif, setIndicatif] = useState(user?.indicatif || '+221');
   const navigate = useNavigate();
 
-  // Backend base URL normalisée
+  // Backend base URL normalisée (sans slash final)
   const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
     .trim()
     .replace(/\/+$/, '');
 
-  // Util: transforme un chemin/endpoint en URL absolue
+  // Util: transforme un chemin/endpoint en URL absolue (toujours sur string)
   const toAbsoluteUrl = (path) => {
     if (!path) return null;
-    if (String(path).startsWith('http')) return path;
-    const normalized = path.startsWith('/') ? path : `/${path}`;
+    const p = typeof path === 'string' ? path : String(path ?? '');
+    if (p.startsWith('http')) return p;
+    const normalized = p.startsWith('/') ? p : `/${p}`;
     return `${baseUrl}${normalized}`.replace(/\s+/g, '');
   };
 
@@ -85,13 +86,12 @@ const ProfileTabs = () => {
     if (u.photo_profil_url) return toAbsoluteUrl(u.photo_profil_url) || '/images/default-avatar.png';
     const uid = u._id || u.id;
     if (uid) return `${baseUrl}/api/users/${uid}/photo`;
-    // compat ancien champ s'il contient un chemin relatif
     if (u.photo_profil) return toAbsoluteUrl(u.photo_profil) || '/images/default-avatar.png';
     return '/images/default-avatar.png';
   };
 
   const syncUserData = (updated) => {
-    setUser(prev => ({ ...prev, ...updated }));
+    setUser((prev) => ({ ...prev, ...updated }));
     try {
       const current = JSON.parse(localStorage.getItem('user') || '{}');
       localStorage.setItem('user', JSON.stringify({ ...current, ...updated }));
@@ -100,32 +100,36 @@ const ProfileTabs = () => {
 
   useEffect(() => {
     setFormData({
-      prenom: user.prenom || '',
-      nom: user.nom || '',
-      email: user.email || '',
-      telephone: user.telephone ? (user.telephone.replace(/^\+\d{1,4}/, '')) : '',
-      date_naissance: user.date_naissance ? user.date_naissance.slice(0, 10) : '',
-      ville: user.ville || '',
-      adresse: user.adresse || '',
-      code_postal: user.code_postal || '',
-      pays: user.pays || '',
-      genre: user.genre ? user.genre.toUpperCase() : ''
+      prenom: user?.prenom || '',
+      nom: user?.nom || '',
+      email: user?.email || '',
+      telephone: user?.telephone ? String(user.telephone).replace(/^\+\d{1,4}/, '') : '',
+      date_naissance: user?.date_naissance ? String(user.date_naissance).slice(0, 10) : '',
+      ville: user?.ville || '',
+      adresse: user?.adresse || '',
+      code_postal: user?.code_postal || '',
+      pays: user?.pays || '',
+      genre: user?.genre ? String(user.genre).toUpperCase() : '',
     });
     setBioData({
-      bio: user.bio || '',
-      profession: user.profession || '',
-      photo_profil: user.photo_profil || '',
-      compte_prive: user.compte_prive === true
+      bio: user?.bio || '',
+      profession: user?.profession || '',
+      photo_profil: user?.photo_profil || '',
+      compte_prive: user?.compte_prive === true,
     });
-    if (user.telephone && user.telephone.startsWith('+')) {
-      const match = user.telephone.match(/^(\+\d{1,4})/);
-      setIndicatif(match ? match[1] : '+221');
-    } else {
-      setIndicatif('+221');
+
+    if (user?.telephone) {
+      const tel = String(user.telephone);
+      if (tel.startsWith('+')) {
+        const match = tel.match(/^(\+\d{1,4})/);
+        setIndicatif(match ? match[1] : '+221');
+      } else {
+        setIndicatif('+221');
+      }
     }
   }, [user]);
 
-  // Préférences (inchangé)
+  // Préférences
   const fetchPreferences = async () => {
     try {
       setIsLoading(true);
@@ -147,32 +151,32 @@ const ProfileTabs = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(p => ({ ...p, [name]: value }));
+    setFormData((p) => ({ ...p, [name]: value }));
   };
 
   const handleBioChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setBioData(p => ({ ...p, [name]: type === 'checkbox' ? checked : value }));
+    setBioData((p) => ({ ...p, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handlePreferencesChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (type === 'checkbox') {
       if (name === 'genres_preferes' || name === 'decennies_preferees') {
-        setPreferencesData(prev => {
+        setPreferencesData((prev) => {
           let arr = [...(prev[name] || [])];
           if (checked && !arr.includes(value)) arr.push(value);
-          if (!checked && arr.includes(value)) arr = arr.filter(v => v !== value);
+          if (!checked && arr.includes(value)) arr = arr.filter((v) => v !== value);
           return { ...prev, [name]: arr };
         });
       } else {
-        setPreferencesData(prev => ({ ...prev, [name]: checked }));
+        setPreferencesData((prev) => ({ ...prev, [name]: checked }));
       }
     } else if (name === 'artistes_preferes') {
-      const artistsArray = value.split(',').map(a => a.trim()).filter(Boolean);
-      setPreferencesData(prev => ({ ...prev, [name]: artistsArray }));
+      const artistsArray = value.split(',').map((a) => a.trim()).filter(Boolean);
+      setPreferencesData((prev) => ({ ...prev, [name]: artistsArray }));
     } else {
-      setPreferencesData(prev => ({ ...prev, [name]: value }));
+      setPreferencesData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -180,7 +184,7 @@ const ProfileTabs = () => {
   const selectProfilePhoto = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (!f.type.startsWith('image/')) return setError('Image seulement');
+    if (!/^image\//.test(f.type)) return setError('Image seulement');
     if (f.size > 5 * 1024 * 1024) return setError('Max 5MB');
     setError('');
     setPendingPhoto(f);
@@ -201,7 +205,6 @@ const ProfileTabs = () => {
       const resp = await api.put('/api/users/profile', filtered);
       if (resp?.data?.success) {
         const merged = { ...resp.data.data };
-        // préserver l'URL avatar actuelle si non renvoyée
         if (!merged.photo_profil_url) merged.photo_profil_url = getAvatarUrl(user);
         setUser(merged);
         const current = JSON.parse(localStorage.getItem('user') || '{}');
@@ -229,30 +232,28 @@ const ProfileTabs = () => {
         fd.append('photo', pendingPhoto);
         const up = await api.post('/api/users/profile/photo', fd, {
           headers: { 'Content-Type': 'multipart/form-data' },
-          withCredentials: true
+          withCredentials: true,
         });
         if (!up?.data?.success) throw new Error('Upload photo échoué');
 
-        const updated = up.data.data; // user renvoyé par l’API
+        const updated = up.data.data; // user renvoyé
         const newUrl = updated?.photo_profil_url ? toAbsoluteUrl(updated.photo_profil_url) : getAvatarUrl(updated);
 
-        // maj UI + contexte
         setPhotoPreview('');
         setPendingPhoto(null);
-        setBioData(prev => ({ ...prev, photo_profil: newUrl })); // on stocke l’URL pour affichage
+        setBioData((prev) => ({ ...prev, photo_profil: newUrl }));
         syncUserData({ photo_profil_url: newUrl });
       }
 
       // 2) Mise à jour des champs bio/profession/compte_prive
       const filtered = Object.fromEntries(
-        Object.entries(bioData).filter(([k, v]) =>
-          ['bio', 'profession', 'compte_prive'].includes(k) && v !== '' && v !== null && v !== undefined
+        Object.entries(bioData).filter(
+          ([k, v]) => ['bio', 'profession', 'compte_prive'].includes(k) && v !== '' && v !== null && v !== undefined
         )
       );
       const resp = await api.put('/api/users/profile', filtered);
       if (resp?.data?.success) {
         const merged = { ...resp.data.data };
-        // s'assurer qu'on conserve l'URL d'avatar
         const currentAvatar = getAvatarUrl({ ...user, ...merged });
         merged.photo_profil_url = merged.photo_profil_url || currentAvatar;
         setUser(merged);
@@ -262,7 +263,7 @@ const ProfileTabs = () => {
         setSuccess('Bio mise à jour avec succès');
       }
     } catch (err) {
-      setError('Erreur lors de la mise à jour: ' + (err.response?.data?.message || err.message));
+      setError('Erreur lors de la mise à jour de la bio: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsLoading(false);
     }
@@ -291,21 +292,23 @@ const ProfileTabs = () => {
   const tabs = [
     { id: 'civilite', label: 'Personal' },
     { id: 'bio', label: 'Bio' },
-    { id: 'preferences', label: 'Preferences' }
+    { id: 'preferences', label: 'Preferences' },
   ];
 
   return (
     <>
       <button onClick={() => navigate(-1)} className={styles.backButton}>← Back</button>
       <div className={styles.tabsContainer}>
-        <h1 style={{textAlign: 'center', fontSize: '2rem', fontWeight: 700, marginBottom: 24, color: '#333'}}>Informations</h1>
+        <h1 style={{ textAlign: 'center', fontSize: '2rem', fontWeight: 700, marginBottom: 24, color: '#333' }}>
+          Informations
+        </h1>
 
         {error && <div className={styles.errorMessage}>{error}</div>}
         {success && <div className={styles.successMessage}>{success}</div>}
         {isLoading && <div className={styles.loadingIndicator}>Loading...</div>}
 
         <div className={styles.tabs}>
-          {tabs.map(tab => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               className={`${styles.tab} ${activeTab === tab.id ? styles.active : ''}`}
@@ -329,20 +332,20 @@ const ProfileTabs = () => {
                 <div className={styles.formGrid}>
                   <div className={styles.formGroup}>
                     <label htmlFor="prenom">First Name</label>
-                    <input id="prenom" name="prenom" value={formData.prenom} onChange={handleInputChange} disabled={!isEditing} className={styles.input}/>
+                    <input id="prenom" name="prenom" value={formData.prenom} onChange={handleInputChange} disabled={!isEditing} className={styles.input} />
                   </div>
                   <div className={styles.formGroup}>
                     <label htmlFor="nom">Last Name</label>
-                    <input id="nom" name="nom" value={formData.nom} onChange={handleInputChange} disabled={!isEditing} className={styles.input}/>
+                    <input id="nom" name="nom" value={formData.nom} onChange={handleInputChange} disabled={!isEditing} className={styles.input} />
                   </div>
                   <div className={styles.formGroup}>
                     <label htmlFor="email">Email</label>
-                    <input id="email" name="email" value={formData.email} onChange={handleInputChange} disabled={!isEditing} className={styles.input}/>
+                    <input id="email" name="email" value={formData.email} onChange={handleInputChange} disabled={!isEditing} className={styles.input} />
                   </div>
                   <div className={styles.formGroup}>
                     <label htmlFor="telephone">Phone</label>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <select id="indicatif" name="indicatif" value={indicatif} onChange={e => setIndicatif(e.target.value)} disabled={!isEditing} className={styles.input} style={{ maxWidth: 100 }}>
+                      <select id="indicatif" name="indicatif" value={indicatif} onChange={(e) => setIndicatif(e.target.value)} disabled={!isEditing} className={styles.input} style={{ maxWidth: 100 }}>
                         <option value="+1">+1 (US/Canada)</option>
                         <option value="+33">+33 (France)</option>
                         <option value="+221">+221 (Senegal)</option>
@@ -354,12 +357,12 @@ const ProfileTabs = () => {
                         <option value="+216">+216 (Tunisia)</option>
                         <option value="+237">+237 (Cameroon)</option>
                       </select>
-                      <input id="telephone" name="telephone" value={formData.telephone} onChange={handleInputChange} disabled={!isEditing} className={styles.input} style={{ flex: 1 }}/>
+                      <input id="telephone" name="telephone" value={formData.telephone} onChange={handleInputChange} disabled={!isEditing} className={styles.input} style={{ flex: 1 }} />
                     </div>
                   </div>
                   <div className={styles.formGroup}>
                     <label htmlFor="date_naissance">Birth Date</label>
-                    <input type="date" id="date_naissance" name="date_naissance" value={formData.date_naissance} onChange={handleInputChange} disabled={!isEditing} className={styles.input}/>
+                    <input type="date" id="date_naissance" name="date_naissance" value={formData.date_naissance} onChange={handleInputChange} disabled={!isEditing} className={styles.input} />
                   </div>
                   <div className={styles.formGroup}>
                     <label htmlFor="genre">Gender</label>
@@ -386,15 +389,15 @@ const ProfileTabs = () => {
                   </div>
                   <div className={styles.formGroup}>
                     <label htmlFor="ville">City</label>
-                    <input id="ville" name="ville" value={formData.ville} onChange={handleInputChange} disabled={!isEditing} className={styles.input}/>
+                    <input id="ville" name="ville" value={formData.ville} onChange={handleInputChange} disabled={!isEditing} className={styles.input} />
                   </div>
                   <div className={styles.formGroup}>
                     <label htmlFor="adresse">Address</label>
-                    <input id="adresse" name="adresse" value={formData.adresse} onChange={handleInputChange} disabled={!isEditing} className={styles.input}/>
+                    <input id="adresse" name="adresse" value={formData.adresse} onChange={handleInputChange} disabled={!isEditing} className={styles.input} />
                   </div>
                   <div className={styles.formGroup}>
                     <label htmlFor="code_postal">Postal Code</label>
-                    <input id="code_postal" name="code_postal" value={formData.code_postal} onChange={handleInputChange} disabled={!isEditing} className={styles.input}/>
+                    <input id="code_postal" name="code_postal" value={formData.code_postal} onChange={handleInputChange} disabled={!isEditing} className={styles.input} />
                   </div>
                 </div>
                 {isEditing && (
@@ -416,14 +419,14 @@ const ProfileTabs = () => {
                   {isEditingBio ? 'Cancel' : 'Edit'}
                 </button>
               </div>
-              <form onSubmit={handleBioSubmit} className={styles.form} encType='multipart/form-data'>
+              <form onSubmit={handleBioSubmit} className={styles.form} encType="multipart/form-data">
                 <div className={styles.formGrid}>
                   <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                     <label>Profile Picture</label>
                     <div className={styles.photoUpload}>
                       <img
                         src={photoPreview || getAvatarUrl(user)}
-                        alt="Profile Picture"
+                        alt="Profile"
                         className={styles.photoPreview}
                         crossOrigin="anonymous"
                       />
@@ -496,14 +499,12 @@ const ProfileTabs = () => {
                 </button>
               </div>
               <form onSubmit={handlePreferencesSubmit} className={styles.form}>
-                {/* Music Preferences */}
                 <h3 className={styles.sectionTitle}>Music Preferences</h3>
                 <div className={styles.formGrid}>
                   <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                     <label>Favorite Genres</label>
                     <div className={styles.checkboxGroup}>
-                      {['rock', 'pop', 'jazz', 'classical', 'hip-hop', 'rap', 'r&b', 'soul', 'funk', 
-                        'disco', 'electro', 'blues'].map(genre => (
+                      {['rock', 'pop', 'jazz', 'classical', 'hip-hop', 'rap', 'r&b', 'soul', 'funk', 'disco', 'electro', 'blues'].map((genre) => (
                         <label key={genre} className={styles.checkboxLabel}>
                           <input
                             type="checkbox"
@@ -519,11 +520,11 @@ const ProfileTabs = () => {
                       ))}
                     </div>
                   </div>
-                  
+
                   <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                     <label>Favorite Decades</label>
                     <div className={styles.checkboxGroup}>
-                      {['60s', '70s', '80s', '90s', '2000s', '2010s', '2020s'].map(decade => (
+                      {['60s', '70s', '80s', '90s', '2000s', '2010s', '2020s'].map((decade) => (
                         <label key={decade} className={styles.checkboxLabel}>
                           <input
                             type="checkbox"
@@ -539,7 +540,7 @@ const ProfileTabs = () => {
                       ))}
                     </div>
                   </div>
-                  
+
                   <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                     <label htmlFor="artistes_preferes">Favorite Artists</label>
                     <input
@@ -555,12 +556,10 @@ const ProfileTabs = () => {
                     <small className={styles.helperText}>Separate names with commas</small>
                   </div>
                 </div>
-               
+
                 {isEditingPreferences && (
                   <div className={styles.formActions}>
-                    <button type="submit" className={styles.saveButton}>
-                      Save
-                    </button>
+                    <button type="submit" className={styles.saveButton}>Save</button>
                   </div>
                 )}
               </form>
