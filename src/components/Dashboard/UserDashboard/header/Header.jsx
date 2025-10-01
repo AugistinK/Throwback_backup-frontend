@@ -22,12 +22,9 @@ import {
   faUsers,
   faFilm
 } from '@fortawesome/free-solid-svg-icons';
-// import Logo from '../../../../images/Logo.png';
 import { useAuth } from '../../../../contexts/AuthContext';
-// Importer le service de recherche
 import { searchAPI } from '../../../../utils/api';
 
-// Styles pour le badge "Coming Soon"
 const comingSoonStyle = {
   fontSize: '0.6rem',
   padding: '2px 4px',
@@ -50,43 +47,51 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
   const [unreadNotifications, setUnreadNotifications] = useState(3);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
-  // Nouveaux Ã©tats pour l'auto-complÃ©tion
+
+  // Auto-complétion
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  
+
   const searchInputRef = useRef(null);
   const dropdownRef = useRef(null);
   const createDropdownRef = useRef(null);
   const suggestionsRef = useRef(null);
   const navigate = useNavigate();
 
-  // Fonction pour convertir les chemins relatifs en URLs absolues
-  const getImageUrl = (path) => {
-    if (!path) return 'https://via.placeholder.com/32';
-    if (path.startsWith('http')) return path;
-    
-    // Assurez-vous que le chemin commence par un slash
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    
-    // Utiliser l'URL complÃ¨te du backend
-    const backendUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com ';
-    return `${backendUrl}${normalizedPath}`;
+  // ===== Helpers URL sûrs (pas de startsWith sur non-string) =====
+  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
+    .trim()
+    .replace(/\/+$/, '');
+
+  const toAbsoluteUrl = (path) => {
+    if (!path) return null;
+    const val = typeof path === 'string' ? path : String(path ?? '');
+    if (val.startsWith('http')) return val;
+    const normalized = val.startsWith('/') ? val : `/${val}`;
+    return `${baseUrl}${normalized}`.replace(/\s+/g, '');
   };
 
-  // DÃ©tecter la taille de l'Ã©cran
+  const getAvatarUrl = (u) => {
+    if (!u) return 'https://via.placeholder.com/32';
+    // Nouveau champ renvoyé par l’API
+    if (u.photo_profil_url) return toAbsoluteUrl(u.photo_profil_url) || 'https://via.placeholder.com/32';
+    // Ancien fallback: endpoint par id
+    const uid = u._id || u.id;
+    if (uid) return `${baseUrl}/api/users/${uid}/photo`;
+    // Dernier recours
+    return 'https://via.placeholder.com/32';
+  };
+  // ===============================================================
+
+  // Détecter la taille de l'écran
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 480);
-      if (window.innerWidth > 480) {
-        setShowMobileSearch(false);
-      }
+      if (window.innerWidth > 480) setShowMobileSearch(false);
     };
-
     window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Detect clicks outside dropdowns
@@ -98,167 +103,103 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       if (createDropdownRef.current && !createDropdownRef.current.contains(event.target)) {
         setIsCreateDropdownOpen(false);
       }
-      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target) && 
-          searchInputRef.current && !searchInputRef.current.contains(event.target)) {
+      if (
+        suggestionsRef.current && !suggestionsRef.current.contains(event.target) &&
+        searchInputRef.current && !searchInputRef.current.contains(event.target)
+      ) {
         setShowSuggestions(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Focus sur l'input quand la recherche mobile est activÃ©e
+  // Focus sur l'input quand la recherche mobile est activée
   useEffect(() => {
     if (showMobileSearch && searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, [showMobileSearch]);
 
-  // Fonction pour rÃ©cupÃ©rer les suggestions de recherche
+  // Récupérer les suggestions
   const fetchSuggestions = async (value) => {
     if (!value || value.length < 2) {
       setSuggestions([]);
       setIsLoadingSuggestions(false);
       return;
     }
-    
     try {
       setIsLoadingSuggestions(true);
       const response = await searchAPI.getSearchSuggestions(value);
-      
-      if (response.success) {
-        setSuggestions(response.data || []);
-      } else {
-        setSuggestions([]);
-      }
+      setSuggestions(response.success ? (response.data || []) : []);
     } catch (error) {
-      console.error('Erreur lors de la rÃ©cupÃ©ration des suggestions:', error);
+      console.error('Erreur lors de la récupération des suggestions:', error);
       setSuggestions([]);
     } finally {
       setIsLoadingSuggestions(false);
     }
   };
-  
-  // Debounce pour les suggestions de recherche
+
+  // Debounce suggestions
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchTerm.trim()) {
-        fetchSuggestions(searchTerm);
-      } else {
-        setSuggestions([]);
-      }
+      if (searchTerm.trim()) fetchSuggestions(searchTerm);
+      else setSuggestions([]);
     }, 300);
-    
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Handle search input change
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     setShowClearButton(e.target.value.length > 0);
     setShowSuggestions(e.target.value.length > 0);
   };
 
-  // Clear search input
   const clearSearch = () => {
     setSearchTerm('');
     setShowClearButton(false);
     setSuggestions([]);
     setShowSuggestions(false);
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+    searchInputRef.current?.focus();
   };
 
-  // SÃ©lectionner une suggestion
   const handleSelectSuggestion = (suggestion) => {
     setSearchTerm(suggestion.query || suggestion.text);
     setShowSuggestions(false);
     navigate(`/dashboard/search?q=${encodeURIComponent(suggestion.query || suggestion.text)}&type=${suggestion.type !== 'artist' ? suggestion.type : 'videos'}`);
   };
 
-  // Handle search submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
       navigate(`/dashboard/search?q=${encodeURIComponent(searchTerm.trim())}`);
       setShowSuggestions(false);
-      if (isMobile) {
-        setShowMobileSearch(false);
-      }
+      if (isMobile) setShowMobileSearch(false);
     }
   };
 
-  // Navigation functions
   const handleProfileClick = () => {
     navigate('/dashboard/profile');
     setIsDropdownOpen(false);
   };
-
   const handleSettingsClick = () => {
     navigate('/dashboard/settings');
     setIsDropdownOpen(false);
   };
-
   const handleLogoutClick = () => {
     logout();
     navigate('/login');
   };
-
-  // ModifiÃ© pour rediriger vers la page temporaire
   const handleNotificationsClick = () => {
     navigate('/dashboard/notifications', { state: { title: 'Notifications' } });
   };
-
-  // ModifiÃ© pour simplement ouvrir/fermer le dropdown
-  // const handleCreateClick = () => {
-  //   setIsCreateDropdownOpen(!isCreateDropdownOpen);
-  // };
-
-  // Handle menu button click to toggle sidebar
   const handleMenuButtonClick = () => {
     toggleSidebar();
   };
-
-  // Fermer la recherche mobile
   const handleCloseMobileSearch = () => {
     setShowMobileSearch(false);
     setShowSuggestions(false);
   };
-
-  // // ModifiÃ©s pour rediriger vers la page temporaire
-  // const handleUploadShortClick = () => {
-  //   navigate('/dashboard/upload/short', { state: { title: 'Upload Short' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleUploadVideoClick = () => {
-  //   navigate('/dashboard/upload/video', { state: { title: 'Upload Video' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleCreatePlaylistClick = () => {
-  //   navigate('/dashboard/playlistsquick/create', { state: { title: 'Create Playlist' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleCreatePostClick = () => {
-  //   navigate('/dashboard/posts/create', { state: { title: 'Create Post' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleCreateGroupClick = () => {
-  //   navigate('/dashboard/groups/create', { state: { title: 'Create Group' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleHistoryClick = () => {
-  //   navigate('/dashboard/history', { state: { title: 'History' } });
-  //   setIsDropdownOpen(false);
-  // };
 
   return (
     <header className={styles.header}>
@@ -280,7 +221,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
               onChange={handleSearchChange}
               onFocus={() => setShowSuggestions(searchTerm.length > 0)}
             />
-            
+
             {showClearButton && (
               <button 
                 type="button" 
@@ -291,8 +232,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
                 <FontAwesomeIcon icon={faTimes} />
               </button>
             )}
-            
-            {/* Suggestions de recherche */}
+
             {showSuggestions && (
               <div className={styles.suggestionsList} ref={suggestionsRef}>
                 {isLoadingSuggestions ? (
@@ -329,7 +269,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
               </div>
             )}
           </div>
-          
+
           <button type="submit" className={styles.searchButton} aria-label="Search">
             <FontAwesomeIcon icon={faSearch} />
           </button>
@@ -358,49 +298,6 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       )}
 
       <div className={styles.headerRight}>
-        {/* <div className={styles.createContainer} ref={createDropdownRef}>
-          <button 
-            className={styles.createButton} 
-            onClick={handleCreateClick}
-            aria-label="Create"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-            <span className={styles.createText}>Create</span>
-            <span style={comingSoonStyle}>Coming Soon</span>
-          </button>
-          
-          {isCreateDropdownOpen && (
-            <div className={styles.dropdown}>
-              <div className={styles.dropdownBody}>
-                <button className={styles.dropdownItem} onClick={handleUploadShortClick}>
-                  <FontAwesomeIcon icon={faFilm} className={styles.dropdownIcon} />
-                  <span>Upload Short</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-                
-                <button className={styles.dropdownItem} onClick={handleCreatePlaylistClick}>
-                  <FontAwesomeIcon icon={faList} className={styles.dropdownIcon} />
-                  <span>Create Playlist</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-                
-                <button className={styles.dropdownItem} onClick={handleCreatePostClick}>
-                  <FontAwesomeIcon icon={faEdit} className={styles.dropdownIcon} />
-                  <span>Create Post</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-                
-                <button className={styles.dropdownItem} onClick={handleCreateGroupClick}>
-                  <FontAwesomeIcon icon={faUsers} className={styles.dropdownIcon} />
-                  <span>Create Group</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div> */}
-        
-        {/* Les notifications */}
         <button 
           className={styles.notificationButton} 
           onClick={handleNotificationsClick}
@@ -419,7 +316,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
             whiteSpace: 'nowrap'
           }}>Coming Soon</span>
         </button>
-        
+
         <div className={styles.profileContainer} ref={dropdownRef}>
           <button 
             className={styles.profileButton} 
@@ -427,18 +324,18 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
             aria-label="Profile menu"
           >
             <img 
-              src={getImageUrl(user?.photo_profil)} 
+              src={getAvatarUrl(user)} 
               alt="Profile" 
               className={styles.profileImage}
               crossOrigin="anonymous"
             />
           </button>
-          
+
           {isDropdownOpen && (
             <div className={styles.dropdown}>
               <div className={styles.dropdownHeader}>
                 <img 
-                  src={getImageUrl(user?.photo_profil)} 
+                  src={getAvatarUrl(user)} 
                   alt="Profile" 
                   className={styles.dropdownProfileImage} 
                   crossOrigin="anonymous"
@@ -452,31 +349,25 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
                   </span>
                 </div>
               </div>
-              
+
               <div className={styles.dropdownBody}>
                 <button className={styles.dropdownItem} onClick={handleProfileClick}>
                   <FontAwesomeIcon icon={faUser} className={styles.dropdownIcon} />
                   <span>Your Profile</span>
                 </button>
-                
+
                 <button className={styles.dropdownItem} onClick={() => navigate('/dashboard/playlists')}>
                   <FontAwesomeIcon icon={faMusic} className={styles.dropdownIcon} />
                   <span>Your Playlists</span>
                 </button>
-                
-                {/* <button className={styles.dropdownItem} onClick={handleHistoryClick}>
-                  <FontAwesomeIcon icon={faHistory} className={styles.dropdownIcon} />
-                  <span>History</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button> */}
-                
+
                 <div className={styles.dropdownDivider}></div>
-                
+
                 <button className={styles.dropdownItem} onClick={handleSettingsClick}>
                   <FontAwesomeIcon icon={faCog} className={styles.dropdownIcon} />
                   <span>Settings</span>
                 </button>
-                
+
                 <button className={styles.dropdownItem} onClick={handleLogoutClick}>
                   <FontAwesomeIcon icon={faSignOutAlt} className={styles.dropdownIcon} />
                   <span>Logout</span>
