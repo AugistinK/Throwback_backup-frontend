@@ -50,7 +50,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
   const [unreadNotifications, setUnreadNotifications] = useState(3);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
-  // Nouveaux états pour l'auto-complétion
+  // Nouveaux Ã©tats pour l'auto-complÃ©tion
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -69,12 +69,12 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     // Assurez-vous que le chemin commence par un slash
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     
-    // Utiliser l'URL complète du backend
+    // Utiliser l'URL complÃ¨te du backend
     const backendUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com ';
     return `${backendUrl}${normalizedPath}`;
   };
 
-  // Détecter la taille de l'écran
+  // DÃ©tecter la taille de l'Ã©cran
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 480);
@@ -110,14 +110,14 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     };
   }, []);
 
-  // Focus sur l'input quand la recherche mobile est activée
+  // Focus sur l'input quand la recherche mobile est activÃ©e
   useEffect(() => {
     if (showMobileSearch && searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, [showMobileSearch]);
 
-  // Fonction pour récupérer les suggestions de recherche
+  // Fonction pour rÃ©cupÃ©rer les suggestions de recherche
   const fetchSuggestions = async (value) => {
     if (!value || value.length < 2) {
       setSuggestions([]);
@@ -135,7 +135,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
         setSuggestions([]);
       }
     } catch (error) {
-      console.error('Erreur lors de la récupération des suggestions:', error);
+      console.error('Erreur lors de la rÃ©cupÃ©ration des suggestions:', error);
       setSuggestions([]);
     } finally {
       setIsLoadingSuggestions(false);
@@ -173,7 +173,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     }
   };
 
-  // Sélectionner une suggestion
+  // SÃ©lectionner une suggestion
   const handleSelectSuggestion = (suggestion) => {
     setSearchTerm(suggestion.query || suggestion.text);
     setShowSuggestions(false);
@@ -208,12 +208,12 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     navigate('/login');
   };
 
-  // Modifié pour rediriger vers la page temporaire
+  // ModifiÃ© pour rediriger vers la page temporaire
   const handleNotificationsClick = () => {
     navigate('/dashboard/notifications', { state: { title: 'Notifications' } });
   };
 
-  // Modifié pour simplement ouvrir/fermer le dropdown
+  // ModifiÃ© pour simplement ouvrir/fermer le dropdown
   // const handleCreateClick = () => {
   //   setIsCreateDropdownOpen(!isCreateDropdownOpen);
   // };
@@ -229,7 +229,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     setShowSuggestions(false);
   };
 
-  // // Modifiés pour rediriger vers la page temporaire
+  // // ModifiÃ©s pour rediriger vers la page temporaire
   // const handleUploadShortClick = () => {
   //   navigate('/dashboard/upload/short', { state: { title: 'Upload Short' } });
   //   setIsCreateDropdownOpen(false);
