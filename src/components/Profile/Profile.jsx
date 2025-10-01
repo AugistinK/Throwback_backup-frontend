@@ -32,13 +32,38 @@ export default function Profile() {
   const [memoriesError, setMemoriesError] = useState(null);
 
   // Corrigé: trim + sans slash final
-  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com').trim().replace(/\/+$/,'');
+  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
+    .trim()
+    .replace(/\/+$/, '');
 
-  const getImageUrl = (path) => {
-    if (!path) return '/images/default-avatar.png';
+  /** Convertit un chemin relatif/endpoint en URL absolue */
+  const toAbsoluteUrl = (path) => {
+    if (!path) return null;
     if (String(path).startsWith('http')) return path;
     const normalized = path.startsWith('/') ? path : `/${path}`;
     return `${baseUrl}${normalized}`.replace(/\s+/g, '');
+  };
+
+  /** URL finale de l'avatar utilisateur avec la nouvelle logique MongoDB */
+  const getAvatarUrl = () => {
+    if (!user) return '/images/default-avatar.png';
+
+    // 1) Nouveau champ renvoyé par l'API
+    if (user.photo_profil_url) {
+      return toAbsoluteUrl(user.photo_profil_url) || '/images/default-avatar.png';
+    }
+
+    // 2) Ancienne logique (fallback) : endpoint de lecture BD par ID
+    const uid = user._id || user.id;
+    if (uid) return `${baseUrl}/api/users/${uid}/photo`;
+
+    // 3) Dernier recours
+    return '/images/default-avatar.png';
+  };
+
+  /** Compat: pour d'autres images éventuellement relatives */
+  const getImageUrl = (path) => {
+    return toAbsoluteUrl(path) || '/images/default-avatar.png';
   };
 
   const handlePlaylistsClick = () => {
@@ -87,18 +112,33 @@ export default function Profile() {
 
   const formatMemories = (data) => {
     if (!Array.isArray(data) || !data.length) return mockMemories;
-    return data.map(m => ({
-      id: m._id || m.id || `memory-${Math.random()}`,
-      username: m.auteur ? (`${m.auteur.prenom || ''} ${m.auteur.nom || ''}`.trim() || 'Utilisateur') : 'Utilisateur',
-      type: m.type || 'posted',
-      videoTitle: m.video?.titre || m.videoTitle || 'Vidéo sans titre',
-      videoArtist: m.video?.artiste || m.videoArtist || 'Artiste inconnu',
-      videoYear: m.video?.annee || m.videoYear || '----',
-      imageUrl: getImageUrl(m.auteur?.photo_profil || m.imageUrl),
-      content: m.contenu || m.content || 'Pas de contenu',
-      likes: m.likes || 0,
-      comments: m.nb_commentaires || m.comments || 0
-    }));
+    return data.map(m => {
+      const auteur = m.auteur || {};
+      const auteurId = auteur._id || auteur.id;
+
+      // Priorité au nouveau champ auteur.photo_profil_url si dispo,
+      // sinon tentative d'endpoint lecture BD par ID,
+      // sinon compat' avec ancien champ (chemin relatif).
+      let authorImage =
+        auteur.photo_profil_url
+          ? toAbsoluteUrl(auteur.photo_profil_url)
+          : (auteurId
+              ? `${baseUrl}/api/users/${auteurId}/photo`
+              : getImageUrl(auteur.photo_profil || m.imageUrl));
+
+      return {
+        id: m._id || m.id || `memory-${Math.random()}`,
+        username: auteur ? (`${auteur.prenom || ''} ${auteur.nom || ''}`.trim() || 'Utilisateur') : 'Utilisateur',
+        type: m.type || 'posted',
+        videoTitle: m.video?.titre || m.videoTitle || 'Vidéo sans titre',
+        videoArtist: m.video?.artiste || m.videoArtist || 'Artiste inconnu',
+        videoYear: m.video?.annee || m.videoYear || '----',
+        imageUrl: authorImage || '/images/default-avatar.png',
+        content: m.contenu || m.content || 'Pas de contenu',
+        likes: m.likes || 0,
+        comments: m.nb_commentaires || m.comments || 0
+      };
+    });
   };
 
   if (editMode) return <UserInfo onBack={() => setEditMode(false)} />;
@@ -126,16 +166,16 @@ export default function Profile() {
           <div className={styles.profileCenterBlock}>
             <div className={styles.profileInfo} style={{ marginBottom: 32 }}>
               <img
-                src={getImageUrl(user.photo_profil)}
-                alt={`${user.prenom} ${user.nom}`}
+                src={getAvatarUrl()}
+                alt={`${user?.prenom || ''} ${user?.nom || ''}`.trim() || 'Profile picture'}
                 className={styles.avatar}
               />
-              <h2 className={styles.name}>{`${user.prenom} ${user.nom}`}</h2>
-              <p className={styles.bio}>{user.bio || 'Aucun bio renseigné.'}</p>
+              <h2 className={styles.name}>{`${user?.prenom || ''} ${user?.nom || ''}`.trim() || 'User'}</h2>
+              <p className={styles.bio}>{user?.bio || 'Aucun bio renseigné.'}</p>
               <div className={styles.meta}>
                 <div className={styles.metaItem}>
                   <LocationIcon className={styles.icon} />
-                  <span>{user.ville || '—'}</span>
+                  <span>{user?.ville || '—'}</span>
                 </div>
                 <div className={styles.metaItem}>
                   <CheckIcon className={styles.icon} style={{ color: '#1ec773' }} />

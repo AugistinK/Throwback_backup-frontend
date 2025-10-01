@@ -1,3 +1,4 @@
+// src/components/Dashboard/UserDashboard/Profile/ProfileTabs.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../../../contexts/AuthContext';
 import styles from './ProfileTabs.module.css';
@@ -32,6 +33,7 @@ const ProfileTabs = () => {
   const [bioData, setBioData] = useState({
     bio: user.bio || '',
     profession: user.profession || '',
+    // on garde le champ pour compat mais on affichera l'URL finale calculée
     photo_profil: user.photo_profil || '',
     compte_prive: user.compte_prive === true
   });
@@ -64,13 +66,28 @@ const ProfileTabs = () => {
   const [indicatif, setIndicatif] = useState(user.indicatif || '+221');
   const navigate = useNavigate();
 
-  const getImageUrl = (path) => {
-    if (!path) return '/images/default-avatar.png';
-    if (path.startsWith('http')) return path;
-    const backend = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com').trim().replace(/\/+$/,'');
+  // Backend base URL normalisée
+  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
+    .trim()
+    .replace(/\/+$/, '');
+
+  // Util: transforme un chemin/endpoint en URL absolue
+  const toAbsoluteUrl = (path) => {
+    if (!path) return null;
+    if (String(path).startsWith('http')) return path;
     const normalized = path.startsWith('/') ? path : `/${path}`;
-    const full = `${backend}${normalized}`.replace(/\s+/g, '');
-    return full;
+    return `${baseUrl}${normalized}`.replace(/\s+/g, '');
+  };
+
+  // URL finale à afficher pour l'avatar d'un utilisateur donné
+  const getAvatarUrl = (u) => {
+    if (!u) return '/images/default-avatar.png';
+    if (u.photo_profil_url) return toAbsoluteUrl(u.photo_profil_url) || '/images/default-avatar.png';
+    const uid = u._id || u.id;
+    if (uid) return `${baseUrl}/api/users/${uid}/photo`;
+    // compat ancien champ s'il contient un chemin relatif
+    if (u.photo_profil) return toAbsoluteUrl(u.photo_profil) || '/images/default-avatar.png';
+    return '/images/default-avatar.png';
   };
 
   const syncUserData = (updated) => {
@@ -126,7 +143,7 @@ const ProfileTabs = () => {
 
   useEffect(() => {
     if (activeTab === 'preferences') fetchPreferences();
-  }, [activeTab, token]);
+  }, [activeTab, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -159,7 +176,7 @@ const ProfileTabs = () => {
     }
   };
 
-  // NOUVELLE logique : on stocke le fichier et on montre un preview (pas d’upload ici)
+  // Sélection de la photo de profil (preview côté client)
   const selectProfilePhoto = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -183,10 +200,13 @@ const ProfileTabs = () => {
       if (filtered.telephone) filtered.telephone = `${indicatif}${filtered.telephone}`;
       const resp = await api.put('/api/users/profile', filtered);
       if (resp?.data?.success) {
-        setUser(resp.data.data);
-        setIsEditing(false);
+        const merged = { ...resp.data.data };
+        // préserver l'URL avatar actuelle si non renvoyée
+        if (!merged.photo_profil_url) merged.photo_profil_url = getAvatarUrl(user);
+        setUser(merged);
         const current = JSON.parse(localStorage.getItem('user') || '{}');
-        localStorage.setItem('user', JSON.stringify({ ...current, ...resp.data.data }));
+        localStorage.setItem('user', JSON.stringify({ ...current, ...merged }));
+        setIsEditing(false);
         setSuccess('Profil mis à jour avec succès');
       }
     } catch (err) {
@@ -196,13 +216,14 @@ const ProfileTabs = () => {
     }
   };
 
-  // Submit bio : uploader d’abord la nouvelle photo si présente, puis PUT bio/profession/compte_prive
+  // Submit bio (peut inclure upload de la photo)
   const handleBioSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
     setSuccess('');
     try {
+      // 1) Upload éventuel de la nouvelle photo
       if (pendingPhoto) {
         const fd = new FormData();
         fd.append('photo', pendingPhoto);
@@ -211,13 +232,18 @@ const ProfileTabs = () => {
           withCredentials: true
         });
         if (!up?.data?.success) throw new Error('Upload photo échoué');
-        const updated = up.data.data;
-        setBioData(prev => ({ ...prev, photo_profil: updated.photo_profil }));
-        setPendingPhoto(null);
+
+        const updated = up.data.data; // user renvoyé par l’API
+        const newUrl = updated?.photo_profil_url ? toAbsoluteUrl(updated.photo_profil_url) : getAvatarUrl(updated);
+
+        // maj UI + contexte
         setPhotoPreview('');
-        syncUserData({ photo_profil: updated.photo_profil });
+        setPendingPhoto(null);
+        setBioData(prev => ({ ...prev, photo_profil: newUrl })); // on stocke l’URL pour affichage
+        syncUserData({ photo_profil_url: newUrl });
       }
 
+      // 2) Mise à jour des champs bio/profession/compte_prive
       const filtered = Object.fromEntries(
         Object.entries(bioData).filter(([k, v]) =>
           ['bio', 'profession', 'compte_prive'].includes(k) && v !== '' && v !== null && v !== undefined
@@ -225,9 +251,13 @@ const ProfileTabs = () => {
       );
       const resp = await api.put('/api/users/profile', filtered);
       if (resp?.data?.success) {
-        setUser(resp.data.data);
+        const merged = { ...resp.data.data };
+        // s'assurer qu'on conserve l'URL d'avatar
+        const currentAvatar = getAvatarUrl({ ...user, ...merged });
+        merged.photo_profil_url = merged.photo_profil_url || currentAvatar;
+        setUser(merged);
         const current = JSON.parse(localStorage.getItem('user') || '{}');
-        localStorage.setItem('user', JSON.stringify({ ...current, ...resp.data.data }));
+        localStorage.setItem('user', JSON.stringify({ ...current, ...merged }));
         setIsEditingBio(false);
         setSuccess('Bio mise à jour avec succès');
       }
@@ -238,7 +268,7 @@ const ProfileTabs = () => {
     }
   };
 
-  // Submit préférences (inchangé)
+  // Submit préférences
   const handlePreferencesSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -297,7 +327,6 @@ const ProfileTabs = () => {
               </div>
               <form onSubmit={handleSubmit} className={styles.form}>
                 <div className={styles.formGrid}>
-                  {/* … mêmes champs qu’avant … */}
                   <div className={styles.formGroup}>
                     <label htmlFor="prenom">First Name</label>
                     <input id="prenom" name="prenom" value={formData.prenom} onChange={handleInputChange} disabled={!isEditing} className={styles.input}/>
@@ -393,7 +422,7 @@ const ProfileTabs = () => {
                     <label>Profile Picture</label>
                     <div className={styles.photoUpload}>
                       <img
-                        src={photoPreview || getImageUrl(bioData.photo_profil)}
+                        src={photoPreview || getAvatarUrl(user)}
                         alt="Profile Picture"
                         className={styles.photoPreview}
                         crossOrigin="anonymous"
@@ -527,7 +556,6 @@ const ProfileTabs = () => {
                   </div>
                 </div>
                
-                
                 {isEditingPreferences && (
                   <div className={styles.formActions}>
                     <button type="submit" className={styles.saveButton}>

@@ -1,10 +1,11 @@
+// src/components/Profile/UserInfo.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import styles from './userInfo.module.css';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export default function UserInfo({ onBack }) {
   const { user, setUser } = useAuth();
@@ -13,13 +14,13 @@ export default function UserInfo({ onBack }) {
   // Champs texte du profil
   const [formData, setFormData] = useState({});
 
-  // Photos enregistrées (valeurs venant du backend)
-  const [profilePhoto, setProfilePhoto] = useState(null);
-  const [coverPhoto, setCoverPhoto] = useState(null);
+  // Photos (valeurs affichées)
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
+  const [coverPhoto, setCoverPhoto] = useState(null); // UI conservée, upload désactivé pour l’instant
 
-  // Nouveaux fichiers sélectionnés mais PAS encore envoyés
+  // Fichiers en attente (non uploadés)
   const [pendingProfileFile, setPendingProfileFile] = useState(null);
-  const [pendingCoverFile, setPendingCoverFile] = useState(null);
+  const [pendingCoverFile, setPendingCoverFile] = useState(null); // (désactivé)
 
   // Aperçus locaux
   const [profilePreview, setProfilePreview] = useState('');
@@ -31,13 +32,23 @@ export default function UserInfo({ onBack }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // URL builder (corrige l’espace et normalise le slash)
-  const getImageUrl = (path) => {
-    if (!path) return '/images/default-avatar.png';
-    if (path.startsWith('http')) return path;
-    const backend = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com').trim().replace(/\/+$/,'');
+  // Base backend (trim + sans slash final)
+  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
+    .trim()
+    .replace(/\/+$/, '');
+
+  /** Construit une URL absolue à partir d’un chemin ou endpoint */
+  const toAbsoluteUrl = (path) => {
+    if (!path) return null;
+    if (String(path).startsWith('http')) return path;
     const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${backend}${normalized}`.replace(/\s+/g, '');
+    return `${baseUrl}${normalized}`.replace(/\s+/g, '');
+  };
+
+  /** URL à utiliser pour l’avatar (si pas de champ direct) */
+  const fallbackAvatarUrl = (u) => {
+    const uid = u?._id || u?.id;
+    return uid ? `${baseUrl}/api/users/${uid}/photo` : '/images/default-avatar.png';
   };
 
   // Sync context + localStorage
@@ -75,21 +86,31 @@ export default function UserInfo({ onBack }) {
       code_postal: user?.code_postal || '',
       bio: user?.bio || ''
     });
-    setProfilePhoto(user?.photo_profil || null);
+
+    // Priorité au nouveau champ URL renvoyé par l’API, sinon fallback endpoint
+    const initialAvatar =
+      user?.photo_profil_url
+        ? toAbsoluteUrl(user.photo_profil_url)
+        : fallbackAvatarUrl(user);
+
+    setProfilePhotoUrl(initialAvatar);
+
+    // Couverture: on conserve l’affichage existant si présent
     setCoverPhoto(user?.photo_couverture || null);
+
     setLoading(false);
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onFieldChange = (e) => {
     const { name, value } = e.target;
     setFormData(f => ({ ...f, [name]: value }));
   };
 
-  // Sélection d’un fichier → juste contrôle + preview (pas d’upload ici)
+  // Sélection fichiers → contrôle + preview (pas d’upload ici)
   const chooseProfilePhoto = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!ALLOWED_TYPES.includes(file.type)) return setError('Format non supporté');
+    if (!ALLOWED_TYPES.includes(file.type)) return setError('Format non supporté (PNG/JPG/JPEG/GIF/WebP)');
     if (file.size > MAX_FILE_SIZE) return setError('Fichier trop volumineux (max 5MB)');
     setError('');
     setPendingProfileFile(file);
@@ -99,7 +120,7 @@ export default function UserInfo({ onBack }) {
   const chooseCoverPhoto = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!ALLOWED_TYPES.includes(file.type)) return setError('Format non supporté');
+    if (!ALLOWED_TYPES.includes(file.type)) return setError('Format non supporté (PNG/JPG/JPEG/GIF/WebP)');
     if (file.size > MAX_FILE_SIZE) return setError('Fichier trop volumineux (max 5MB)');
     setError('');
     setPendingCoverFile(file);
@@ -114,8 +135,8 @@ export default function UserInfo({ onBack }) {
       headers: { 'Content-Type': 'multipart/form-data' },
       withCredentials: true
     });
-    if (!res?.data?.success) throw new Error('Upload échoué');
-    return res.data.data; // user mis à jour
+    if (!res?.data?.success) throw new Error(res?.data?.message || 'Upload échoué');
+    return res.data.data; // user mis à jour (avec photo_profil_url)
   };
 
   // Save = uploader d’abord les photos en attente, puis PUT des champs texte
@@ -125,21 +146,29 @@ export default function UserInfo({ onBack }) {
     setError('');
     setSuccess('');
     try {
-      // 1) Uploads éventuels
+      // 1) Upload avatar si en attente
       if (pendingProfileFile) {
         const updated = await uploadOnePhoto(pendingProfileFile, '/api/users/profile/photo');
-        setProfilePhoto(updated.photo_profil);
-        syncUserData({ photo_profil: updated.photo_profil });
+        // L’API renvoie maintenant `photo_profil_url`
+        const url = updated?.photo_profil_url
+          ? toAbsoluteUrl(updated.photo_profil_url)
+          : fallbackAvatarUrl(updated);
+
+        setProfilePhotoUrl(url);
+        syncUserData({ photo_profil_url: url }); // maj contexte + localStorage
         setPendingProfileFile(null);
       }
+
+      // 2) (Couverture désactivée tant que le backend n’est pas en place)
       if (pendingCoverFile) {
-        const updated = await uploadOnePhoto(pendingCoverFile, '/api/users/profile/cover');
-        setCoverPhoto(updated.photo_couverture);
-        syncUserData({ photo_couverture: updated.photo_couverture });
+        // TODO: activer quand /api/users/profile/cover sera prêt (GridFS ou buffer)
+        // const updated = await uploadOnePhoto(pendingCoverFile, '/api/users/profile/cover');
+        // setCoverPhoto(updated.photo_couverture);
+        // syncUserData({ photo_couverture: updated.photo_couverture });
         setPendingCoverFile(null);
       }
 
-      // 2) Champs texte
+      // 3) Champs texte
       const allow = ['nom','prenom','bio','date_naissance','genre','pays','ville','adresse','code_postal','telephone','profession'];
       const payload = {};
       allow.forEach(k => {
@@ -148,7 +177,10 @@ export default function UserInfo({ onBack }) {
       });
       const resp = await api.put('/api/users/profile', payload);
       if (resp?.data?.success) {
-        syncUserData(resp.data.data);
+        // l’API peut renvoyer data avec/ sans photo_profil_url, on préserve l’avatar courant
+        const merged = { ...resp.data.data };
+        if (!merged.photo_profil_url && profilePhotoUrl) merged.photo_profil_url = profilePhotoUrl;
+        syncUserData(merged);
         setSuccess('Profil mis à jour ✔️');
       } else {
         setError(resp?.data?.message || 'Réponse serveur invalide');
@@ -182,8 +214,8 @@ export default function UserInfo({ onBack }) {
           <label htmlFor="profile-photo" className={styles.upload_button}>
             {profilePreview
               ? <img src={profilePreview} alt="Preview" className={styles.profile_photo} />
-              : profilePhoto
-                ? <img src={getImageUrl(profilePhoto)} alt="Profil" className={styles.profile_photo} />
+              : profilePhotoUrl
+                ? <img src={profilePhotoUrl} alt="Profil" className={styles.profile_photo} />
                 : <div className={styles.profile_photo_placeholder}>+</div>
             }
           </label>
@@ -196,13 +228,14 @@ export default function UserInfo({ onBack }) {
             id="cover-photo"
             style={{ display: 'none' }}
             onChange={chooseCoverPhoto}
+            disabled
           />
-          <label htmlFor="cover-photo" className={styles.upload_button}>
+          <label htmlFor="cover-photo" className={styles.upload_button} style={{ opacity: 0.6, cursor: 'not-allowed' }} title="À venir">
             {coverPreview
               ? <img src={coverPreview} alt="Preview" className={styles.cover_photo} />
               : coverPhoto
-                ? <img src={getImageUrl(coverPhoto)} alt="Cover" className={styles.cover_photo} />
-                : <div className={styles.cover_photo_placeholder}>+</div>
+                ? <img src={toAbsoluteUrl(coverPhoto)} alt="Cover" className={styles.cover_photo} />
+                : <div className={styles.cover_photo_placeholder}>Cover (soon)</div>
             }
           </label>
         </div>
