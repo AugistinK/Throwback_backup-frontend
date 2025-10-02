@@ -64,24 +64,41 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     .trim()
     .replace(/\/+$/, '');
 
-  const toAbsoluteUrl = (path) => {
-    if (!path) return null;
-    const val = typeof path === 'string' ? path : String(path ?? '');
-    if (val.startsWith('http')) return val;
-    const normalized = val.startsWith('/') ? val : `/${val}`;
-    return `${baseUrl}${normalized}`.replace(/\s+/g, '');
-  };
+// Dans Header.jsx, ligne ~50
+const toAbsoluteUrl = (path) => {
+  if (!path) return null;
+  
+  // FIX: Conversion sécurisée en string
+  const val = path && typeof path === 'object' 
+    ? (path.toString ? path.toString() : String(path))
+    : String(path ?? '');
+    
+  if (val === '[object Object]') {
+    console.warn('⚠️ Tentative de conversion d\'objet en URL:', path);
+    return null;
+  }
+  
+  if (val.startsWith('http')) return val;
+  const normalized = val.startsWith('/') ? val : `/${val}`;
+  return `${baseUrl}${normalized}`.replace(/\s+/g, '');
+};
 
-  const getAvatarUrl = (u) => {
-    if (!u) return 'https://via.placeholder.com/32';
-    // Nouveau champ renvoyé par l’API
-    if (u.photo_profil_url) return toAbsoluteUrl(u.photo_profil_url) || 'https://via.placeholder.com/32';
-    // Ancien fallback: endpoint par id
-    const uid = u._id || u.id;
-    if (uid) return `${baseUrl}/api/users/${uid}/photo`;
-    // Dernier recours
-    return 'https://via.placeholder.com/32';
-  };
+const getAvatarUrl = (u) => {
+  if (!u) return '/images/default-avatar.png'; // Utiliser une image locale par défaut
+  
+  // Priorité au nouveau champ
+  if (u.photo_profil_url) {
+    const url = toAbsoluteUrl(u.photo_profil_url);
+    return url || '/images/default-avatar.png';
+  }
+  
+  // Fallback endpoint par ID
+  const uid = u._id || u.id;
+  if (uid) return `${baseUrl}/api/users/${uid}/photo`;
+  
+  // Image locale par défaut
+  return '/images/default-avatar.png';
+};
   // ===============================================================
 
   // Détecter la taille de l'écran

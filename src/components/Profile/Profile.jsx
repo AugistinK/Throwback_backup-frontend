@@ -36,13 +36,24 @@ export default function Profile() {
     .trim()
     .replace(/\/+$/, '');
 
-  /** Convertit un chemin relatif/endpoint en URL absolue */
-  const toAbsoluteUrl = (path) => {
-    if (!path) return null;
-    if (String(path).startsWith('http')) return path;
-    const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${baseUrl}${normalized}`.replace(/\s+/g, '');
-  };
+/** Convertit un chemin relatif/endpoint en URL absolue */
+
+const toAbsoluteUrl = (path) => {
+  if (!path) return null;
+  
+  const val = path && typeof path === 'object'
+    ? (path.toString ? path.toString() : String(path))
+    : String(path ?? '');
+    
+  if (val === '[object Object]' || !val) {
+    console.warn('⚠️ URL invalide:', path);
+    return null;
+  }
+  
+  if (val.startsWith('http')) return val;
+  const normalized = val.startsWith('/') ? val : `/${val}`;
+  return `${baseUrl}${normalized}`.replace(/\s+/g, '');
+};
 
   /** URL finale de l'avatar utilisateur avec la nouvelle logique MongoDB */
   const getAvatarUrl = () => {

@@ -72,13 +72,22 @@ const ProfileTabs = () => {
     .replace(/\/+$/, '');
 
   // Util: transforme un chemin/endpoint en URL absolue (toujours sur string)
-  const toAbsoluteUrl = (path) => {
-    if (!path) return null;
-    const p = typeof path === 'string' ? path : String(path ?? '');
-    if (p.startsWith('http')) return p;
-    const normalized = p.startsWith('/') ? p : `/${p}`;
-    return `${baseUrl}${normalized}`.replace(/\s+/g, '');
-  };
+const toAbsoluteUrl = (path) => {
+  if (!path) return null;
+  
+  const val = path && typeof path === 'object'
+    ? (path.toString ? path.toString() : String(path))
+    : String(path ?? '');
+    
+  if (val === '[object Object]' || !val) {
+    console.warn('⚠️ URL invalide:', path);
+    return null;
+  }
+  
+  if (val.startsWith('http')) return val;
+  const normalized = val.startsWith('/') ? val : `/${val}`;
+  return `${baseUrl}${normalized}`.replace(/\s+/g, '');
+};
 
   // URL finale à afficher pour l'avatar d'un utilisateur donné
   const getAvatarUrl = (u) => {

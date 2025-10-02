@@ -38,12 +38,22 @@ export default function UserInfo({ onBack }) {
     .replace(/\/+$/, '');
 
   /** Construit une URL absolue à partir d’un chemin ou endpoint */
-  const toAbsoluteUrl = (path) => {
-    if (!path) return null;
-    if (String(path).startsWith('http')) return path;
-    const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${baseUrl}${normalized}`.replace(/\s+/g, '');
-  };
+const toAbsoluteUrl = (path) => {
+  if (!path) return null;
+  
+  const val = path && typeof path === 'object'
+    ? (path.toString ? path.toString() : String(path))
+    : String(path ?? '');
+    
+  if (val === '[object Object]' || !val) {
+    console.warn('⚠️ URL invalide:', path);
+    return null;
+  }
+  
+  if (val.startsWith('http')) return val;
+  const normalized = val.startsWith('/') ? val : `/${val}`;
+  return `${baseUrl}${normalized}`.replace(/\s+/g, '');
+};
 
   /** URL à utiliser pour l’avatar (si pas de champ direct) */
   const fallbackAvatarUrl = (u) => {
