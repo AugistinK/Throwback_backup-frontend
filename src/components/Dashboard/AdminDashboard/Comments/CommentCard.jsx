@@ -224,13 +224,13 @@ const CommentCard = ({
       <div className={styles.actionsColumn}>
         <div className={styles.actionButtons}>
           {/* Moderate button */}
-          {/* <button
+        <button
             className={styles.actionBtn}
             onClick={() => setShowModerationModal(true)}
             title="Moderate this comment"
           >
             <i className="fas fa-gavel"></i>
-          </button>
+          </button> 
 
           {/* Reply button 
           <button
