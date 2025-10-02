@@ -4,7 +4,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import styles from './userInfo.module.css';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+// ✅ Utilitaires centralisés (évite /[object Object], corrige l'ID dans l'URL, anti-cache)
+import {
+  getAvatarUrl,
+  normalizePhotoUrlForUser,
+  withBust,
+  toAbsoluteUrl,
+} from '../../utils/imageUrl';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export default function UserInfo({ onBack }) {
@@ -32,38 +40,9 @@ export default function UserInfo({ onBack }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Base backend (trim + sans slash final)
-  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
-    .trim()
-    .replace(/\/+$/, '');
-
-  /** Construit une URL absolue à partir d’un chemin ou endpoint */
-const toAbsoluteUrl = (path) => {
-  if (!path) return null;
-  
-  const val = path && typeof path === 'object'
-    ? (path.toString ? path.toString() : String(path))
-    : String(path ?? '');
-    
-  if (val === '[object Object]' || !val) {
-    console.warn('⚠️ URL invalide:', path);
-    return null;
-  }
-  
-  if (val.startsWith('http')) return val;
-  const normalized = val.startsWith('/') ? val : `/${val}`;
-  return `${baseUrl}${normalized}`.replace(/\s+/g, '');
-};
-
-  /** URL à utiliser pour l’avatar (si pas de champ direct) */
-  const fallbackAvatarUrl = (u) => {
-    const uid = u?._id || u?.id;
-    return uid ? `${baseUrl}/api/users/${uid}/photo` : '/images/default-avatar.png';
-  };
-
   // Sync context + localStorage
   const syncUserData = (updated) => {
-    setUser(prev => ({ ...prev, ...updated }));
+    setUser((prev) => ({ ...prev, ...updated }));
     try {
       const current = JSON.parse(localStorage.getItem('user') || '{}');
       localStorage.setItem('user', JSON.stringify({ ...current, ...updated }));
@@ -81,7 +60,10 @@ const toAbsoluteUrl = (path) => {
       setLoading(false);
       return;
     }
-    const dd = user?.date_naissance ? new Date(user.date_naissance).toISOString().split('T')[0] : '';
+    const dd = user?.date_naissance
+      ? new Date(user.date_naissance).toISOString().split('T')[0]
+      : '';
+
     setFormData({
       nom: user?.nom || '',
       prenom: user?.prenom || '',
@@ -94,26 +76,21 @@ const toAbsoluteUrl = (path) => {
       ville: user?.ville || '',
       adresse: user?.adresse || '',
       code_postal: user?.code_postal || '',
-      bio: user?.bio || ''
+      bio: user?.bio || '',
     });
 
-    // Priorité au nouveau champ URL renvoyé par l’API, sinon fallback endpoint
-    const initialAvatar =
-      user?.photo_profil_url
-        ? toAbsoluteUrl(user.photo_profil_url)
-        : fallbackAvatarUrl(user);
-
-    setProfilePhotoUrl(initialAvatar);
+    // ✅ avatar initial fiable (utilise user._id + éventuelle URL)
+    setProfilePhotoUrl(getAvatarUrl(user));
 
     // Couverture: on conserve l’affichage existant si présent
     setCoverPhoto(user?.photo_couverture || null);
 
     setLoading(false);
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const onFieldChange = (e) => {
     const { name, value } = e.target;
-    setFormData(f => ({ ...f, [name]: value }));
+    setFormData((f) => ({ ...f, [name]: value }));
   };
 
   // Sélection fichiers → contrôle + preview (pas d’upload ici)
@@ -143,10 +120,10 @@ const toAbsoluteUrl = (path) => {
     fd.append('photo', file);
     const res = await api.post(endpoint, fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      withCredentials: true
+      withCredentials: true,
     });
     if (!res?.data?.success) throw new Error(res?.data?.message || 'Upload échoué');
-    return res.data.data; // user mis à jour (avec photo_profil_url)
+    return res.data.data; // { photo_profil_url, userId? }
   };
 
   // Save = uploader d’abord les photos en attente, puis PUT des champs texte
@@ -159,13 +136,17 @@ const toAbsoluteUrl = (path) => {
       // 1) Upload avatar si en attente
       if (pendingProfileFile) {
         const updated = await uploadOnePhoto(pendingProfileFile, '/api/users/profile/photo');
-        // L’API renvoie maintenant `photo_profil_url`
-        const url = updated?.photo_profil_url
-          ? toAbsoluteUrl(updated.photo_profil_url)
-          : fallbackAvatarUrl(updated);
 
-        setProfilePhotoUrl(url);
-        syncUserData({ photo_profil_url: url }); // maj contexte + localStorage
+        // ✅ L’API renvoie `photo_profil_url` → normaliser avec le bon ID
+        const rawUrl = updated?.photo_profil_url;
+        const fixedUrl = normalizePhotoUrlForUser(user, rawUrl);
+
+        // Affichage immédiat: ajouter un anti-cache
+        const displayUrl = withBust(fixedUrl);
+
+        setProfilePhotoUrl(displayUrl);       // affiche tout de suite
+        syncUserData({ photo_profil_url: fixedUrl }); // stocker SANS cache-buster
+        setProfilePreview('');
         setPendingProfileFile(null);
       }
 
@@ -179,24 +160,32 @@ const toAbsoluteUrl = (path) => {
       }
 
       // 3) Champs texte
-      const allow = ['nom','prenom','bio','date_naissance','genre','pays','ville','adresse','code_postal','telephone','profession'];
+      const allow = [
+        'nom', 'prenom', 'bio', 'date_naissance', 'genre',
+        'pays', 'ville', 'adresse', 'code_postal', 'telephone', 'profession'
+      ];
       const payload = {};
-      allow.forEach(k => {
+      allow.forEach((k) => {
         const v = formData[k];
-        if (v !== undefined && v !== null && v !== '') payload[k] = k === 'genre' ? String(v).toUpperCase() : v;
+        if (v !== undefined && v !== null && v !== '')
+          payload[k] = k === 'genre' ? String(v).toUpperCase() : v;
       });
+
       const resp = await api.put('/api/users/profile', payload);
       if (resp?.data?.success) {
-        // l’API peut renvoyer data avec/ sans photo_profil_url, on préserve l’avatar courant
+        // l’API peut renvoyer data avec / sans photo_profil_url → on préserve et normalise
         const merged = { ...resp.data.data };
-        if (!merged.photo_profil_url && profilePhotoUrl) merged.photo_profil_url = profilePhotoUrl;
+        merged.photo_profil_url = normalizePhotoUrlForUser(
+          merged,
+          merged.photo_profil_url || user?.photo_profil_url
+        );
         syncUserData(merged);
         setSuccess('Profil mis à jour ✔️');
       } else {
         setError(resp?.data?.message || 'Réponse serveur invalide');
       }
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Erreur, réessaye.');
+      setError(err?.response?.data?.message || err?.message || 'Erreur, réessaie.');
     } finally {
       if (isMounted.current) setSaving(false);
     }
@@ -222,12 +211,19 @@ const toAbsoluteUrl = (path) => {
             onChange={chooseProfilePhoto}
           />
           <label htmlFor="profile-photo" className={styles.upload_button}>
-            {profilePreview
-              ? <img src={profilePreview} alt="Preview" className={styles.profile_photo} />
-              : profilePhotoUrl
-                ? <img src={profilePhotoUrl} alt="Profil" className={styles.profile_photo} />
-                : <div className={styles.profile_photo_placeholder}>+</div>
-            }
+            {profilePreview ? (
+              <img src={profilePreview} alt="Preview" className={styles.profile_photo} />
+            ) : profilePhotoUrl ? (
+              <img
+                src={profilePhotoUrl}
+                alt="Profil"
+                className={styles.profile_photo}
+                crossOrigin="anonymous"
+                onError={(e) => { e.currentTarget.src = '/images/default-avatar.png'; }}
+              />
+            ) : (
+              <div className={styles.profile_photo_placeholder}>+</div>
+            )}
           </label>
         </div>
 
@@ -240,13 +236,19 @@ const toAbsoluteUrl = (path) => {
             onChange={chooseCoverPhoto}
             disabled
           />
-          <label htmlFor="cover-photo" className={styles.upload_button} style={{ opacity: 0.6, cursor: 'not-allowed' }} title="À venir">
-            {coverPreview
-              ? <img src={coverPreview} alt="Preview" className={styles.cover_photo} />
-              : coverPhoto
-                ? <img src={toAbsoluteUrl(coverPhoto)} alt="Cover" className={styles.cover_photo} />
-                : <div className={styles.cover_photo_placeholder}>Cover (soon)</div>
-            }
+          <label
+            htmlFor="cover-photo"
+            className={styles.upload_button}
+            style={{ opacity: 0.6, cursor: 'not-allowed' }}
+            title="À venir"
+          >
+            {coverPreview ? (
+              <img src={coverPreview} alt="Preview" className={styles.cover_photo} />
+            ) : coverPhoto ? (
+              <img src={toAbsoluteUrl(coverPhoto)} alt="Cover" className={styles.cover_photo} />
+            ) : (
+              <div className={styles.cover_photo_placeholder}>Cover (soon)</div>
+            )}
           </label>
         </div>
       </div>

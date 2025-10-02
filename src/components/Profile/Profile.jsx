@@ -14,6 +14,13 @@ import likeIcon from '../../assets/icons/like.png';
 import commentIcon from '../../assets/icons/comment.png';
 import HelpAndSupport from './HelpAndSupport';
 
+// ✅ Utilitaires centralisés (plus de duplications locales)
+import {
+  baseUrl,            // backend normalisé (sans slash final)
+  getAvatarUrl,       // construit une URL d’avatar fiable, alignée sur le bon _id_
+  toAbsoluteUrl       // transforme un chemin relatif/endpoint en URL absolue
+} from '../../utils/imageUrl';
+
 const mockMemories = [
   { id: 'mock1', username: 'User Demo', type: 'posted', videoTitle: 'Sample Video', videoArtist: 'Artist', videoYear: '2000', imageUrl: '/images/default-avatar.jpg', content: 'This is a sample memory', likes: 5, comments: 2 },
   { id: 'mock2', username: 'Another User', type: 'shared', videoTitle: 'Another Video', videoArtist: 'Another Artist', videoYear: '1990', imageUrl: '/images/default-avatar.jpg', content: 'This is another sample memory', likes: 10, comments: 3 }
@@ -31,52 +38,6 @@ export default function Profile() {
   const [memoriesLoading, setMemoriesLoading] = useState(true);
   const [memoriesError, setMemoriesError] = useState(null);
 
-  // Corrigé: trim + sans slash final
-  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
-    .trim()
-    .replace(/\/+$/, '');
-
-/** Convertit un chemin relatif/endpoint en URL absolue */
-
-const toAbsoluteUrl = (path) => {
-  if (!path) return null;
-  
-  const val = path && typeof path === 'object'
-    ? (path.toString ? path.toString() : String(path))
-    : String(path ?? '');
-    
-  if (val === '[object Object]' || !val) {
-    console.warn('⚠️ URL invalide:', path);
-    return null;
-  }
-  
-  if (val.startsWith('http')) return val;
-  const normalized = val.startsWith('/') ? val : `/${val}`;
-  return `${baseUrl}${normalized}`.replace(/\s+/g, '');
-};
-
-  /** URL finale de l'avatar utilisateur avec la nouvelle logique MongoDB */
-  const getAvatarUrl = () => {
-    if (!user) return '/images/default-avatar.png';
-
-    // 1) Nouveau champ renvoyé par l'API
-    if (user.photo_profil_url) {
-      return toAbsoluteUrl(user.photo_profil_url) || '/images/default-avatar.png';
-    }
-
-    // 2) Ancienne logique (fallback) : endpoint de lecture BD par ID
-    const uid = user._id || user.id;
-    if (uid) return `${baseUrl}/api/users/${uid}/photo`;
-
-    // 3) Dernier recours
-    return '/images/default-avatar.png';
-  };
-
-  /** Compat: pour d'autres images éventuellement relatives */
-  const getImageUrl = (path) => {
-    return toAbsoluteUrl(path) || '/images/default-avatar.png';
-  };
-
   const handlePlaylistsClick = () => {
     setActiveBtn('playlist');
     navigate('/dashboard/playlists');
@@ -89,7 +50,7 @@ const toAbsoluteUrl = (path) => {
   const fetchRecentMemories = async () => {
     try {
       setMemoriesLoading(true);
-      // Route principale
+      // Route principale publique
       const resp = await fetch(`${baseUrl}/api/public/memories/recent`);
       if (resp.ok) {
         const result = await resp.json();
@@ -100,7 +61,7 @@ const toAbsoluteUrl = (path) => {
           return;
         }
       }
-      // Fallback
+      // Fallback privé
       const fb = await fetch(`${baseUrl}/api/memories/recent`);
       if (fb.ok) {
         const result = await fb.json();
@@ -125,17 +86,10 @@ const toAbsoluteUrl = (path) => {
     if (!Array.isArray(data) || !data.length) return mockMemories;
     return data.map(m => {
       const auteur = m.auteur || {};
-      const auteurId = auteur._id || auteur.id;
+      const fallback = toAbsoluteUrl(m.imageUrl) || '/images/default-avatar.png';
 
-      // Priorité au nouveau champ auteur.photo_profil_url si dispo,
-      // sinon tentative d'endpoint lecture BD par ID,
-      // sinon compat' avec ancien champ (chemin relatif).
-      let authorImage =
-        auteur.photo_profil_url
-          ? toAbsoluteUrl(auteur.photo_profil_url)
-          : (auteurId
-              ? `${baseUrl}/api/users/${auteurId}/photo`
-              : getImageUrl(auteur.photo_profil || m.imageUrl));
+      // ✅ avatar auteur robuste (prend en compte id + éventuelle URL fournie)
+      const authorImage = getAvatarUrl(auteur, { defaultSrc: fallback });
 
       return {
         id: m._id || m.id || `memory-${Math.random()}`,
@@ -177,9 +131,11 @@ const toAbsoluteUrl = (path) => {
           <div className={styles.profileCenterBlock}>
             <div className={styles.profileInfo} style={{ marginBottom: 32 }}>
               <img
-                src={getAvatarUrl()}
+                src={getAvatarUrl(user)}
                 alt={`${user?.prenom || ''} ${user?.nom || ''}`.trim() || 'Profile picture'}
                 className={styles.avatar}
+                crossOrigin="anonymous"
+                onError={(e) => { e.currentTarget.src = '/images/default-avatar.png'; }}
               />
               <h2 className={styles.name}>{`${user?.prenom || ''} ${user?.nom || ''}`.trim() || 'User'}</h2>
               <p className={styles.bio}>{user?.bio || 'Aucun bio renseigné.'}</p>

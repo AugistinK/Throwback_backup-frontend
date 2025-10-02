@@ -1,29 +1,23 @@
+// Header.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './header.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faBell, 
-  faSignOutAlt, 
+import {
+  faBell,
+  faSignOutAlt,
   faSearch,
   faTimes,
   faCog,
   faUser,
   faMicrophone,
-  faPlus,
   faMusic,
-  faHistory,
-  faPlayCircle,
-  faThumbsUp,
-  faBars,
   faVideo,
   faList,
-  faEdit,
-  faUsers,
-  faFilm
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { searchAPI } from '../../../../utils/api';
+import { getAvatarUrl } from '../../../../utils/imageUrl'; // ✅ centralisé
 
 const comingSoonStyle = {
   fontSize: '0.6rem',
@@ -46,7 +40,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
   const [showClearButton, setShowClearButton] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(3);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth <= 480 : false);
 
   // Auto-complétion
   const [suggestions, setSuggestions] = useState([]);
@@ -58,48 +52,6 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
   const createDropdownRef = useRef(null);
   const suggestionsRef = useRef(null);
   const navigate = useNavigate();
-
-  // ===== Helpers URL sûrs (pas de startsWith sur non-string) =====
-  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
-    .trim()
-    .replace(/\/+$/, '');
-
-// Dans Header.jsx, ligne ~50
-const toAbsoluteUrl = (path) => {
-  if (!path) return null;
-  
-  // FIX: Conversion sécurisée en string
-  const val = path && typeof path === 'object' 
-    ? (path.toString ? path.toString() : String(path))
-    : String(path ?? '');
-    
-  if (val === '[object Object]') {
-    console.warn('⚠️ Tentative de conversion d\'objet en URL:', path);
-    return null;
-  }
-  
-  if (val.startsWith('http')) return val;
-  const normalized = val.startsWith('/') ? val : `/${val}`;
-  return `${baseUrl}${normalized}`.replace(/\s+/g, '');
-};
-
-const getAvatarUrl = (u) => {
-  if (!u) return '/images/default-avatar.png'; // Utiliser une image locale par défaut
-  
-  // Priorité au nouveau champ
-  if (u.photo_profil_url) {
-    const url = toAbsoluteUrl(u.photo_profil_url);
-    return url || '/images/default-avatar.png';
-  }
-  
-  // Fallback endpoint par ID
-  const uid = u._id || u.id;
-  if (uid) return `${baseUrl}/api/users/${uid}/photo`;
-  
-  // Image locale par défaut
-  return '/images/default-avatar.png';
-};
-  // ===============================================================
 
   // Détecter la taille de l'écran
   useEffect(() => {
@@ -218,9 +170,19 @@ const getAvatarUrl = (u) => {
     setShowSuggestions(false);
   };
 
+  const avatarSrc = getAvatarUrl(user); // ✅ URL corrigée/normalisée (id toujours cohérent)
+
   return (
     <header className={styles.header}>
       <div className={styles.headerLeft}>
+        <button
+          className={styles.menuButton}
+          onClick={handleMenuButtonClick}
+          aria-label="Menu"
+        >
+          {/* Optionnel: icône 'burger' si tu en as une dans le design */}
+        </button>
+
         <Link to="/dashboard" className={styles.logoLink}>
           <span className={styles.logoText}>ThrowBack Connect</span>
         </Link>
@@ -240,9 +202,9 @@ const getAvatarUrl = (u) => {
             />
 
             {showClearButton && (
-              <button 
-                type="button" 
-                className={styles.clearButton} 
+              <button
+                type="button"
+                className={styles.clearButton}
                 onClick={clearSearch}
                 aria-label="Clear search"
               >
@@ -259,20 +221,20 @@ const getAvatarUrl = (u) => {
                   </div>
                 ) : suggestions.length > 0 ? (
                   suggestions.map((suggestion, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className={styles.suggestionItem}
                       onClick={() => handleSelectSuggestion(suggestion)}
                     >
-                      <FontAwesomeIcon 
+                      <FontAwesomeIcon
                         icon={
                           suggestion.type === 'video' ? faVideo :
                           suggestion.type === 'playlist' ? faList :
                           suggestion.type === 'podcast' ? faMicrophone :
                           suggestion.type === 'artist' ? faMusic :
                           faSearch
-                        } 
-                        className={styles.suggestionIcon} 
+                        }
+                        className={styles.suggestionIcon}
                       />
                       <span className={styles.suggestionText}>{suggestion.text}</span>
                       <span className={styles.suggestionType}>{suggestion.type}</span>
@@ -292,8 +254,8 @@ const getAvatarUrl = (u) => {
           </button>
 
           {isMobile && (
-            <button 
-              type="button" 
+            <button
+              type="button"
               className={styles.mobileCloseButton}
               onClick={handleCloseMobileSearch}
               aria-label="Close search"
@@ -305,8 +267,8 @@ const getAvatarUrl = (u) => {
       </div>
 
       {isMobile && (
-        <button 
-          className={styles.mobileSearchButton} 
+        <button
+          className={styles.mobileSearchButton}
           onClick={() => setShowMobileSearch(!showMobileSearch)}
           aria-label="Search"
         >
@@ -315,8 +277,8 @@ const getAvatarUrl = (u) => {
       )}
 
       <div className={styles.headerRight}>
-        <button 
-          className={styles.notificationButton} 
+        <button
+          className={styles.notificationButton}
           onClick={handleNotificationsClick}
           aria-label="Notifications"
         >
@@ -335,27 +297,29 @@ const getAvatarUrl = (u) => {
         </button>
 
         <div className={styles.profileContainer} ref={dropdownRef}>
-          <button 
-            className={styles.profileButton} 
+          <button
+            className={styles.profileButton}
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             aria-label="Profile menu"
           >
-            <img 
-              src={getAvatarUrl(user)} 
-              alt="Profile" 
+            <img
+              src={avatarSrc}
+              alt="Profile"
               className={styles.profileImage}
               crossOrigin="anonymous"
+              onError={(e) => { e.currentTarget.src = '/images/default-avatar.png'; }}
             />
           </button>
 
           {isDropdownOpen && (
             <div className={styles.dropdown}>
               <div className={styles.dropdownHeader}>
-                <img 
-                  src={getAvatarUrl(user)} 
-                  alt="Profile" 
-                  className={styles.dropdownProfileImage} 
+                <img
+                  src={avatarSrc}
+                  alt="Profile"
+                  className={styles.dropdownProfileImage}
                   crossOrigin="anonymous"
+                  onError={(e) => { e.currentTarget.src = '/images/default-avatar.png'; }}
                 />
                 <div className={styles.dropdownUserInfo}>
                   <span className={styles.dropdownUserName}>

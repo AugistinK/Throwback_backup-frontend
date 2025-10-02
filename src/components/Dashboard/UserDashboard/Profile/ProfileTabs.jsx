@@ -4,6 +4,12 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import styles from './ProfileTabs.module.css';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../../utils/api';
+import {
+  getAvatarUrl,
+  toAbsoluteUrl,
+  normalizePhotoUrlForUser,
+  withBust,
+} from '../../../../utils/imageUrl';
 
 const ProfileTabs = () => {
   const { user, setUser, token } = useAuth();
@@ -33,12 +39,12 @@ const ProfileTabs = () => {
   const [bioData, setBioData] = useState({
     bio: user?.bio || '',
     profession: user?.profession || '',
-    // compat ancien champ (chemin relatif)
+    // compat: on garde ce champ local pour lier un aperçu si besoin
     photo_profil: user?.photo_profil || '',
     compte_prive: user?.compte_prive === true,
   });
 
-  // 2-temps : photo en attente + preview
+  // Sélecteur fichier + preview local
   const photoProfilRef = useRef(null);
   const [pendingPhoto, setPendingPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState('');
@@ -66,39 +72,7 @@ const ProfileTabs = () => {
   const [indicatif, setIndicatif] = useState(user?.indicatif || '+221');
   const navigate = useNavigate();
 
-  // Backend base URL normalisée (sans slash final)
-  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com')
-    .trim()
-    .replace(/\/+$/, '');
-
-  // Util: transforme un chemin/endpoint en URL absolue (toujours sur string)
-const toAbsoluteUrl = (path) => {
-  if (!path) return null;
-  
-  const val = path && typeof path === 'object'
-    ? (path.toString ? path.toString() : String(path))
-    : String(path ?? '');
-    
-  if (val === '[object Object]' || !val) {
-    console.warn('⚠️ URL invalide:', path);
-    return null;
-  }
-  
-  if (val.startsWith('http')) return val;
-  const normalized = val.startsWith('/') ? val : `/${val}`;
-  return `${baseUrl}${normalized}`.replace(/\s+/g, '');
-};
-
-  // URL finale à afficher pour l'avatar d'un utilisateur donné
-  const getAvatarUrl = (u) => {
-    if (!u) return '/images/default-avatar.png';
-    if (u.photo_profil_url) return toAbsoluteUrl(u.photo_profil_url) || '/images/default-avatar.png';
-    const uid = u._id || u.id;
-    if (uid) return `${baseUrl}/api/users/${uid}/photo`;
-    if (u.photo_profil) return toAbsoluteUrl(u.photo_profil) || '/images/default-avatar.png';
-    return '/images/default-avatar.png';
-  };
-
+  // Sync helper: met à jour Context + localStorage
   const syncUserData = (updated) => {
     setUser((prev) => ({ ...prev, ...updated }));
     try {
@@ -107,6 +81,7 @@ const toAbsoluteUrl = (path) => {
     } catch {}
   };
 
+  // Hydrate quand user change
   useEffect(() => {
     setFormData({
       prenom: user?.prenom || '',
@@ -138,7 +113,7 @@ const toAbsoluteUrl = (path) => {
     }
   }, [user]);
 
-  // Préférences
+  // Préférences (chargement à l’ouverture de l’onglet)
   const fetchPreferences = async () => {
     try {
       setIsLoading(true);
@@ -156,8 +131,10 @@ const toAbsoluteUrl = (path) => {
 
   useEffect(() => {
     if (activeTab === 'preferences') fetchPreferences();
-  }, [activeTab, token]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, token]);
 
+  // Inputs
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((p) => ({ ...p, [name]: value }));
@@ -189,7 +166,7 @@ const toAbsoluteUrl = (path) => {
     }
   };
 
-  // Sélection de la photo de profil (preview côté client)
+  // Sélection d'une nouvelle photo (preview local)
   const selectProfilePhoto = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -200,7 +177,7 @@ const toAbsoluteUrl = (path) => {
     setPhotoPreview(URL.createObjectURL(f));
   };
 
-  // Submit profil (civilité)
+  // Submit infos personnelles (civilité)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -211,10 +188,12 @@ const toAbsoluteUrl = (path) => {
         Object.entries(formData).filter(([k, v]) => k !== 'email' && v !== '' && v !== null && v !== undefined)
       );
       if (filtered.telephone) filtered.telephone = `${indicatif}${filtered.telephone}`;
+
       const resp = await api.put('/api/users/profile', filtered);
       if (resp?.data?.success) {
         const merged = { ...resp.data.data };
-        if (!merged.photo_profil_url) merged.photo_profil_url = getAvatarUrl(user);
+        // Garantit une URL d’avatar valide et alignée sur le bon id
+        merged.photo_profil_url = normalizePhotoUrlForUser(merged, merged.photo_profil_url || user?.photo_profil_url);
         setUser(merged);
         const current = JSON.parse(localStorage.getItem('user') || '{}');
         localStorage.setItem('user', JSON.stringify({ ...current, ...merged }));
@@ -228,14 +207,14 @@ const toAbsoluteUrl = (path) => {
     }
   };
 
-  // Submit bio (peut inclure upload de la photo)
+  // Submit bio (incluant potentiellement l’upload de photo)
   const handleBioSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
     setSuccess('');
     try {
-      // 1) Upload éventuel de la nouvelle photo
+      // 1) Upload photo si sélectionnée
       if (pendingPhoto) {
         const fd = new FormData();
         fd.append('photo', pendingPhoto);
@@ -245,13 +224,17 @@ const toAbsoluteUrl = (path) => {
         });
         if (!up?.data?.success) throw new Error('Upload photo échoué');
 
-        const updated = up.data.data; // user renvoyé
-        const newUrl = updated?.photo_profil_url ? toAbsoluteUrl(updated.photo_profil_url) : getAvatarUrl(updated);
+        // Normalise l’URL renvoyée pour forcer le bon id (évite l’effet “disparition”)
+        const rawUrl = up.data.data?.photo_profil_url;
+        const fixedUrl = normalizePhotoUrlForUser(user, rawUrl);
+        const displayUrl = withBust(fixedUrl); // anti-cache immédiat
 
+        // Reset local preview + MAJ états
         setPhotoPreview('');
         setPendingPhoto(null);
-        setBioData((prev) => ({ ...prev, photo_profil: newUrl }));
-        syncUserData({ photo_profil_url: newUrl });
+        setBioData((prev) => ({ ...prev, photo_profil: displayUrl }));
+        // Stocker sans le cache-buster
+        syncUserData({ photo_profil_url: fixedUrl });
       }
 
       // 2) Mise à jour des champs bio/profession/compte_prive
@@ -263,8 +246,7 @@ const toAbsoluteUrl = (path) => {
       const resp = await api.put('/api/users/profile', filtered);
       if (resp?.data?.success) {
         const merged = { ...resp.data.data };
-        const currentAvatar = getAvatarUrl({ ...user, ...merged });
-        merged.photo_profil_url = merged.photo_profil_url || currentAvatar;
+        merged.photo_profil_url = normalizePhotoUrlForUser(merged, merged.photo_profil_url || user?.photo_profil_url);
         setUser(merged);
         const current = JSON.parse(localStorage.getItem('user') || '{}');
         localStorage.setItem('user', JSON.stringify({ ...current, ...merged }));
@@ -438,6 +420,7 @@ const toAbsoluteUrl = (path) => {
                         alt="Profile"
                         className={styles.photoPreview}
                         crossOrigin="anonymous"
+                        onError={(e) => { e.currentTarget.src = '/images/default-avatar.png'; }}
                       />
                       {isEditingBio && (
                         <div className={styles.photoActions}>
