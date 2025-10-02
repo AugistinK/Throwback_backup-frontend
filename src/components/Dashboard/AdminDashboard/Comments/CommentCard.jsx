@@ -224,7 +224,7 @@ const CommentCard = ({
       <div className={styles.actionsColumn}>
         <div className={styles.actionButtons}>
           {/* Moderate button */}
-          <button
+          {/* <button
             className={styles.actionBtn}
             onClick={() => setShowModerationModal(true)}
             title="Moderate this comment"
@@ -232,14 +232,14 @@ const CommentCard = ({
             <i className="fas fa-gavel"></i>
           </button>
 
-          {/* Reply button */}
+          {/* Reply button 
           <button
             className={styles.actionBtn}
             onClick={() => setShowReplyModal(true)}
             title="Reply to this comment"
           >
             <i className="fas fa-reply"></i>
-          </button>
+          </button> */}
 
           {/* Quick actions */}
           {comment.statut !== 'ACTIF' && (
