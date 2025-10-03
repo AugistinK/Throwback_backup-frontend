@@ -5,6 +5,42 @@ import { format } from 'date-fns';
 import styles from './PostDetails.module.css';
 import socialAPI from '../../../../utils/socialAPI';
 
+const apiBase = process.env.REACT_APP_API_URL || '';
+
+/**
+ * Accepts:
+ *  - string: '/uploads/...' ou 'https://...'
+ *  - object with common keys: { url, path, secure_url, Location, location, href, src }
+ * Returns absolute url or null.
+ */
+const toAbsoluteUrl = (value) => {
+  if (!value) return null;
+
+  let s = null;
+  if (typeof value === 'string') {
+    s = value;
+  } else if (typeof value === 'object') {
+    s =
+      value.url ??
+      value.path ??
+      value.secure_url ??
+      value.Location ??
+      value.location ??
+      value.href ??
+      value.src ??
+      null;
+  }
+
+  if (!s) return null;
+  s = String(s);
+
+  try {
+    return s.startsWith('/') ? `${apiBase}${s}` : s;
+  } catch {
+    return null;
+  }
+};
+
 const PostDetails = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
@@ -31,7 +67,7 @@ const PostDetails = () => {
   const [moderationReason, setModerationReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   
-  // Comments selection (kept for future use)
+  // Comments selection (reserved)
   const [selectedComments, setSelectedComments] = useState([]);
   const [showCommentActions, setShowCommentActions] = useState(false);
 
@@ -268,28 +304,29 @@ const PostDetails = () => {
     );
   }, []);
 
-  // Render media
+  // Render media (accepts string or object)
   const renderMedia = useCallback((media, type) => {
-    if (!media) return null;
-    const mediaUrl = media.startsWith('/') ? `${process.env.REACT_APP_API_URL || ''}${media}` : media;
+    const mediaUrl = toAbsoluteUrl(media);
+    if (!mediaUrl) return null;
+
     return (
       <div className={styles.mediaContainer}>
         {type === 'IMAGE' ? (
-          <img 
-            src={mediaUrl} 
-            alt="Post media" 
+          <img
+            src={mediaUrl}
+            alt="Post media"
             className={styles.mediaImage}
             onError={(e) => { e.target.style.display = 'none'; }}
           />
         ) : type === 'VIDEO' ? (
-          <video 
+          <video
             src={mediaUrl}
             controls
             className={styles.mediaVideo}
             onError={(e) => { e.target.style.display = 'none'; }}
           />
         ) : type === 'AUDIO' ? (
-          <audio 
+          <audio
             src={mediaUrl}
             controls
             className={styles.mediaAudio}
@@ -323,7 +360,7 @@ const PostDetails = () => {
         <p>Loading post details...</p>
       </div>
     );
-    }
+  }
 
   // Critical error
   if (error && !post) {
@@ -504,11 +541,10 @@ const PostDetails = () => {
                 <div className={styles.authorInfo}>
                   <div className={styles.authorAvatar}>
                     {post.auteur?.photo_profil ? (
-                      <img 
-                        src={post.auteur.photo_profil.startsWith('/') 
-                          ? `${process.env.REACT_APP_API_URL || ''}${post.auteur.photo_profil}` 
-                          : post.auteur.photo_profil} 
-                        alt={`${post.auteur.prenom} ${post.auteur.nom}`} 
+                      <img
+                        src={toAbsoluteUrl(post.auteur.photo_profil) || undefined}
+                        alt={`${post.auteur?.prenom || ''} ${post.auteur?.nom || ''}`}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
                     ) : (
                       <div className={styles.defaultAvatar}>
@@ -612,11 +648,10 @@ const PostDetails = () => {
                       >
                         <div className={styles.mentionAvatar}>
                           {mention.photo_profil ? (
-                            <img 
-                              src={mention.photo_profil.startsWith('/') 
-                                ? `${process.env.REACT_APP_API_URL || ''}${mention.photo_profil}` 
-                                : mention.photo_profil} 
-                              alt={`${mention.prenom} ${mention.nom}`} 
+                            <img
+                              src={toAbsoluteUrl(mention.photo_profil) || undefined}
+                              alt={`${mention.prenom} ${mention.nom}`}
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : (
                             <div className={styles.defaultAvatar}>
@@ -684,11 +719,10 @@ const PostDetails = () => {
                       <div className={styles.commentAuthor}>
                         <div className={styles.authorAvatar}>
                           {comment.auteur?.photo_profil ? (
-                            <img 
-                              src={comment.auteur.photo_profil.startsWith('/') 
-                                ? `${process.env.REACT_APP_API_URL || ''}${comment.auteur.photo_profil}` 
-                                : comment.auteur.photo_profil} 
-                              alt={`${comment.auteur.prenom} ${comment.auteur.nom}`} 
+                            <img
+                              src={toAbsoluteUrl(comment.auteur.photo_profil) || undefined}
+                              alt={`${comment.auteur?.prenom || ''} ${comment.auteur?.nom || ''}`}
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : (
                             <div className={styles.defaultAvatar}>
@@ -781,11 +815,10 @@ const PostDetails = () => {
                               <div className={styles.replyAuthor}>
                                 <div className={styles.authorAvatar}>
                                   {reply.auteur?.photo_profil ? (
-                                    <img 
-                                      src={reply.auteur.photo_profil.startsWith('/') 
-                                        ? `${process.env.REACT_APP_API_URL || ''}${reply.auteur.photo_profil}` 
-                                        : reply.auteur.photo_profil} 
-                                      alt={`${reply.auteur.prenom} ${reply.auteur.nom}`} 
+                                    <img
+                                      src={toAbsoluteUrl(reply.auteur.photo_profil) || undefined}
+                                      alt={`${reply.auteur?.prenom || ''} ${reply.auteur?.nom || ''}`}
+                                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                     />
                                   ) : (
                                     <div className={styles.defaultAvatar}>
@@ -868,11 +901,10 @@ const PostDetails = () => {
                       <div className={styles.reportUser}>
                         <div className={styles.authorAvatar}>
                           {report.utilisateur?.photo_profil ? (
-                            <img 
-                              src={report.utilisateur.photo_profil.startsWith('/') 
-                                ? `${process.env.REACT_APP_API_URL || ''}${report.utilisateur.photo_profil}` 
-                                : report.utilisateur.photo_profil} 
-                              alt={`${report.utilisateur.prenom} ${report.utilisateur.nom}`} 
+                            <img
+                              src={toAbsoluteUrl(report.utilisateur.photo_profil) || undefined}
+                              alt={`${report.utilisateur?.prenom || ''} ${report.utilisateur?.nom || ''}`}
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : (
                             <div className={styles.defaultAvatar}>
@@ -947,7 +979,6 @@ const PostDetails = () => {
                 {analytics.graphiques && (
                   <div className={styles.chartsSection}>
                     <h4>Performance over time</h4>
-                    {/* Chart placeholder */}
                     <div className={styles.chartPlaceholder}>
                       <p>30-day performance charts</p>
                     </div>
@@ -967,7 +998,6 @@ const PostDetails = () => {
       </div>
 
       {/* Modals */}
-      {/* Delete confirmation */}
       {confirmDelete && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
@@ -1003,7 +1033,6 @@ const PostDetails = () => {
         </div>
       )}
 
-      {/* Moderation modal */}
       {confirmModerate && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
@@ -1055,7 +1084,6 @@ const PostDetails = () => {
         </div>
       )}
 
-      {/* Restore modal */}
       {confirmRestore && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
