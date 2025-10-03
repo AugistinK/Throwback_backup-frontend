@@ -14,13 +14,6 @@ import likeIcon from '../../assets/icons/like.png';
 import commentIcon from '../../assets/icons/comment.png';
 import HelpAndSupport from './HelpAndSupport';
 
-// ✅ Utilitaires centralisés (plus de duplications locales)
-import {
-  baseUrl,            // backend normalisé (sans slash final)
-  getAvatarUrl,       // construit une URL d’avatar fiable, alignée sur le bon _id_
-  toAbsoluteUrl       // transforme un chemin relatif/endpoint en URL absolue
-} from '../../utils/imageUrl';
-
 const mockMemories = [
   { id: 'mock1', username: 'User Demo', type: 'posted', videoTitle: 'Sample Video', videoArtist: 'Artist', videoYear: '2000', imageUrl: '/images/default-avatar.jpg', content: 'This is a sample memory', likes: 5, comments: 2 },
   { id: 'mock2', username: 'Another User', type: 'shared', videoTitle: 'Another Video', videoArtist: 'Another Artist', videoYear: '1990', imageUrl: '/images/default-avatar.jpg', content: 'This is another sample memory', likes: 10, comments: 3 }
@@ -38,6 +31,16 @@ export default function Profile() {
   const [memoriesLoading, setMemoriesLoading] = useState(true);
   const [memoriesError, setMemoriesError] = useState(null);
 
+  // Corrigé: trim + sans slash final
+  const baseUrl = (process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com').trim().replace(/\/+$/,'');
+
+  const getImageUrl = (path) => {
+    if (!path) return '/images/default-avatar.png';
+    if (String(path).startsWith('http')) return path;
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return `${baseUrl}${normalized}`.replace(/\s+/g, '');
+  };
+
   const handlePlaylistsClick = () => {
     setActiveBtn('playlist');
     navigate('/dashboard/playlists');
@@ -50,7 +53,7 @@ export default function Profile() {
   const fetchRecentMemories = async () => {
     try {
       setMemoriesLoading(true);
-      // Route principale publique
+      // Route principale
       const resp = await fetch(`${baseUrl}/api/public/memories/recent`);
       if (resp.ok) {
         const result = await resp.json();
@@ -61,7 +64,7 @@ export default function Profile() {
           return;
         }
       }
-      // Fallback privé
+      // Fallback
       const fb = await fetch(`${baseUrl}/api/memories/recent`);
       if (fb.ok) {
         const result = await fb.json();
@@ -84,26 +87,18 @@ export default function Profile() {
 
   const formatMemories = (data) => {
     if (!Array.isArray(data) || !data.length) return mockMemories;
-    return data.map(m => {
-      const auteur = m.auteur || {};
-      const fallback = toAbsoluteUrl(m.imageUrl) || '/images/default-avatar.png';
-
-      // ✅ avatar auteur robuste (prend en compte id + éventuelle URL fournie)
-      const authorImage = getAvatarUrl(auteur, { defaultSrc: fallback });
-
-      return {
-        id: m._id || m.id || `memory-${Math.random()}`,
-        username: auteur ? (`${auteur.prenom || ''} ${auteur.nom || ''}`.trim() || 'Utilisateur') : 'Utilisateur',
-        type: m.type || 'posted',
-        videoTitle: m.video?.titre || m.videoTitle || 'Vidéo sans titre',
-        videoArtist: m.video?.artiste || m.videoArtist || 'Artiste inconnu',
-        videoYear: m.video?.annee || m.videoYear || '----',
-        imageUrl: authorImage || '/images/default-avatar.png',
-        content: m.contenu || m.content || 'Pas de contenu',
-        likes: m.likes || 0,
-        comments: m.nb_commentaires || m.comments || 0
-      };
-    });
+    return data.map(m => ({
+      id: m._id || m.id || `memory-${Math.random()}`,
+      username: m.auteur ? (`${m.auteur.prenom || ''} ${m.auteur.nom || ''}`.trim() || 'Utilisateur') : 'Utilisateur',
+      type: m.type || 'posted',
+      videoTitle: m.video?.titre || m.videoTitle || 'Vidéo sans titre',
+      videoArtist: m.video?.artiste || m.videoArtist || 'Artiste inconnu',
+      videoYear: m.video?.annee || m.videoYear || '----',
+      imageUrl: getImageUrl(m.auteur?.photo_profil || m.imageUrl),
+      content: m.contenu || m.content || 'Pas de contenu',
+      likes: m.likes || 0,
+      comments: m.nb_commentaires || m.comments || 0
+    }));
   };
 
   if (editMode) return <UserInfo onBack={() => setEditMode(false)} />;
@@ -131,18 +126,16 @@ export default function Profile() {
           <div className={styles.profileCenterBlock}>
             <div className={styles.profileInfo} style={{ marginBottom: 32 }}>
               <img
-                src={getAvatarUrl(user)}
-                alt={`${user?.prenom || ''} ${user?.nom || ''}`.trim() || 'Profile picture'}
+                src={getImageUrl(user.photo_profil)}
+                alt={`${user.prenom} ${user.nom}`}
                 className={styles.avatar}
-                crossOrigin="anonymous"
-                onError={(e) => { e.currentTarget.src = '/images/default-avatar.png'; }}
               />
-              <h2 className={styles.name}>{`${user?.prenom || ''} ${user?.nom || ''}`.trim() || 'User'}</h2>
-              <p className={styles.bio}>{user?.bio || 'Aucun bio renseigné.'}</p>
+              <h2 className={styles.name}>{`${user.prenom} ${user.nom}`}</h2>
+              <p className={styles.bio}>{user.bio || 'Aucun bio renseigné.'}</p>
               <div className={styles.meta}>
                 <div className={styles.metaItem}>
                   <LocationIcon className={styles.icon} />
-                  <span>{user?.ville || '—'}</span>
+                  <span>{user.ville || '—'}</span>
                 </div>
                 <div className={styles.metaItem}>
                   <CheckIcon className={styles.icon} style={{ color: '#1ec773' }} />
