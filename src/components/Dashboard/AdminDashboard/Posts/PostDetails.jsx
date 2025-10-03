@@ -410,7 +410,7 @@ const PostDetails = () => {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.breadcrumbs}>
-          <Link to="/admin/posts">Posts</Link>
+          <Link to="/admin/posts">Posts of user</Link>
           <i className="fas fa-chevron-right"></i>
           <span>Details</span>
         </div>
