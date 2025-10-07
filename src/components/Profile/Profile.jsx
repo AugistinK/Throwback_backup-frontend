@@ -41,6 +41,18 @@ export default function Profile() {
     return `${baseUrl}${normalized}`.replace(/\s+/g, '');
   };
 
+  // ✅ CORRECTION: Ajouter la fonction pour le bouton Friendly
+  const handleFriendlyClick = () => {
+    setActiveBtn('friendly');
+    navigate('/dashboard/friends');
+  };
+
+  // ✅ CORRECTION: Ajouter la fonction pour le bouton Message
+  const handleMessageClick = () => {
+    setActiveBtn('message');
+    navigate('/dashboard/chat');
+  };
+
   const handlePlaylistsClick = () => {
     setActiveBtn('playlist');
     navigate('/dashboard/playlists');
@@ -118,9 +130,28 @@ export default function Profile() {
       <div className={styles.main}>
         <div className={styles.content}>
           <div className={styles.topButtons} style={{ justifyContent: 'center', marginBottom: 32 }}>
-            <button className={`${styles.friendlyBtn} ${activeBtn === 'friendly' ? styles.active : ''}`} onClick={() => setActiveBtn('friendly')}>+ Friendly</button>
-            <button className={`${styles.messageBtn} ${activeBtn === 'message' ? styles.active : ''}`} onClick={() => setActiveBtn('message')}>Message</button>
-            <button className={`${styles.playlistBtn} ${activeBtn === 'playlist' ? styles.active : ''}`} onClick={handlePlaylistsClick}>Your Playlists</button>
+            {/* ✅ CORRECTION: Ajouter onClick={handleFriendlyClick} */}
+            <button 
+              className={`${styles.friendlyBtn} ${activeBtn === 'friendly' ? styles.active : ''}`} 
+              onClick={handleFriendlyClick}
+            >
+              + Friendly
+            </button>
+            
+            {/* ✅ CORRECTION: Ajouter onClick={handleMessageClick} */}
+            <button 
+              className={`${styles.messageBtn} ${activeBtn === 'message' ? styles.active : ''}`} 
+              onClick={handleMessageClick}
+            >
+              Message
+            </button>
+            
+            <button 
+              className={`${styles.playlistBtn} ${activeBtn === 'playlist' ? styles.active : ''}`} 
+              onClick={handlePlaylistsClick}
+            >
+              Your Playlists
+            </button>
           </div>
 
           <div className={styles.profileCenterBlock}>
