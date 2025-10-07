@@ -34,7 +34,7 @@ import ThrowbackWall from './components/Dashboard/UserDashboard/Wall/ThrowbackWa
 import PlaylistPlayer from './components/Dashboard/UserDashboard/Playlists/PlaylistPlayer';
 import Search from './components/Dashboard/UserDashboard/Search/Search';
 import HelpAndSupport from './components/Profile/HelpAndSupport';
-import Friends from './components/Dashboard/UserDashboard/Friends/Friends';
+import Friends from './components/Dashboard/UserDashboard/Friends';
 
 // Admin Dashboard
 import AdminDashboard from './components/Dashboard/AdminDashboard';
