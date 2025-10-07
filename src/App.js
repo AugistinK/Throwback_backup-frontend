@@ -148,7 +148,7 @@ function App() {
             <Route path="playlistsquick/create" element={<UserTempPage title="Create Playlist" />} />
             <Route path="history" element={<UserTempPage title="History" />} />
 
-            <Route path="friendly" element={<Friends />} />
+            <Route path="friends" element={<Friends />} />
           </Route>
 
           {/* Admin Dashboard */}
