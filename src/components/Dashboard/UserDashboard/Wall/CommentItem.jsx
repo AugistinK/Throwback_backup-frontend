@@ -1,13 +1,12 @@
 // components/Dashboard/UserDashboard/Wall/CommentItem.jsx
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faHeart, 
-  faReply, 
-  faEdit, 
+import {
+  faHeart,
+  faReply,
+  faEdit,
   faTrash,
   faThumbsDown,
-  faFlag,
   faEllipsisV,
   faSave,
   faTimes
@@ -33,306 +32,189 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { user } = useAuth();
-  
+
   const commentId = comment._id || comment.id;
-  const isLiked = comment.userInteraction?.liked || false;
-  const isDisliked = comment.userInteraction?.disliked || false;
-  const likeCount = comment.likes || 0;
-  const dislikeCount = comment.dislikes || 0;
-  
-  const creationDate = comment.creation_date || comment.createdAt || new Date();
-  const formattedDate = formatDistanceToNow(new Date(creationDate), {
-    addSuffix: true,
-    locale: fr
-  });
 
-  // ✅ FONCTION CRITIQUE : Vérification de l'auteur du commentaire
-  const isCommentAuthor = () => {
-    if (!user || !comment.auteur) {
-      console.log('❌ Pas d\'utilisateur connecté ou pas d\'auteur sur le commentaire');
-      return false;
-    }
-
-    // Extraction sécurisée de l'ID utilisateur connecté
-    const currentUserId = user.id || user._id || user.userId;
-    
-    // Extraction sécurisée de l'ID de l'auteur du commentaire
-    const commentAuthorId = comment.auteur._id || comment.auteur.id || comment.auteur;
-    
-    // Conversion en string pour comparaison
-    const currentUserIdStr = String(currentUserId);
-    const commentAuthorIdStr = String(commentAuthorId);
-    
-    const isAuthor = currentUserIdStr === commentAuthorIdStr;
-    
-    console.log('🔍 Vérification d\'auteur:', {
-      currentUserId: currentUserIdStr,
-      commentAuthorId: commentAuthorIdStr,
-      isAuthor
-    });
-    
-    return isAuthor;
+  // ---------- Helpers robustes pour comparer les IDs ----------
+  const getUserId = (u) => {
+    if (!u) return null;
+    return u.id || u._id || u.userId || u.uid || null;
   };
 
-  // (Conservé pour usage futur / logs)
-  const isUserAdmin = () => {
-    if (!user) return false;
-    const hasAdminRole = (
-      (user.roles && user.roles.some(r => ['admin', 'superadmin'].includes(r.libelle_role))) ||
-      ['admin', 'superadmin'].includes(user.role)
+  const getAuthorObj = () =>
+    comment?.user ||
+    comment?.auteur ||
+    comment?.author ||
+    comment?.createdBy ||
+    null;
+
+  const getAuthorId = () => {
+    const fromObj = getUserId(getAuthorObj());
+    return (
+      fromObj ||
+      comment?.userId ||
+      comment?.auteurId ||
+      comment?.authorId ||
+      comment?.createdById ||
+      null
     );
-    console.log('🔐 Vérification admin:', {
-      userRoles: user.roles,
-      userRole: user.role,
-      hasAdminRole
-    });
-    return hasAdminRole;
   };
 
-  // ✅ Permissions (CORRECTION: seul l'auteur peut modifier/supprimer)
-  const canModify = isCommentAuthor();
-  const canDelete = isCommentAuthor(); // ⬅️ corrigé (admin exclu)
+  const isCommentAuthor = () => {
+    const me = getUserId(user);
+    const author = getAuthorId();
+    if (!me || !author) return false;
+    return String(me) === String(author);
+  };
 
-  // Like handler
+  // ---------- Permissions : auteur uniquement ----------
+  const canModify = isCommentAuthor(); // Edit
+  const canDelete = isCommentAuthor(); // Delete
+
+  // ---------- Like / Dislike ----------
+  const isLiked = !!comment.userInteraction?.liked;
+  const isDisliked = !!comment.userInteraction?.disliked;
+  const likeCount = comment.likes ?? comment.likesCount ?? 0;
+  const dislikeCount = comment.dislikes ?? comment.dislikesCount ?? 0;
+
+  const withTimeAgo = (dateish) => {
+    try {
+      return formatDistanceToNow(new Date(dateish), { addSuffix: true, locale: fr });
+    } catch {
+      return '';
+    }
+  };
+
+  const creationDate = comment.creation_date || comment.createdAt || comment.created_at || Date.now();
+  const formattedDate = withTimeAgo(creationDate);
+
   const handleLikeClick = async () => {
+    if (loading || !commentId) return;
+    // Optimiste
+    const optimistic = {
+      ...comment,
+      userInteraction: { ...(comment.userInteraction || {}), liked: !isLiked, disliked: false },
+      likes: isLiked ? likeCount - 1 : likeCount + 1,
+      dislikes: isDisliked ? dislikeCount - 1 : dislikeCount
+    };
+    onUpdateComment?.(optimistic);
+
     try {
-      if (loading) return;
-      
-      const optimisticUpdate = {
-        ...comment,
-        userInteraction: {
-          ...comment.userInteraction,
-          liked: !isLiked,
-          disliked: false
-        },
-        likes: isLiked ? likeCount - 1 : likeCount + 1,
-        dislikes: isDisliked ? dislikeCount - 1 : dislikeCount
-      };
-      
-      if (onUpdateComment) {
-        onUpdateComment(optimisticUpdate);
-      }
-      
       setLoading(true);
       setError(null);
-      
-      const maxRetries = 3;
-      let retryCount = 0;
-      let success = false;
-      
-      while (retryCount < maxRetries && !success) {
-        try {
-          const response = await api.post(`/api/comments/${commentId}/like`);
-          success = true;
-          
-          if (response.data && response.data.data) {
-            const serverUpdatedComment = {
-              ...comment,
-              userInteraction: {
-                ...comment.userInteraction,
-                liked: response.data.data.liked,
-                disliked: response.data.data.disliked
-              },
-              likes: response.data.data.likes,
-              dislikes: response.data.data.dislikes
-            };
-            
-            if (onUpdateComment) {
-              onUpdateComment(serverUpdatedComment);
-            }
-          }
-        } catch (err) {
-          retryCount++;
-          if (retryCount >= maxRetries) throw err;
-          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
-        }
-      }
-    } catch (err) {
-      console.error('Error liking comment:', err);
-      setError("Unable to like this comment. Please try again.");
-      if (onUpdateComment) {
-        onUpdateComment(comment);
-      }
+      const { data } = await api.post(`/api/comments/${commentId}/like`);
+      if (data?.data) onUpdateComment?.({ ...comment, ...data.data });
+    } catch (e) {
+      onUpdateComment?.(comment); // rollback
+      setError('Unable to like this comment. Please try again.');
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
-  
-  // Dislike handler
+
   const handleDislikeClick = async () => {
+    if (loading || !commentId) return;
+    // Optimiste
+    const optimistic = {
+      ...comment,
+      userInteraction: { ...(comment.userInteraction || {}), disliked: !isDisliked, liked: false },
+      dislikes: isDisliked ? dislikeCount - 1 : dislikeCount + 1,
+      likes: isLiked ? likeCount - 1 : likeCount
+    };
+    onUpdateComment?.(optimistic);
+
     try {
-      if (loading) return;
-      
-      const optimisticUpdate = {
-        ...comment,
-        userInteraction: {
-          ...comment.userInteraction,
-          disliked: !isDisliked,
-          liked: false
-        },
-        dislikes: isDisliked ? dislikeCount - 1 : dislikeCount + 1,
-        likes: isLiked ? likeCount - 1 : likeCount
-      };
-      
-      if (onUpdateComment) {
-        onUpdateComment(optimisticUpdate);
-      }
-      
       setLoading(true);
       setError(null);
-      
-      const maxRetries = 3;
-      let retryCount = 0;
-      let success = false;
-      
-      while (retryCount < maxRetries && !success) {
-        try {
-          const response = await api.post(`/api/comments/${commentId}/dislike`);
-          success = true;
-          
-          if (response.data && response.data.data) {
-            const serverUpdatedComment = {
-              ...comment,
-              userInteraction: {
-                ...comment.userInteraction,
-                liked: response.data.data.liked,
-                disliked: response.data.data.disliked
-              },
-              likes: response.data.data.likes,
-              dislikes: response.data.data.dislikes
-            };
-            
-            if (onUpdateComment) {
-              onUpdateComment(serverUpdatedComment);
-            }
-          }
-        } catch (err) {
-          retryCount++;
-          if (retryCount >= maxRetries) throw err;
-          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
-        }
-      }
-    } catch (err) {
-      console.error('Error disliking comment:', err);
-      setError("Unable to dislike this comment. Please try again.");
-      if (onUpdateComment) {
-        onUpdateComment(comment);
-      }
+      const { data } = await api.post(`/api/comments/${commentId}/dislike`);
+      if (data?.data) onUpdateComment?.({ ...comment, ...data.data });
+    } catch (e) {
+      onUpdateComment?.(comment); // rollback
+      setError('Unable to dislike this comment. Please try again.');
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
-  
+
+  // ---------- Réponses ----------
   const loadReplies = async () => {
     if (!commentId) return;
-    
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await api.get(`/api/comments/${commentId}/replies`);
-      if (response.data && (response.data.data || Array.isArray(response.data))) {
-        const loadedReplies = response.data.data || response.data;
-        setReplies(loadedReplies);
-        setShowReplies(true);
-      }
-    } catch (err) {
-      console.error('Error loading replies:', err);
+      const { data } = await api.get(`/api/comments/${commentId}/replies`);
+      const list = data?.data || data || [];
+      setReplies(Array.isArray(list) ? list : []);
+      setShowReplies(true);
+    } catch (e) {
+      console.error(e);
       setError('Unable to load replies');
     } finally {
       setLoading(false);
     }
   };
-  
+
   const handleAddReply = (newReply) => {
-    setReplies(prev => [newReply, ...prev]);
+    setReplies((prev) => [newReply, ...prev]);
     setShowReplyForm(false);
     setShowReplies(true);
-    
-    const updatedComment = {
+    onUpdateComment?.({
       ...comment,
       totalReplies: (comment.totalReplies || 0) + 1,
       hasMoreReplies: true
-    };
-    
-    if (onUpdateComment) {
-      onUpdateComment(updatedComment);
-    }
+    });
   };
-  
-  const handleDeleteClick = () => {
+
+  // ---------- Edit ----------
+  const startEdit = () => {
+    setIsEditing(true);
+    setEditContent(comment.contenu);
     setShowDropdown(false);
-    setShowDeleteConfirm(true);
   };
-  
-  const confirmDelete = async () => {
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditContent(comment.contenu);
+  };
+
+  const saveEdit = async () => {
+    if (!editContent.trim() || !commentId) return;
     try {
       setLoading(true);
       setError(null);
-      
-      await api.delete(`/api/comments/${commentId}`);
-      if (onDeleteComment) {
-        onDeleteComment(commentId);
-      }
-      setShowDeleteConfirm(false);
-    } catch (err) {
-      console.error('Error deleting comment:', err);
-      setError("Unable to delete this comment. Please try again.");
-      setLoading(false);
-      setShowDeleteConfirm(false);
-    }
-  };
-  
-  const handleUpdateComment = async () => {
-    if (!editContent.trim()) {
-      setError('The comment cannot be empty');
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await api.put(`/api/comments/${commentId}`, {
-        contenu: editContent
-      });
-      
-      if (response.data && response.data.data) {
-        const updatedComment = {
-          ...comment,
-          contenu: editContent,
-          modified_date: new Date()
-        };
-        
-        if (onUpdateComment) {
-          onUpdateComment(updatedComment);
-        }
-        
+      const { data } = await api.put(`/api/comments/${commentId}`, { contenu: editContent });
+      if (data) {
+        onUpdateComment?.({ ...comment, contenu: editContent, modified_date: new Date().toISOString() });
         setIsEditing(false);
       }
-    } catch (err) {
-      console.error('Error updating comment:', err);
-      setError("Unable to edit this comment. Please try again.");
+    } catch (e) {
+      console.error(e);
+      setError('Unable to edit this comment. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-  
-  const handleReportClick = async () => {
+
+  // ---------- Delete ----------
+  const requestDelete = () => {
+    setShowDropdown(false);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!commentId) return;
     try {
-      setShowDropdown(false);
-      
-      const reason = prompt('Please specify the reason for reporting:');
-      if (!reason) return;
-      
       setLoading(true);
       setError(null);
-      
-      await api.post(`/api/comments/${commentId}/report`, { raison: reason });
-      alert('Comment successfully reported');
-    } catch (err) {
-      console.error('Error reporting comment:', err);
-      setError('Unable to report the comment');
+      await api.delete(`/api/comments/${commentId}`);
+      onDeleteComment?.(commentId);
+      setShowDeleteConfirm(false);
+    } catch (e) {
+      console.error(e);
+      setError('Unable to delete this comment. Please try again.');
+      setShowDeleteConfirm(false);
     } finally {
       setLoading(false);
     }
@@ -341,32 +223,32 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
   return (
     <div className={styles.commentItem}>
       <div className={styles.commentHeader}>
-        {comment.auteur?.photo_profil ? (
-          <img 
-            src={comment.auteur.photo_profil} 
-            alt={`${comment.auteur.prenom} ${comment.auteur.nom}`} 
+        {getAuthorObj()?.photo_profil ? (
+          <img
+            src={getAuthorObj().photo_profil}
+            alt={`${getAuthorObj()?.prenom || ''} ${getAuthorObj()?.nom || ''}`}
             className={styles.userAvatar}
             onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextElementSibling.style.display = 'flex';
+              e.currentTarget.style.display = 'none';
+              const sib = e.currentTarget.nextElementSibling;
+              if (sib) sib.style.display = 'flex';
             }}
           />
         ) : (
-          <AvatarInitials 
-            user={comment.auteur} 
-            className={styles.userAvatar} 
-          />
+          <AvatarInitials user={getAuthorObj()} className={styles.userAvatar} />
         )}
-        
+
         <div className={styles.commentContent}>
           <div className={styles.commentMeta}>
             <span className={styles.userName}>
-              {comment.auteur?.prenom} {comment.auteur?.nom}
+              {(getAuthorObj()?.prenom || '') + ' ' + (getAuthorObj()?.nom || '')}
             </span>
             <span className={styles.commentDate}>{formattedDate}</span>
           </div>
-          
-          {isEditing ? (
+
+          {!isEditing ? (
+            <div className={styles.commentText}>{comment.contenu}</div>
+          ) : (
             <>
               <textarea
                 className={styles.editInput}
@@ -375,19 +257,13 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
                 rows={3}
               />
               <div className={styles.editButtons}>
-                <button 
-                  className={styles.cancelEditButton}
-                  onClick={() => {
-                    setIsEditing(false);
-                    setEditContent(comment.contenu);
-                  }}
-                >
+                <button className={styles.cancelEditButton} onClick={cancelEdit}>
                   <FontAwesomeIcon icon={faTimes} />
                   <span>Cancel</span>
                 </button>
-                <button 
+                <button
                   className={styles.saveEditButton}
-                  onClick={handleUpdateComment}
+                  onClick={saveEdit}
                   disabled={loading || !editContent.trim()}
                 >
                   <FontAwesomeIcon icon={faSave} />
@@ -395,14 +271,10 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
                 </button>
               </div>
             </>
-          ) : (
-            <div className={styles.commentText}>
-              {comment.contenu}
-            </div>
           )}
-          
+
           <div className={styles.commentActions}>
-            <button 
+            <button
               className={`${styles.actionButton} ${isLiked ? styles.liked : ''}`}
               onClick={handleLikeClick}
               disabled={loading}
@@ -410,8 +282,8 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
               <FontAwesomeIcon icon={faHeart} />
               <span>{likeCount}</span>
             </button>
-            
-            <button 
+
+            <button
               className={`${styles.actionButton} ${isDisliked ? styles.disliked : ''}`}
               onClick={handleDislikeClick}
               disabled={loading}
@@ -419,89 +291,66 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
               <FontAwesomeIcon icon={faThumbsDown} />
               <span>{dislikeCount}</span>
             </button>
-            
-            <button 
+
+            <button
               className={styles.actionButton}
-              onClick={() => setShowReplyForm(!showReplyForm)}
+              onClick={() => setShowReplyForm((s) => !s)}
               disabled={loading}
             >
               <FontAwesomeIcon icon={faReply} />
               <span>Reply</span>
             </button>
-            
+
             {comment.totalReplies > 0 && !showReplies && (
-              <button 
-                className={styles.actionButton}
-                onClick={loadReplies}
-                disabled={loading}
-              >
+              <button className={styles.actionButton} onClick={loadReplies} disabled={loading}>
                 <span>View {comment.totalReplies} replies</span>
               </button>
             )}
-            
+
             {showReplies && comment.totalReplies > 0 && (
-              <button 
-                className={styles.actionButton}
-                onClick={() => setShowReplies(false)}
-              >
+              <button className={styles.actionButton} onClick={() => setShowReplies(false)}>
                 <span>Hide replies</span>
               </button>
             )}
           </div>
-          
-          {error && (
-            <div className={styles.errorMessage}>
-              {error}
-            </div>
-          )}
+
+          {error && <div className={styles.errorMessage}>{error}</div>}
         </div>
-        
+
         {user && (
           <div className={styles.dropdownContainer}>
-            <button 
-              className={styles.moreButton}
-              onClick={() => setShowDropdown(!showDropdown)}
-            >
+            <button className={styles.moreButton} onClick={() => setShowDropdown((s) => !s)}>
               <FontAwesomeIcon icon={faEllipsisV} />
             </button>
-            
+
             {showDropdown && (
               <div className={styles.dropdown}>
-                {/* ✅ N'afficher "Edit" QUE pour l'auteur */}
+                {/* Edit : auteur seulement */}
                 {canModify && (
-                  <button onClick={() => {
-                    setIsEditing(true);
-                    setShowDropdown(false);
-                  }}>
+                  <button onClick={startEdit}>
                     <FontAwesomeIcon icon={faEdit} />
                     <span>Edit</span>
                   </button>
                 )}
-                
-                {/* ✅ "Delete" pour l'auteur UNIQUEMENT */}
+
+                {/* Delete : auteur seulement */}
                 {canDelete && (
-                  <button onClick={handleDeleteClick}>
+                  <button onClick={requestDelete}>
                     <FontAwesomeIcon icon={faTrash} />
                     <span>Delete</span>
                   </button>
                 )}
-                
-                {/* ✅ "Report" disponible pour tous SAUF l'auteur */}
-                {!canModify && (
-                  <button onClick={handleReportClick}>
-                    <FontAwesomeIcon icon={faFlag} />
-                    <span>Report</span>
-                  </button>
-                )}
+
+                {/* 🚫 Report retiré comme demandé */}
               </div>
             )}
           </div>
         )}
       </div>
-      
+
       {showReplyForm && (
         <div className={styles.replyForm}>
-          <CommentForm 
+          <CommentForm
             postId={postId}
             parentId={commentId}
             onCommentAdded={handleAddReply}
@@ -510,51 +359,43 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
           />
         </div>
       )}
-      
+
       {showReplies && replies.length > 0 && (
         <div className={styles.repliesList}>
-          {replies.map(reply => (
+          {replies.map((reply) => (
             <div key={reply._id || reply.id || `reply-${Math.random()}`} className={styles.replyItem}>
-              {reply.auteur?.photo_profil ? (
-                <img 
-                  src={reply.auteur.photo_profil} 
-                  alt={`${reply.auteur.prenom} ${reply.auteur.nom}`} 
+              {reply?.auteur?.photo_profil ? (
+                <img
+                  src={reply.auteur.photo_profil}
+                  alt={`${reply.auteur?.prenom || ''} ${reply.auteur?.nom || ''}`}
                   className={styles.replyAvatar}
                   onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextElementSibling.style.display = 'flex';
+                    e.currentTarget.style.display = 'none';
+                    const sib = e.currentTarget.nextElementSibling;
+                    if (sib) sib.style.display = 'flex';
                   }}
                 />
               ) : (
-                <AvatarInitials 
-                  user={reply.auteur} 
-                  size={24}
-                  className={styles.replyAvatar} 
-                />
+                <AvatarInitials user={reply.auteur} size={24} className={styles.replyAvatar} />
               )}
-              
+
               <div className={styles.replyContent}>
                 <div className={styles.replyMeta}>
                   <span className={styles.replyUserName}>
-                    {reply.auteur?.prenom} {reply.auteur?.nom}
+                    {(reply?.auteur?.prenom || '') + ' ' + (reply?.auteur?.nom || '')}
                   </span>
                   <span className={styles.replyDate}>
-                    {formatDistanceToNow(new Date(reply.creation_date || reply.createdAt), {
-                      addSuffix: true,
-                      locale: fr
-                    })}
+                    {withTimeAgo(reply.creation_date || reply.createdAt || reply.created_at)}
                   </span>
                 </div>
-                
-                <div className={styles.replyText}>
-                  {reply.contenu}
-                </div>
+
+                <div className={styles.replyText}>{reply.contenu}</div>
               </div>
             </div>
           ))}
         </div>
       )}
-      
+
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         message="Are you sure you want to delete this comment?"
