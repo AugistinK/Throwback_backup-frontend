@@ -1,0 +1,249 @@
+/* src/components/Common/OnlineStatus.css */
+
+/* Wrapper principal */
+.online-status-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Point de statut */
+.online-status-dot {
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.online-status-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  animation: pulse-online 2s infinite;
+}
+
+.online-status-dot.offline {
+  background: #6b7280;
+}
+
+@keyframes pulse-online {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+  }
+}
+
+/* Texte de statut */
+.online-status-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+}
+
+/* Badge pour avatars */
+.online-status-badge {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #1a1a1a;
+  z-index: 10;
+}
+
+.online-status-badge.online {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.online-status-badge.offline {
+  background: #6b7280;
+}
+
+/* Liste des utilisateurs en ligne */
+.online-users-list {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.online-users-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.count-online {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.count-divider {
+  color: #666;
+}
+
+.count-total {
+  color: #999;
+  font-weight: 500;
+}
+
+.count-label {
+  color: #888;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+/* Points en ligne miniatures */
+.online-users-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mini-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  cursor: help;
+}
+
+.mini-status-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 4px rgba(16, 185, 129, 0.6);
+}
+
+.mini-status-dot.offline {
+  background: #6b7280;
+}
+
+.more-users {
+  font-size: 11px;
+  color: #888;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+/* Indicateur global dans la navbar */
+.global-online-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.global-online-indicator:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.connection-dot.connected {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  animation: pulse-online 2s infinite;
+}
+
+.connection-dot.disconnected {
+  background: #ef4444;
+  animation: pulse-disconnected 1s infinite;
+}
+
+@keyframes pulse-disconnected {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.online-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+}
+
+/* Variantes de taille */
+.online-status-wrapper.small .online-status-dot {
+  width: 6px;
+  height: 6px;
+}
+
+.online-status-wrapper.large .online-status-dot {
+  width: 16px;
+  height: 16px;
+}
+
+/* Statut dans les cartes d'utilisateur */
+.user-card .online-status-badge {
+  bottom: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  border: 3px solid #1a1a1a;
+}
+
+/* Statut dans les listes */
+.user-list-item .online-status-dot {
+  margin-left: auto;
+}
+
+/* Animation d'apparition */
+.online-status-wrapper {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* États de connexion */
+.status-connecting .online-status-dot {
+  background: #f59e0b;
+  animation: pulse-connecting 1s infinite;
+}
+
+@keyframes pulse-connecting {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .global-online-indicator {
+    padding: 4px 8px;
+  }
+  
+  .online-count {
+    font-size: 12px;
+  }
+  
+  .online-users-list {
+    padding: 6px 10px;
+  }
+}

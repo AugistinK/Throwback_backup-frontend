@@ -1,7 +1,8 @@
-// src/App.js
+// src/App.js - VERSION AVEC SOCKET.IO
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { SocketProvider } from './contexts/SocketContext'; 
 import PrivateRoute from './components/Common/PrivateRoute';
 import ApiRedirect from './components/Common/ApiRedirect';
 import PrivateAdminRoute from './components/Common/PrivateAdminRoute';
@@ -64,10 +65,6 @@ const TempPage = ({ title }) => (
 
 /**
  * NotFoundRedirect
- * - Si la plateforme réécrit en /index.html?token=... OU si la route est inconnue,
- *   on renvoie proprement :
- *   - vers /reset-password?token=... s’il y a un token,
- *   - sinon vers /login en préservant la query (message, etc.).
  */
 function NotFoundRedirect() {
   const location = useLocation();
@@ -91,113 +88,99 @@ function NotFoundRedirect() {
 function App() {
   return (
     <Router>
+      {/* ✅ IMPORTANT: AuthProvider doit envelopper SocketProvider */}
       <AuthProvider>
-        <Routes>
-          {/* publiques */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+        <SocketProvider>
+          <Routes>
+            {/* Routes publiques */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/api/auth/verify-reset/:token" element={<ApiRedirect endpoint="/api/auth/verify-reset/:token" />} />
+            <Route path="/email-verify/:id/:token" element={<EmailVerify />} />
+            <Route path="/email-sent" element={<EmailSent />} />
+            <Route path="/api/auth/verify/:id/:token" element={<ApiRedirect endpoint="/api/auth/verify/:id/:token" />} />
 
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/api/auth/verify-reset/:token" element={<ApiRedirect endpoint="/api/auth/verify-reset/:token" />} />
+            {/* Dashboard Protected + Nested Routes */}
+            <Route
+              path="/dashboard/"
+              element={
+                <PrivateRoute allowedRoles={['user']}>
+                  <DashboardLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<LiveThrowback />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="shorts" element={<Shorts />} />
+              <Route path="podcast" element={<WeeklyPodcast />} />
+              <Route path="podcast/:id" element={<PodcastDetail />} />
+              <Route path="videos" element={<ThrowbackVideos />} />
+              <Route path="videos/:id" element={<VideoDetail />} />
+              <Route path="playlists" element={<UserPlaylists />} />
+              <Route path="playlists/:id" element={<UserPlaylistDetail />} />
+              <Route path="playlists/new" element={<PlaylistForm />} />
+              <Route path="playlists/:id/edit" element={<PlaylistForm />} />
+              <Route path="playlists/:id/play" element={<PlaylistPlayer />} />
+              <Route path="wall" element={<ThrowbackWall />} />
+              <Route path="search" element={<Search />} />
+              <Route path="help-support" element={<HelpAndSupport />} />
+              <Route path="live" element={<LiveThrowback />} />
+              <Route path="chat" element={<UserTempPage title="ThrowBack Chat" />} />
+              <Route path="discover" element={<UserTempPage title="Discover" />} />
+              <Route path="favorites" element={<UserTempPage title="Your Favorites" />} />
+              <Route path="notifications" element={<UserTempPage title="Notifications" />} />
+              <Route path="upload/short" element={<UserTempPage title="Upload Short" />} />
+              <Route path="upload/video" element={<UserTempPage title="Upload Video" />} />
+              <Route path="posts/create" element={<UserTempPage title="Create Post" />} />
+              <Route path="groups/create" element={<UserTempPage title="Create Group" />} />
+              <Route path="playlistsquick/create" element={<UserTempPage title="Create Playlist" />} />
+              <Route path="history" element={<UserTempPage title="History" />} />
+              <Route path="friends" element={<Friends />} />
+            </Route>
 
-          <Route path="/email-verify/:id/:token" element={<EmailVerify />} />
-          <Route path="/email-sent" element={<EmailSent />} />
+            {/* Admin Dashboard */}
+            <Route
+              path="/admin"
+              element={
+                <PrivateAdminRoute>
+                  <AdminDashboard />
+                </PrivateAdminRoute>
+              }
+            >
+              <Route index element={<Dashboard />} />
+              <Route path="users" element={<Users />} />
+              <Route path="users/:id" element={<UserDetails />} />
+              <Route path="users/create" element={<UserForm />} />
+              <Route path="users/:id/edit" element={<UserForm />} />
+              <Route path="videos" element={<AdminVideos />} />
+              <Route path="shorts" element={<AdminShorts />} />
+              <Route path="livestreams" element={<AdminLivethrowback />} />
+              <Route path="podcasts" element={<AdminPodcasts />} />
+              <Route path="playlists" element={<Playlists />} />
+              <Route path="playlists/:id" element={<PlaylistDetail />} />
+              <Route path="playlists/:id/edit" element={<PlaylistEdit />} />
+              <Route path="playlists/new" element={<PlaylistEdit />} />
+              <Route path="comments" element={<Comments />} />
+              <Route path="posts" element={<AdminPosts />} />
+              <Route path="posts/:postId" element={<PostDetails />} />
+              <Route path="posts/moderation" element={<PostModeration />} />
+              <Route path="likes" element={<AdminLikes />} />
+              <Route path="messages" element={<TempPage title="Gestion des Messages" />} />
+              <Route path="friends" element={<TempPage title="Gestion des Amis" />} />
+              <Route path="logs" element={<TempPage title="Logs Système" />} />
+              <Route path="profile" element={<MyProfile />} />
+              <Route path="notifications" element={<TempPage title="Notifications" />} />
+            </Route>
 
-          {/* redirections API */}
-          <Route path="/api/auth/verify/:id/:token" element={<ApiRedirect endpoint="/api/auth/verify/:id/:token" />} />
-
-          {/* Dashboard Protected + Nested Routes */}
-          <Route
-            path="/dashboard/"
-            element={
-              <PrivateRoute allowedRoles={['user']}>
-                <DashboardLayout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<LiveThrowback />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="shorts" element={<Shorts />} />
-            <Route path="podcast" element={<WeeklyPodcast />} />
-            <Route path="podcast/:id" element={<PodcastDetail />} />
-            <Route path="videos" element={<ThrowbackVideos />} />
-            <Route path="videos/:id" element={<VideoDetail />} />
-            <Route path="playlists" element={<UserPlaylists />} />
-            <Route path="playlists/:id" element={<UserPlaylistDetail />} />
-            <Route path="playlists/new" element={<PlaylistForm />} />
-            <Route path="playlists/:id/edit" element={<PlaylistForm />} />
-            <Route path="playlists/:id/play" element={<PlaylistPlayer />} />
-          
-            <Route path="wall" element={<ThrowbackWall />} />
-            <Route path="search" element={<Search />} />
-            <Route path="help-support" element={<HelpAndSupport />} />
-
-            {/* pages en dev */}
-            <Route path="live" element={<LiveThrowback />} />
-            {/* <Route path="wall" element={<UserTempPage title="ThrowBack Wall" />} /> */}
-            <Route path="chat" element={<UserTempPage title="ThrowBack Chat" />} />
-            <Route path="discover" element={<UserTempPage title="Discover" />} />
-            <Route path="favorites" element={<UserTempPage title="Your Favorites" />} />
-            <Route path="notifications" element={<UserTempPage title="Notifications" />} />
-            <Route path="upload/short" element={<UserTempPage title="Upload Short" />} />
-            <Route path="upload/video" element={<UserTempPage title="Upload Video" />} />
-            <Route path="posts/create" element={<UserTempPage title="Create Post" />} />
-            <Route path="groups/create" element={<UserTempPage title="Create Group" />} />
-            <Route path="playlistsquick/create" element={<UserTempPage title="Create Playlist" />} />
-            <Route path="history" element={<UserTempPage title="History" />} />
-
-            <Route path="friends" element={<Friends />} />
-          </Route>
-
-          {/* Admin Dashboard */}
-          <Route
-            path="/admin"
-            element={
-              <PrivateAdminRoute>
-                <AdminDashboard />
-              </PrivateAdminRoute>
-            }
-          >
-            <Route index element={<Dashboard />} />
-            <Route path="users" element={<Users />} />
-            <Route path="users/:id" element={<UserDetails />} />
-            <Route path="users/create" element={<UserForm />} />
-            <Route path="users/:id/edit" element={<UserForm />} />
-            <Route path="videos" element={<AdminVideos />} />
-            <Route path="shorts" element={<AdminShorts />} />
-            <Route path="livestreams" element={<AdminLivethrowback />} />
-            <Route path="podcasts" element={<AdminPodcasts />} />
-            <Route path="playlists" element={<Playlists />} />
-            <Route path="playlists/:id" element={<PlaylistDetail />} />
-            <Route path="playlists/:id/edit" element={<PlaylistEdit />} />
-            <Route path="playlists/new" element={<PlaylistEdit />} />
-            <Route path="comments" element={<Comments />} />
-            
-            
-            <Route path="posts" element={<AdminPosts />} />
-            <Route path="posts/:postId" element={<PostDetails />} />
-            <Route path="posts/moderation" element={<PostModeration />} />
-
-            {/* <Route path="likes" element={<TempPage title="Gestion des Likes" />} /> */}
-            <Route path="likes" element={<AdminLikes />} />
-            <Route path="messages" element={<TempPage title="Gestion des Messages" />} />
-            <Route path="friends" element={<TempPage title="Gestion des Amis" />} />
-            {/* <Route path="security" element={<TempPage title="Sécurité" />} /> */}
-            <Route path="logs" element={<TempPage title="Logs Système" />} />
-            <Route path="profile" element={<MyProfile />} />
-            {/* <Route path="settings" element={<TempPage title="Account Settings" />} />
-            <Route path="preferences" element={<TempPage title="Preferences" />} />
-            <Route path="help" element={<TempPage title="Help & Support" />} /> */}
-            <Route path="notifications" element={<TempPage title="Notifications" />} />
-          </Route>
-
-          {/* Fallbacks */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/index.html" element={<NotFoundRedirect />} />
-          <Route path="*" element={<NotFoundRedirect />} />
-        </Routes>
+            {/* Fallbacks */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/index.html" element={<NotFoundRedirect />} />
+            <Route path="*" element={<NotFoundRedirect />} />
+          </Routes>
+        </SocketProvider>
       </AuthProvider>
     </Router>
   );

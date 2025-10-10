@@ -49,26 +49,47 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
   // ✅ FONCTION CRITIQUE : Vérification de l'auteur du commentaire
   const isCommentAuthor = () => {
     if (!user || !comment.auteur) {
-      console.log('❌ Pas d\'utilisateur connecté ou pas d\'auteur sur le commentaire');
+      console.log('❌ Pas d\'utilisateur connecté ou pas d\'auteur sur le commentaire', {
+        user,
+        commentAuteur: comment.auteur
+      });
       return false;
     }
 
-    // Extraction sécurisée de l'ID utilisateur connecté
-    const currentUserId = user.id || user._id || user.userId;
+    // Extraction sécurisée de l'ID utilisateur connecté (toutes les variantes possibles)
+    const currentUserId = user.id || user._id || user.userId || user.user_id;
     
-    // Extraction sécurisée de l'ID de l'auteur du commentaire
-    const commentAuthorId = comment.auteur._id || comment.auteur.id || comment.auteur;
+    // Extraction sécurisée de l'ID de l'auteur du commentaire (toutes les variantes possibles)
+    let commentAuthorId;
+    if (typeof comment.auteur === 'object') {
+      commentAuthorId = comment.auteur._id || comment.auteur.id || comment.auteur.userId;
+    } else {
+      commentAuthorId = comment.auteur; // C'est déjà un string ID
+    }
     
-    // Conversion en string pour comparaison
-    const currentUserIdStr = String(currentUserId);
-    const commentAuthorIdStr = String(commentAuthorId);
+    // Sécurité : vérifier que les IDs existent
+    if (!currentUserId || !commentAuthorId) {
+      console.log('❌ IDs manquants:', {
+        currentUserId,
+        commentAuthorId,
+        userObject: user,
+        auteurObject: comment.auteur
+      });
+      return false;
+    }
+    
+    // Conversion en string pour comparaison (enlever les espaces)
+    const currentUserIdStr = String(currentUserId).trim();
+    const commentAuthorIdStr = String(commentAuthorId).trim();
     
     const isAuthor = currentUserIdStr === commentAuthorIdStr;
     
     console.log('🔍 Vérification d\'auteur:', {
       currentUserId: currentUserIdStr,
       commentAuthorId: commentAuthorIdStr,
-      isAuthor
+      isAuthor,
+      userEmail: user.email,
+      auteurNom: comment.auteur?.nom
     });
     
     return isAuthor;

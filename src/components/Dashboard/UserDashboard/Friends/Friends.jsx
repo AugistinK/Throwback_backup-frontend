@@ -6,9 +6,15 @@ import RequestCard from './RequestCard';
 import SuggestionCard from './SuggestionCard';
 import FriendGroupsModal from './FriendGroupsModal';
 import ChatModal from './ChatModal';
+import friendsService from '../../../../services/friendsService';
+import { useSocket } from '../../../../contexts/SocketContext';
+import { useAuth } from '../../../../contexts/AuthContext';
 import styles from './Friends.module.css';
 
 const Friends = () => {
+  const { user } = useAuth();
+  const { isUserOnline, notifyFriendRequest, notifyFriendRequestAccepted } = useSocket();
+  
   const [activeTab, setActiveTab] = useState('friends');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -16,142 +22,198 @@ const Friends = () => {
   const [showGroupsModal, setShowGroupsModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedChatFriend, setSelectedChatFriend] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // États pour les données
-  const [friends, setFriends] = useState([
-    { 
-      id: 1, 
-      name: 'Marie Moreau', 
-      username: '@mariemoreau', 
-      avatar: '', 
-      status: 'online', 
-      mutualFriends: 12, 
-      location: 'Toulouse',
-      favoriteGenres: ['Rock', 'Jazz'],
-      lastActive: 'Active now'
-    },
-    { 
-      id: 2, 
-      name: 'Aicha SARR', 
-      username: '@aichasarr', 
-      avatar: '', 
-      status: 'online', 
-      mutualFriends: 8, 
-      location: 'Dakar',
-      favoriteGenres: ['R&B', 'Soul'],
-      lastActive: 'Active now'
-    },
-    { 
-      id: 3, 
-      name: 'Ndeye Soukeye Youm', 
-      username: '@ndeyeyoum', 
-      avatar: '', 
-      status: 'offline', 
-      mutualFriends: 5, 
-      location: 'Paris',
-      favoriteGenres: ['Pop', 'Disco'],
-      lastActive: '2 hours ago'
-    },
-    { 
-      id: 4, 
-      name: 'Jean Dupont', 
-      username: '@jeandupont', 
-      avatar: '', 
-      status: 'online', 
-      mutualFriends: 15, 
-      location: 'Lyon',
-      favoriteGenres: ['Rock', 'Blues'],
-      lastActive: 'Active now'
-    }
-  ]);
+  const [friends, setFriends] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [friendGroups, setFriendGroups] = useState([]);
 
-  const [requests, setRequests] = useState([
-    { 
-      id: 5, 
-      name: 'Sophie Martin', 
-      username: '@sophiemartin', 
-      avatar: '', 
-      mutualFriends: 3, 
-      location: 'Marseille', 
-      date: '2 days ago',
-      favoriteGenres: ['Pop', 'Electro']
-    },
-    { 
-      id: 6, 
-      name: 'Ahmed Ben', 
-      username: '@ahmedben', 
-      avatar: '', 
-      mutualFriends: 7, 
-      location: 'Tunis', 
-      date: '1 week ago',
-      favoriteGenres: ['Hip-hop', 'R&B']
-    }
-  ]);
+  // Charger les données initiales
+  useEffect(() => {
+    loadAllData();
+  }, []);
 
-  const [suggestions, setSuggestions] = useState([
-    { 
-      id: 7, 
-      name: 'Claire Dubois', 
-      username: '@clairedubois', 
-      avatar: '', 
-      mutualFriends: 9, 
-      location: 'Bordeaux', 
-      reason: 'Likes similar music',
-      favoriteGenres: ['Rock', 'Jazz']
-    },
-    { 
-      id: 8, 
-      name: 'Thomas Petit', 
-      username: '@thomaspetit', 
-      avatar: '', 
-      mutualFriends: 6, 
-      location: 'Nantes', 
-      reason: 'In your city',
-      favoriteGenres: ['Pop', 'Soul']
-    },
-    { 
-      id: 9, 
-      name: 'Fatou Diop', 
-      username: '@fatoudiop', 
-      avatar: '', 
-      mutualFriends: 11, 
-      location: 'Dakar', 
-      reason: 'From same city',
-      favoriteGenres: ['Afrobeat', 'R&B']
+  const loadAllData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await Promise.all([
+        loadFriends(),
+        loadRequests(),
+        loadSuggestions(),
+        loadFriendGroups()
+      ]);
+    } catch (err) {
+      setError('Erreur lors du chargement des données');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  const [friendGroups, setFriendGroups] = useState([
-    { id: 1, name: 'Music Lovers 🎵', members: [1, 2, 4], color: '#b31217' },
-    { id: 2, name: 'Old Friends 👫', members: [1, 3], color: '#3b82f6' },
-    { id: 3, name: 'Concert Buddies 🎸', members: [2, 4], color: '#10b981' }
-  ]);
+  const loadFriends = async () => {
+    try {
+      const response = await friendsService.getFriends();
+      if (response.success) {
+        // Enrichir avec le statut en ligne
+        const enrichedFriends = response.data.map(friend => ({
+          id: friend._id,
+          name: `${friend.prenom} ${friend.nom}`,
+          username: `@${friend.email.split('@')[0]}`,
+          avatar: friend.photo_profil || '',
+          status: isUserOnline(friend._id) ? 'online' : 'offline',
+          mutualFriends: 0, // À implémenter
+          location: friend.ville || 'Unknown',
+          favoriteGenres: [], // À implémenter
+          lastActive: isUserOnline(friend._id) ? 'Active now' : '2 hours ago'
+        }));
+        setFriends(enrichedFriends);
+      }
+    } catch (err) {
+      console.error('Error loading friends:', err);
+    }
+  };
+
+  const loadRequests = async () => {
+    try {
+      const response = await friendsService.getFriendRequests();
+      if (response.success) {
+        const enrichedRequests = response.data.map(req => ({
+          id: req._id || req.friendshipId,
+          name: req.nom ? `${req.prenom} ${req.nom}` : req.name,
+          username: req.email ? `@${req.email.split('@')[0]}` : req.username,
+          avatar: req.photo_profil || req.avatar || '',
+          mutualFriends: 0,
+          location: req.ville || 'Unknown',
+          date: formatDate(req.requestDate || req.created_date),
+          favoriteGenres: []
+        }));
+        setRequests(enrichedRequests);
+      }
+    } catch (err) {
+      console.error('Error loading requests:', err);
+    }
+  };
+
+  const loadSuggestions = async () => {
+    try {
+      const response = await friendsService.getFriendSuggestions();
+      if (response.success) {
+        const enrichedSuggestions = response.data.map(sug => ({
+          id: sug._id,
+          name: `${sug.prenom} ${sug.nom}`,
+          username: `@${sug.email.split('@')[0]}`,
+          avatar: sug.photo_profil || '',
+          mutualFriends: 0,
+          location: sug.ville || 'Unknown',
+          reason: sug.reason || 'Suggested for you',
+          favoriteGenres: []
+        }));
+        setSuggestions(enrichedSuggestions);
+      }
+    } catch (err) {
+      console.error('Error loading suggestions:', err);
+    }
+  };
+
+  const loadFriendGroups = async () => {
+    try {
+      const response = await friendsService.getFriendGroups();
+      if (response.success) {
+        const mappedGroups = response.data.map(group => ({
+          id: group._id,
+          name: group.name,
+          members: group.members.map(m => m._id),
+          color: group.color || '#b31217'
+        }));
+        setFriendGroups(mappedGroups);
+      }
+    } catch (err) {
+      console.error('Error loading friend groups:', err);
+    }
+  };
 
   // Handlers
-  const handleAcceptRequest = (id) => {
-    const request = requests.find(r => r.id === id);
-    if (request) {
-      setFriends([...friends, { ...request, status: 'online', lastActive: 'Active now' }]);
-      setRequests(requests.filter(r => r.id !== id));
+  const handleAcceptRequest = async (friendshipId) => {
+    try {
+      const response = await friendsService.acceptFriendRequest(friendshipId);
+      if (response.success) {
+        // Supprimer de la liste des demandes
+        const acceptedRequest = requests.find(r => r.id === friendshipId);
+        setRequests(requests.filter(r => r.id !== friendshipId));
+        
+        // Ajouter aux amis
+        if (acceptedRequest) {
+          const newFriend = {
+            ...acceptedRequest,
+            status: 'online',
+            lastActive: 'Active now'
+          };
+          setFriends([...friends, newFriend]);
+        }
+        
+        // Notifier via Socket.IO
+        const request = requests.find(r => r.id === friendshipId);
+        if (request) {
+          notifyFriendRequestAccepted(request.id);
+        }
+        
+        alert('Friend request accepted!');
+      }
+    } catch (err) {
+      console.error('Error accepting request:', err);
+      alert('Error accepting friend request');
     }
   };
 
-  const handleRejectRequest = (id) => {
-    setRequests(requests.filter(r => r.id !== id));
-  };
-
-  const handleAddFriend = (id) => {
-    const suggestion = suggestions.find(s => s.id === id);
-    if (suggestion) {
-      // En réalité, cela enverrait une demande d'ami
-      alert(`Friend request sent to ${suggestion.name}`);
-      setSuggestions(suggestions.filter(s => s.id !== id));
+  const handleRejectRequest = async (friendshipId) => {
+    try {
+      const response = await friendsService.rejectFriendRequest(friendshipId);
+      if (response.success) {
+        setRequests(requests.filter(r => r.id !== friendshipId));
+        alert('Friend request rejected');
+      }
+    } catch (err) {
+      console.error('Error rejecting request:', err);
+      alert('Error rejecting friend request');
     }
   };
 
-  const handleRemoveFriend = (id) => {
+  const handleAddFriend = async (userId) => {
+    try {
+      const response = await friendsService.sendFriendRequest(userId);
+      if (response.success) {
+        const suggestion = suggestions.find(s => s.id === userId);
+        setSuggestions(suggestions.filter(s => s.id !== userId));
+        
+        // Notifier via Socket.IO
+        if (suggestion && user) {
+          notifyFriendRequest(userId, `${user.prenom} ${user.nom}`);
+        }
+        
+        alert('Friend request sent!');
+      }
+    } catch (err) {
+      console.error('Error sending friend request:', err);
+      alert('Error sending friend request');
+    }
+  };
+
+  const handleRemoveFriend = async (friendId) => {
     if (window.confirm('Are you sure you want to unfriend this person?')) {
-      setFriends(friends.filter(f => f.id !== id));
+      try {
+        const response = await friendsService.removeFriend(friendId);
+        if (response.success) {
+          setFriends(friends.filter(f => f.id !== friendId));
+          alert('Friend removed');
+        }
+      } catch (err) {
+        console.error('Error removing friend:', err);
+        alert('Error removing friend');
+      }
     }
   };
 
@@ -161,8 +223,34 @@ const Friends = () => {
   };
 
   const handleViewProfile = (friendId) => {
-    // Navigation vers le profil
     console.log('View profile:', friendId);
+    // Navigation vers le profil
+  };
+
+  const handleSaveGroups = async (updatedGroups) => {
+    try {
+      // Logique pour sauvegarder les groupes via l'API
+      setFriendGroups(updatedGroups);
+      alert('Groups updated successfully!');
+    } catch (err) {
+      console.error('Error saving groups:', err);
+      alert('Error saving groups');
+    }
+  };
+
+  // Fonction utilitaire pour formater les dates
+  const formatDate = (date) => {
+    if (!date) return 'Recently';
+    const d = new Date(date);
+    const now = new Date();
+    const diff = now - d;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days} days ago`;
+    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+    return `${Math.floor(days / 30)} months ago`;
   };
 
   const filteredFriends = friends.filter(friend => {
@@ -177,6 +265,30 @@ const Friends = () => {
     { id: 'requests', label: 'Requests', count: requests.length, icon: UserPlus },
     { id: 'suggestions', label: 'Suggestions', count: suggestions.length, icon: UserCheck }
   ];
+
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loading}>
+          <div className={styles.spinner}></div>
+          <p>Loading friends...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.error}>
+          <p>❌ {error}</p>
+          <button onClick={loadAllData} className={styles.retryButton}>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -345,7 +457,7 @@ const Friends = () => {
           groups={friendGroups}
           friends={friends}
           onClose={() => setShowGroupsModal(false)}
-          onSave={setFriendGroups}
+          onSave={handleSaveGroups}
         />
       )}
 
