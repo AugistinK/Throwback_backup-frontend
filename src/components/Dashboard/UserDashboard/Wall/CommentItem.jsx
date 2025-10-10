@@ -230,7 +230,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setShowDeleteConfirm(false);
     } catch (err) {
       console.error('Error deleting comment:', err);
-      setError("Unable to delete this comment. Please try again.");
+      setError("Unable to delete this comment. Please try again. Or you are not the author of this comment.");
       setLoading(false);
       setShowDeleteConfirm(false);
     }
@@ -265,7 +265,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       }
     } catch (err) {
       console.error('Error updating comment:', err);
-      setError("Unable to edit this comment. Please try again.");
+      setError("Unable to edit this comment. Please try again. Or you are not the author of this comment.");
     } finally {
       setLoading(false);
     }
