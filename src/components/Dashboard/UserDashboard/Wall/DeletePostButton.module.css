@@ -1,0 +1,133 @@
+/* components/Dashboard/UserDashboard/Wall/DeletePostButton.module.css */
+.deleteButton {
+  background: transparent;
+  border: none;
+  color: #65676b;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.deleteButton:hover {
+  background-color: #f2f2f2;
+  color: #e03131;
+}
+
+.confirmationModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirmationContent {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.confirmationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.confirmationHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.warningIcon {
+  color: #e03131;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #65676b;
+}
+
+.confirmationBody {
+  padding: 20px;
+}
+
+.confirmationBody p {
+  margin: 0 0 16px;
+  font-size: 15px;
+}
+
+.errorMessage {
+  padding: 12px;
+  background: #ffebee;
+  color: #c62828;
+  border-radius: 4px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.confirmationFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 20px 20px;
+}
+
+.cancelButton {
+  padding: 8px 16px;
+  background-color: #f0f2f5;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.confirmButton {
+  padding: 8px 16px;
+  background-color: #e03131;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.confirmButton:hover:not(:disabled) {
+  background-color: #c92a2a;
+}
+
+.confirmButton:disabled, .cancelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .confirmationContent {
+    width: 95%;
+  }
+  
+  .confirmationHeader h3 {
+    font-size: 16px;
+  }
+  
+  .confirmationBody p {
+    font-size: 14px;
+  }
+}
