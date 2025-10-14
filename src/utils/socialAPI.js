@@ -1,4 +1,4 @@
-// utils/socialAPI.js - API complète pour le module Throwback Wall (Users + Admin)
+// utils/socialAPI.js - API complète pour le module Throwback Wall (Users et Admin)
 import api from './api';
 
 const socialAPI = {
