@@ -9,6 +9,8 @@ import {
   faFlag,
   faEdit,
   faTrash,
+  faSave,
+  faTimes,
   faGlobe,
   faUserFriends,
   faLock
@@ -19,8 +21,7 @@ import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { fr } from 'date-fns/locale';
 import CommentList from './CommentList';
 import AvatarInitials from '../../../Common/AvatarInitials';
-import EditPostForm from './EditPostForm';
-import DeletePostButton from './DeletePostButton';
+import ConfirmDialog from '../../../Common/ConfirmDialog';
 import { errorMessages } from '../../../../utils/errorMessages';
 import styles from './PostItem.module.css';
 
@@ -31,6 +32,9 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const [showComments, setShowComments] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.contenu);
+  const [editVisibility, setEditVisibility] = useState(post.visibilite);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
@@ -132,30 +136,61 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     }
   };
 
-  // Gestionnaire pour l'édition du post
-  const handleEditClick = () => {
+  // Fonction pour supprimer un post
+  const handleDeleteClick = () => {
     setShowDropdown(false);
-    setIsEditing(true);
+    setShowDeleteConfirm(true);
+  };
+  
+  // Fonction pour confirmer la suppression
+  const confirmDeletePost = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await api.delete(`/api/posts/${post._id}`);
+      
+      if (onDeletePost) {
+        onDeletePost(post._id);
+      }
+      
+      setShowDeleteConfirm(false);
+    } catch (err) {
+      console.error('Erreur lors de la suppression:', err);
+      setError(errorMessages.postDelete.error);
+      setLoading(false);
+    }
   };
 
-  // Gestionnaire pour annuler l'édition
+  // Fonction pour mettre à jour un post
+  const handleUpdateClick = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.put(`/api/posts/${post._id}`, {
+        contenu: editContent,
+        visibilite: editVisibility
+      });
+      
+      setIsEditing(false);
+      
+      if (onUpdatePost) {
+        onUpdatePost(response.data.data);
+      }
+    } catch (err) {
+      console.error('Erreur lors de la mise à jour:', err);
+      setError(errorMessages.postUpdate.error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fonction pour annuler la modification
   const handleCancelEdit = () => {
     setIsEditing(false);
-  };
-
-  // Gestionnaire pour la mise à jour réussie du post
-  const handlePostUpdated = (updatedPost) => {
-    if (onUpdatePost) {
-      onUpdatePost(updatedPost);
-    }
-    setIsEditing(false);
-  };
-
-  // Gestionnaire pour la suppression réussie du post
-  const handlePostDeleted = (postId) => {
-    if (onDeletePost) {
-      onDeletePost(postId);
-    }
+    setEditContent(post.contenu);
+    setEditVisibility(post.visibilite);
   };
 
   // Fonction pour afficher l'icône de visibilité
@@ -170,6 +205,14 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       default:
         return <FontAwesomeIcon icon={faGlobe} />;
     }
+  };
+
+  // Fonction pour changer la visibilité
+  const toggleVisibility = () => {
+    const visibilities = ['PUBLIC', 'FRIENDS', 'PRIVATE'];
+    const currentIndex = visibilities.indexOf(editVisibility);
+    const nextIndex = (currentIndex + 1) % visibilities.length;
+    setEditVisibility(visibilities[nextIndex]);
   };
 
   // Formater la date
@@ -187,17 +230,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     
     return <div dangerouslySetInnerHTML={{ __html: contentWithHashtags }} />;
   };
-
-  // Si le post est en mode édition, afficher le formulaire d'édition
-  if (isEditing) {
-    return (
-      <EditPostForm
-        post={post}
-        onPostUpdated={handlePostUpdated}
-        onCancel={handleCancelEdit}
-      />
-    );
-  }
 
   return (
     <div className={styles.postItem}>
@@ -244,15 +276,14 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
             <div className={styles.actionsDropdown}>
               {post.auteur?._id === user?.id && (
                 <>
-                  <button onClick={handleEditClick}>
+                  <button onClick={() => {
+                    setIsEditing(true);
+                    setShowDropdown(false);
+                  }}>
                     <FontAwesomeIcon icon={faEdit} />
                     <span>Edit</span>
                   </button>
-                  <button onClick={() => {
-                    setShowDropdown(false);
-                    // Le composant DeletePostButton sera utilisé directement via la ref
-                    document.getElementById(`delete-btn-${post._id}`).click();
-                  }}>
+                  <button onClick={handleDeleteClick}>
                     <FontAwesomeIcon icon={faTrash} />
                     <span>Delete</span>
                   </button>
@@ -268,9 +299,51 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       </div>
       
       <div className={styles.postContent}>
-        <div className={styles.contentText}>
-          {renderContent(post.contenu)}
-        </div>
+        {isEditing ? (
+          <div className={styles.editForm}>
+            <div className={styles.editControls}>
+              <button 
+                className={styles.visibilityButton} 
+                onClick={toggleVisibility}
+              >
+                {renderVisibilityIcon(editVisibility)}
+                <span>
+                  {editVisibility === 'PUBLIC' ? 'Public' : 
+                   editVisibility === 'FRIENDS' ? 'Friends' : 'Private'}
+                </span>
+              </button>
+            </div>
+            
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className={styles.editTextarea}
+              rows={4}
+            />
+            
+            <div className={styles.editActions}>
+              <button 
+                className={styles.cancelButton}
+                onClick={handleCancelEdit}
+              >
+                <FontAwesomeIcon icon={faTimes} />
+                <span>Cancel</span>
+              </button>
+              <button 
+                className={styles.saveButton}
+                onClick={handleUpdateClick}
+                disabled={loading || !editContent.trim()}
+              >
+                <FontAwesomeIcon icon={faSave} />
+                <span>Save</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.contentText}>
+            {renderContent(post.contenu)}
+          </div>
+        )}
         
         {post.media && (
           <div className={styles.mediaContainer}>
@@ -350,14 +423,12 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
         />
       )}
       
-      {/* Composant DeletePostButton masqué mais accessible via id */}
-      <div style={{ display: 'none' }}>
-        <DeletePostButton 
-          postId={post._id} 
-          onPostDeleted={handlePostDeleted}
-          id={`delete-btn-${post._id}`}
-        />
-      </div>
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        message="Are you sure you want to delete this post?"
+        onConfirm={confirmDeletePost}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 };

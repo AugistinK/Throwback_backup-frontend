@@ -121,42 +121,42 @@ const HelpAndSupport = () => {
   };
 
   // Submit contact form
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  // const handleSubmit = (e) => {
+  //   e.preventDefault();
     
-    // Form validation
-    if (!contactForm.subject.trim()) {
-      setFormError("Please enter a subject for your request");
-      return;
-    }
+  //   // Form validation
+  //   if (!contactForm.subject.trim()) {
+  //     setFormError("Please enter a subject for your request");
+  //     return;
+  //   }
     
-    if (!contactForm.message.trim()) {
-      setFormError("Please enter a message");
-      return;
-    }
+  //   if (!contactForm.message.trim()) {
+  //     setFormError("Please enter a message");
+  //     return;
+  //   }
     
-    if (!contactForm.email.trim() || !contactForm.email.includes('@')) {
-      setFormError("Please enter a valid email address");
-      return;
-    }
+  //   if (!contactForm.email.trim() || !contactForm.email.includes('@')) {
+  //     setFormError("Please enter a valid email address");
+  //     return;
+  //   }
     
-    // Simulate form submission
-    setFormError(null);
-    setFormSubmitted(true);
+  //   // Simulate form submission
+  //   setFormError(null);
+  //   setFormSubmitted(true);
     
-    // In a real app, you would send the form data to your backend here
-    console.log('Form submitted:', contactForm);
+  //   // In a real app, you would send the form data to your backend here
+  //   console.log('Form submitted:', contactForm);
     
-    // Reset form after delay to simulate success
-    setTimeout(() => {
-      setContactForm({
-        subject: '',
-        message: '',
-        email: user?.email || ''
-      });
-      setFormSubmitted(false);
-    }, 3000);
-  };
+  //   // Reset form after delay to simulate success
+  //   setTimeout(() => {
+  //     setContactForm({
+  //       subject: '',
+  //       message: '',
+  //       email: user?.email || ''
+  //     });
+  //     setFormSubmitted(false);
+  //   }, 3000);
+  // };
 
   // Scroll to contact form
   const scrollToContactForm = () => {
@@ -310,7 +310,7 @@ const HelpAndSupport = () => {
               <span>Contact Us</span>
             </h2>
             
-            <div className={styles.contactFormContainer}>
+            {/* <div className={styles.contactFormContainer}>
               {formSubmitted ? (
                 <div className={styles.formSuccess}>
                   <h3>Thank you for your message!</h3>
@@ -372,7 +372,7 @@ const HelpAndSupport = () => {
                   </button>
                 </form>
               )}
-            </div>
+            </div> */}
           </section>
         </div>
       </div>
