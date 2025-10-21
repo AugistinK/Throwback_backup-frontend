@@ -20,7 +20,7 @@ import { fr } from 'date-fns/locale';
 import CommentList from './CommentList';
 import AvatarInitials from '../../../Common/AvatarInitials';
 import EditPostForm from './EditPostForm';
-import DeletePostButton from './DeletePostButton';
+import ConfirmDialog from '../../../Common/ConfirmDialog';
 import { errorMessages } from '../../../../utils/errorMessages';
 import styles from './PostItem.module.css';
 
@@ -33,13 +33,17 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const [showComments, setShowComments] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
 
-  // 🔥 CORRECTION : Vérification stricte de l'auteur
+  // 🔥 CORRECTION : Vérification stricte de l'auteur avec logs
   const isAuthor = React.useMemo(() => {
-    if (!user || !post.auteur) return false;
+    if (!user || !post.auteur) {
+      console.log('❌ Pas d\'utilisateur ou d\'auteur');
+      return false;
+    }
     
     // Récupérer les IDs de manière sûre
     const userId = user.id || user._id;
@@ -50,7 +54,9 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     const auteurIdStr = auteurId?.toString();
     
     console.log('🔍 Vérification auteur:', {
+      userName: `${user.prenom} ${user.nom}`,
       userId: userIdStr,
+      auteurName: `${post.auteur.prenom} ${post.auteur.nom}`,
       auteurId: auteurIdStr,
       isMatch: userIdStr === auteurIdStr
     });
@@ -63,10 +69,17 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     if (!user) return false;
     
     const hasAdminRole = user.roles && user.roles.some(r => 
-      ['admin', 'superadmin'].includes(r.libelle_role)
+      ['admin', 'superadmin'].includes(r.libelle_role || r)
     );
     
     const hasAdminString = ['admin', 'superadmin'].includes(user.role);
+    
+    console.log('👮 Vérification admin:', {
+      userName: `${user.prenom} ${user.nom}`,
+      roles: user.roles,
+      role: user.role,
+      isAdmin: hasAdminRole || hasAdminString
+    });
     
     return hasAdminRole || hasAdminString;
   }, [user]);
@@ -83,7 +96,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [dropdownRef]);
+  }, []);
 
   // Fonction pour liker/unliker un post
   const handleLikeClick = async () => {
@@ -164,18 +177,31 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     }
   };
 
+  // Fonction pour supprimer un post
+  const handleDeletePost = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await api.delete(`/api/posts/${post._id}`);
+      
+      if (onDeletePost) {
+        onDeletePost(post._id);
+      }
+      
+      setShowDeleteConfirm(false);
+    } catch (err) {
+      console.error('Erreur lors de la suppression:', err);
+      setError(errorMessages.postDelete?.error || 'Unable to delete this post');
+      setLoading(false);
+    }
+  };
+
   // Fonction appelée après la mise à jour du post
   const handlePostUpdated = (updatedPost) => {
     setIsEditing(false);
     if (onUpdatePost) {
       onUpdatePost(updatedPost);
-    }
-  };
-
-  // Fonction appelée après la suppression du post
-  const handlePostDeleted = (deletedPostId) => {
-    if (onDeletePost) {
-      onDeletePost(deletedPostId);
     }
   };
 
@@ -255,12 +281,15 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           </div>
         </div>
         
-        {/* 🔥 Afficher le menu seulement si l'utilisateur est connecté */}
+        {/* 🔥 Menu contextuel - Toujours visible si user connecté */}
         {user && (
           <div className={styles.postActions} ref={dropdownRef}>
             <button 
               className={styles.actionButton}
-              onClick={() => setShowDropdown(!showDropdown)}
+              onClick={() => {
+                console.log('🔘 Menu cliqué, état actuel:', showDropdown);
+                setShowDropdown(!showDropdown);
+              }}
             >
               <FontAwesomeIcon icon={faEllipsisV} />
             </button>
@@ -269,10 +298,14 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
               <div className={styles.actionsDropdown}>
                 {/* 🔥 EDIT : Seulement pour l'auteur */}
                 {isAuthor && (
-                  <button onClick={() => {
-                    setIsEditing(true);
-                    setShowDropdown(false);
-                  }}>
+                  <button 
+                    onClick={() => {
+                      console.log('✏️ Edit cliqué');
+                      setIsEditing(true);
+                      setShowDropdown(false);
+                    }}
+                    className={styles.dropdownItem}
+                  >
                     <FontAwesomeIcon icon={faEdit} />
                     <span>Edit</span>
                   </button>
@@ -280,20 +313,25 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                 
                 {/* 🔥 DELETE : Pour l'auteur OU admin */}
                 {(isAuthor || isAdmin) && (
-                  <button onClick={() => {
-                    setShowDropdown(false);
-                  }}>
+                  <button 
+                    onClick={() => {
+                      console.log('🗑️ Delete cliqué');
+                      setShowDropdown(false);
+                      setShowDeleteConfirm(true);
+                    }}
+                    className={styles.dropdownItem}
+                  >
                     <FontAwesomeIcon icon={faTrash} />
-                    <DeletePostButton 
-                      postId={post._id}
-                      onPostDeleted={handlePostDeleted}
-                    />
+                    <span>Delete</span>
                   </button>
                 )}
                 
                 {/* 🔥 REPORT : Pour tout le monde SAUF l'auteur */}
                 {!isAuthor && (
-                  <button onClick={handleReportClick}>
+                  <button 
+                    onClick={handleReportClick}
+                    className={styles.dropdownItem}
+                  >
                     <FontAwesomeIcon icon={faFlag} />
                     <span>Report</span>
                   </button>
@@ -386,6 +424,14 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           onCommentCountChange={setCommentCount}
         />
       )}
+      
+      {/* 🔥 ConfirmDialog pour la suppression */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        message="Are you sure you want to delete this post? This action cannot be undone."
+        onConfirm={handleDeletePost}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 };
