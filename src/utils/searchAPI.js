@@ -86,6 +86,7 @@ const searchAPI = {
     });
     return response.data;
   },
+  
 
   /**
    * Suggestions d'auto-complétion
