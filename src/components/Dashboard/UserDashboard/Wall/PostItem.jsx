@@ -9,8 +9,6 @@ import {
   faFlag,
   faEdit,
   faTrash,
-  faSave,
-  faTimes,
   faGlobe,
   faUserFriends,
   faLock
@@ -21,24 +19,33 @@ import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { fr } from 'date-fns/locale';
 import CommentList from './CommentList';
 import AvatarInitials from '../../../Common/AvatarInitials';
-import ConfirmDialog from '../../../Common/ConfirmDialog';
+import EditPostForm from './EditPostForm';
+import DeletePostButton from './DeletePostButton';
 import { errorMessages } from '../../../../utils/errorMessages';
 import styles from './PostItem.module.css';
 
 const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
+  const { user } = useAuth();
+  
   const [liked, setLiked] = useState(post.likes?.includes(user?.id));
   const [likeCount, setLikeCount] = useState(post.likes?.length || 0);
   const [commentCount, setCommentCount] = useState(post.commentaires?.length || 0);
   const [showComments, setShowComments] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(post.contenu);
-  const [editVisibility, setEditVisibility] = useState(post.visibilite);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
-  const { user } = useAuth();
+
+  // Vérifier si l'utilisateur est l'auteur du post
+  const isAuthor = user && post.auteur && 
+                  (post.auteur._id === user.id || post.auteur.id === user.id);
+  
+  // Vérifier si l'utilisateur est admin
+  const isAdmin = user && (
+    (user.roles && user.roles.some(r => ['admin', 'superadmin'].includes(r.libelle_role))) ||
+    ['admin', 'superadmin'].includes(user.role)
+  );
 
   // Fermer le dropdown au clic en dehors
   React.useEffect(() => {
@@ -136,61 +143,19 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     }
   };
 
-  // Fonction pour supprimer un post
-  const handleDeleteClick = () => {
-    setShowDropdown(false);
-    setShowDeleteConfirm(true);
-  };
-  
-  // Fonction pour confirmer la suppression
-  const confirmDeletePost = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      await api.delete(`/api/posts/${post._id}`);
-      
-      if (onDeletePost) {
-        onDeletePost(post._id);
-      }
-      
-      setShowDeleteConfirm(false);
-    } catch (err) {
-      console.error('Erreur lors de la suppression:', err);
-      setError(errorMessages.postDelete.error);
-      setLoading(false);
-    }
-  };
-
-  // Fonction pour mettre à jour un post
-  const handleUpdateClick = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await api.put(`/api/posts/${post._id}`, {
-        contenu: editContent,
-        visibilite: editVisibility
-      });
-      
-      setIsEditing(false);
-      
-      if (onUpdatePost) {
-        onUpdatePost(response.data.data);
-      }
-    } catch (err) {
-      console.error('Erreur lors de la mise à jour:', err);
-      setError(errorMessages.postUpdate.error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fonction pour annuler la modification
-  const handleCancelEdit = () => {
+  // Fonction appelée après la mise à jour du post
+  const handlePostUpdated = (updatedPost) => {
     setIsEditing(false);
-    setEditContent(post.contenu);
-    setEditVisibility(post.visibilite);
+    if (onUpdatePost) {
+      onUpdatePost(updatedPost);
+    }
+  };
+
+  // Fonction appelée après la suppression du post
+  const handlePostDeleted = (deletedPostId) => {
+    if (onDeletePost) {
+      onDeletePost(deletedPostId);
+    }
   };
 
   // Fonction pour afficher l'icône de visibilité
@@ -205,14 +170,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       default:
         return <FontAwesomeIcon icon={faGlobe} />;
     }
-  };
-
-  // Fonction pour changer la visibilité
-  const toggleVisibility = () => {
-    const visibilities = ['PUBLIC', 'FRIENDS', 'PRIVATE'];
-    const currentIndex = visibilities.indexOf(editVisibility);
-    const nextIndex = (currentIndex + 1) % visibilities.length;
-    setEditVisibility(visibilities[nextIndex]);
   };
 
   // Formater la date
@@ -230,6 +187,19 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     
     return <div dangerouslySetInnerHTML={{ __html: contentWithHashtags }} />;
   };
+
+  // Si le mode édition est actif, afficher le formulaire d'édition
+  if (isEditing) {
+    return (
+      <div className={styles.postItem}>
+        <EditPostForm 
+          post={post}
+          onPostUpdated={handlePostUpdated}
+          onCancel={() => setIsEditing(false)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.postItem}>
@@ -274,7 +244,8 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           
           {showDropdown && (
             <div className={styles.actionsDropdown}>
-              {post.auteur?._id === user?.id && (
+              {/* Afficher Edit et Delete seulement si l'utilisateur est l'auteur */}
+              {isAuthor && (
                 <>
                   <button onClick={() => {
                     setIsEditing(true);
@@ -283,67 +254,41 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                     <FontAwesomeIcon icon={faEdit} />
                     <span>Edit</span>
                   </button>
-                  <button onClick={handleDeleteClick}>
-                    <FontAwesomeIcon icon={faTrash} />
-                    <span>Delete</span>
+                  <button onClick={() => setShowDropdown(false)}>
+                    <DeletePostButton 
+                      postId={post._id}
+                      onPostDeleted={handlePostDeleted}
+                    />
                   </button>
                 </>
               )}
-              <button onClick={handleReportClick}>
-                <FontAwesomeIcon icon={faFlag} />
-                <span>Report</span>
-              </button>
+              
+              {/* Admin peut aussi supprimer */}
+              {!isAuthor && isAdmin && (
+                <button onClick={() => setShowDropdown(false)}>
+                  <DeletePostButton 
+                    postId={post._id}
+                    onPostDeleted={handlePostDeleted}
+                  />
+                </button>
+              )}
+              
+              {/* Tout le monde peut signaler sauf l'auteur */}
+              {!isAuthor && (
+                <button onClick={handleReportClick}>
+                  <FontAwesomeIcon icon={faFlag} />
+                  <span>Report</span>
+                </button>
+              )}
             </div>
           )}
         </div>
       </div>
       
       <div className={styles.postContent}>
-        {isEditing ? (
-          <div className={styles.editForm}>
-            <div className={styles.editControls}>
-              <button 
-                className={styles.visibilityButton} 
-                onClick={toggleVisibility}
-              >
-                {renderVisibilityIcon(editVisibility)}
-                <span>
-                  {editVisibility === 'PUBLIC' ? 'Public' : 
-                   editVisibility === 'FRIENDS' ? 'Friends' : 'Private'}
-                </span>
-              </button>
-            </div>
-            
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className={styles.editTextarea}
-              rows={4}
-            />
-            
-            <div className={styles.editActions}>
-              <button 
-                className={styles.cancelButton}
-                onClick={handleCancelEdit}
-              >
-                <FontAwesomeIcon icon={faTimes} />
-                <span>Cancel</span>
-              </button>
-              <button 
-                className={styles.saveButton}
-                onClick={handleUpdateClick}
-                disabled={loading || !editContent.trim()}
-              >
-                <FontAwesomeIcon icon={faSave} />
-                <span>Save</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className={styles.contentText}>
-            {renderContent(post.contenu)}
-          </div>
-        )}
+        <div className={styles.contentText}>
+          {renderContent(post.contenu)}
+        </div>
         
         {post.media && (
           <div className={styles.mediaContainer}>
@@ -422,13 +367,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           onCommentCountChange={setCommentCount}
         />
       )}
-      
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        message="Are you sure you want to delete this post?"
-        onConfirm={confirmDeletePost}
-        onCancel={() => setShowDeleteConfirm(false)}
-      />
     </div>
   );
 };
