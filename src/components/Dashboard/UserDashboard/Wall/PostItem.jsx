@@ -37,15 +37,39 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
 
-  // Vérifier si l'utilisateur est l'auteur du post
-  const isAuthor = user && post.auteur && 
-                  (post.auteur._id === user.id || post.auteur.id === user.id);
+  // 🔥 CORRECTION : Vérification stricte de l'auteur
+  const isAuthor = React.useMemo(() => {
+    if (!user || !post.auteur) return false;
+    
+    // Récupérer les IDs de manière sûre
+    const userId = user.id || user._id;
+    const auteurId = post.auteur._id || post.auteur.id;
+    
+    // Convertir en string pour comparaison stricte
+    const userIdStr = userId?.toString();
+    const auteurIdStr = auteurId?.toString();
+    
+    console.log('🔍 Vérification auteur:', {
+      userId: userIdStr,
+      auteurId: auteurIdStr,
+      isMatch: userIdStr === auteurIdStr
+    });
+    
+    return userIdStr === auteurIdStr;
+  }, [user, post.auteur]);
   
   // Vérifier si l'utilisateur est admin
-  const isAdmin = user && (
-    (user.roles && user.roles.some(r => ['admin', 'superadmin'].includes(r.libelle_role))) ||
-    ['admin', 'superadmin'].includes(user.role)
-  );
+  const isAdmin = React.useMemo(() => {
+    if (!user) return false;
+    
+    const hasAdminRole = user.roles && user.roles.some(r => 
+      ['admin', 'superadmin'].includes(r.libelle_role)
+    );
+    
+    const hasAdminString = ['admin', 'superadmin'].includes(user.role);
+    
+    return hasAdminRole || hasAdminString;
+  }, [user]);
 
   // Fermer le dropdown au clic en dehors
   React.useEffect(() => {
@@ -72,7 +96,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       setLiked(response.data.liked);
       setLikeCount(response.data.likeCount);
       
-      // Mettre à jour le post dans la liste
       if (onUpdatePost) {
         const updatedPost = {
           ...post,
@@ -84,7 +107,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       }
     } catch (err) {
       console.error('Erreur lors du like/unlike:', err);
-      setError(errorMessages.postLike.error);
+      setError(errorMessages.postLike?.error || 'Unable to like this post');
     } finally {
       setLoading(false);
     }
@@ -98,7 +121,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       
       await api.post(`/api/posts/${post._id}/share`);
       
-      // Mettre à jour le compteur de partages
       const updatedPost = {
         ...post,
         partages: (post.partages || 0) + 1
@@ -108,14 +130,13 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
         onUpdatePost(updatedPost);
       }
       
-      // Copier le lien dans le presse-papier
       const shareUrl = `${window.location.origin}/dashboard/wall/post/${post._id}`;
       await navigator.clipboard.writeText(shareUrl);
       
       alert('Link copied to clipboard!');
     } catch (err) {
       console.error('Erreur lors du partage:', err);
-      setError(errorMessages.postShare.error);
+      setError(errorMessages.postShare?.error || 'Unable to share this post');
     } finally {
       setLoading(false);
     }
@@ -137,7 +158,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       alert('Post reported successfully. Our moderation team will review this content.');
     } catch (err) {
       console.error('Erreur lors du signalement:', err);
-      setError(errorMessages.postReport.error);
+      setError(errorMessages.postReport?.error || 'Unable to report this post');
     } finally {
       setLoading(false);
     }
@@ -234,19 +255,20 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           </div>
         </div>
         
-        <div className={styles.postActions} ref={dropdownRef}>
-          <button 
-            className={styles.actionButton}
-            onClick={() => setShowDropdown(!showDropdown)}
-          >
-            <FontAwesomeIcon icon={faEllipsisV} />
-          </button>
-          
-          {showDropdown && (
-            <div className={styles.actionsDropdown}>
-              {/* Afficher Edit et Delete seulement si l'utilisateur est l'auteur */}
-              {isAuthor && (
-                <>
+        {/* 🔥 Afficher le menu seulement si l'utilisateur est connecté */}
+        {user && (
+          <div className={styles.postActions} ref={dropdownRef}>
+            <button 
+              className={styles.actionButton}
+              onClick={() => setShowDropdown(!showDropdown)}
+            >
+              <FontAwesomeIcon icon={faEllipsisV} />
+            </button>
+            
+            {showDropdown && (
+              <div className={styles.actionsDropdown}>
+                {/* 🔥 EDIT : Seulement pour l'auteur */}
+                {isAuthor && (
                   <button onClick={() => {
                     setIsEditing(true);
                     setShowDropdown(false);
@@ -254,35 +276,32 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                     <FontAwesomeIcon icon={faEdit} />
                     <span>Edit</span>
                   </button>
-                  <button onClick={() => setShowDropdown(false)}>
+                )}
+                
+                {/* 🔥 DELETE : Pour l'auteur OU admin */}
+                {(isAuthor || isAdmin) && (
+                  <button onClick={() => {
+                    setShowDropdown(false);
+                  }}>
+                    <FontAwesomeIcon icon={faTrash} />
                     <DeletePostButton 
                       postId={post._id}
                       onPostDeleted={handlePostDeleted}
                     />
                   </button>
-                </>
-              )}
-              
-              {/* Admin peut aussi supprimer */}
-              {!isAuthor && isAdmin && (
-                <button onClick={() => setShowDropdown(false)}>
-                  <DeletePostButton 
-                    postId={post._id}
-                    onPostDeleted={handlePostDeleted}
-                  />
-                </button>
-              )}
-              
-              {/* Tout le monde peut signaler sauf l'auteur */}
-              {!isAuthor && (
-                <button onClick={handleReportClick}>
-                  <FontAwesomeIcon icon={faFlag} />
-                  <span>Report</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+                )}
+                
+                {/* 🔥 REPORT : Pour tout le monde SAUF l'auteur */}
+                {!isAuthor && (
+                  <button onClick={handleReportClick}>
+                    <FontAwesomeIcon icon={faFlag} />
+                    <span>Report</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       <div className={styles.postContent}>
