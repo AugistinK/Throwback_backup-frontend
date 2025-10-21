@@ -1,5 +1,5 @@
 // components/Dashboard/UserDashboard/Wall/PostItem.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faHeart, 
@@ -37,104 +37,18 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
 
-  // 🔥 DEBUG - Log complet au montage du composant
-  useEffect(() => {
-    console.log('=== POST ITEM DEBUG ===');
-    console.log('User complet:', user);
-    console.log('User ID:', user?.id);
-    console.log('User _id:', user?._id);
-    console.log('---');
-    console.log('Post complet:', post);
-    console.log('Post auteur:', post.auteur);
-    console.log('Post auteur ID:', post.auteur?.id);
-    console.log('Post auteur _id:', post.auteur?._id);
-    console.log('=====================');
-  }, [user, post]);
-
-  // 🔥 CORRECTION : Vérification stricte de l'auteur avec tous les cas possibles
-  const isAuthor = React.useMemo(() => {
-    if (!user || !post || !post.auteur) {
-      console.log('❌ Vérification auteur: Données manquantes');
-      return false;
-    }
-    
-    // Récupérer tous les IDs possibles
-    const userId = user.id || user._id;
-    const auteurId = post.auteur._id || post.auteur.id || post.auteur;
-    
-    // Si auteur est juste un string (ObjectId direct)
-    if (typeof post.auteur === 'string') {
-      const match = userId?.toString() === post.auteur;
-      console.log('🔍 Vérification (auteur string):', {
-        userId: userId?.toString(),
-        auteurId: post.auteur,
-        match
-      });
-      return match;
-    }
-    
-    // Sinon comparaison normale
-    const userIdStr = userId?.toString();
-    const auteurIdStr = auteurId?.toString();
-    
-    const match = userIdStr === auteurIdStr;
-    
-    console.log('🔍 Vérification auteur:', {
-      userId: userIdStr,
-      auteurId: auteurIdStr,
-      match,
-      userKeys: Object.keys(user || {}),
-      auteurKeys: Object.keys(post.auteur || {})
-    });
-    
-    return match;
-  }, [user, post]);
+  // Vérifier si l'utilisateur est l'auteur du post
+  const isAuthor = user && post.auteur && 
+                  (post.auteur._id === user.id || post.auteur.id === user.id);
   
   // Vérifier si l'utilisateur est admin
-  const isAdmin = React.useMemo(() => {
-    if (!user) return false;
-    
-    console.log('🔍 Vérification admin:', {
-      userRole: user.role,
-      userRoles: user.roles
-    });
-    
-    // Vérifier le champ role (string)
-    if (user.role && ['admin', 'superadmin'].includes(user.role)) {
-      return true;
-    }
-    
-    // Vérifier le tableau roles
-    if (Array.isArray(user.roles)) {
-      const hasAdminRole = user.roles.some(r => {
-        if (typeof r === 'string') {
-          return ['admin', 'superadmin'].includes(r);
-        }
-        if (r && r.libelle_role) {
-          return ['admin', 'superadmin'].includes(r.libelle_role);
-        }
-        return false;
-      });
-      
-      return hasAdminRole;
-    }
-    
-    return false;
-  }, [user]);
-
-  // Log des permissions
-  useEffect(() => {
-    console.log('✅ Permissions:', {
-      isAuthor,
-      isAdmin,
-      showEdit: isAuthor,
-      showDelete: isAuthor || isAdmin,
-      showReport: !isAuthor
-    });
-  }, [isAuthor, isAdmin]);
+  const isAdmin = user && (
+    (user.roles && user.roles.some(r => ['admin', 'superadmin'].includes(r.libelle_role))) ||
+    ['admin', 'superadmin'].includes(user.role)
+  );
 
   // Fermer le dropdown au clic en dehors
-  useEffect(() => {
+  React.useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowDropdown(false);
@@ -145,7 +59,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [dropdownRef]);
 
   // Fonction pour liker/unliker un post
   const handleLikeClick = async () => {
@@ -158,6 +72,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       setLiked(response.data.liked);
       setLikeCount(response.data.likeCount);
       
+      // Mettre à jour le post dans la liste
       if (onUpdatePost) {
         const updatedPost = {
           ...post,
@@ -169,7 +84,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       }
     } catch (err) {
       console.error('Erreur lors du like/unlike:', err);
-      setError('Unable to like this post');
+      setError(errorMessages.postLike.error);
     } finally {
       setLoading(false);
     }
@@ -183,6 +98,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       
       await api.post(`/api/posts/${post._id}/share`);
       
+      // Mettre à jour le compteur de partages
       const updatedPost = {
         ...post,
         partages: (post.partages || 0) + 1
@@ -192,13 +108,14 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
         onUpdatePost(updatedPost);
       }
       
+      // Copier le lien dans le presse-papier
       const shareUrl = `${window.location.origin}/dashboard/wall/post/${post._id}`;
       await navigator.clipboard.writeText(shareUrl);
       
       alert('Link copied to clipboard!');
     } catch (err) {
       console.error('Erreur lors du partage:', err);
-      setError('Unable to share this post');
+      setError(errorMessages.postShare.error);
     } finally {
       setLoading(false);
     }
@@ -220,7 +137,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       alert('Post reported successfully. Our moderation team will review this content.');
     } catch (err) {
       console.error('Erreur lors du signalement:', err);
-      setError('Unable to report this post');
+      setError(errorMessages.postReport.error);
     } finally {
       setLoading(false);
     }
@@ -317,68 +234,55 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           </div>
         </div>
         
-        {/* 🔥 Menu - Affiché seulement si user existe */}
-        {user && (
-          <div className={styles.postActions} ref={dropdownRef}>
-            <button 
-              className={styles.actionButton}
-              onClick={() => {
-                console.log('🎯 Menu cliqué - Permissions:', {
-                  isAuthor,
-                  isAdmin,
-                  showEdit: isAuthor,
-                  showDelete: isAuthor || isAdmin
-                });
-                setShowDropdown(!showDropdown);
-              }}
-            >
-              <FontAwesomeIcon icon={faEllipsisV} />
-            </button>
-            
-            {showDropdown && (
-              <div className={styles.actionsDropdown}>
-                {console.log('📋 Dropdown affiché avec permissions:', {
-                  isAuthor,
-                  isAdmin
-                })}
-                
-                {/* EDIT - Seulement pour l'auteur */}
-                {isAuthor && (
+        <div className={styles.postActions} ref={dropdownRef}>
+          <button 
+            className={styles.actionButton}
+            onClick={() => setShowDropdown(!showDropdown)}
+          >
+            <FontAwesomeIcon icon={faEllipsisV} />
+          </button>
+          
+          {showDropdown && (
+            <div className={styles.actionsDropdown}>
+              {/* Afficher Edit et Delete seulement si l'utilisateur est l'auteur */}
+              {isAuthor && (
+                <>
                   <button onClick={() => {
-                    console.log('✏️ Edit cliqué');
                     setIsEditing(true);
                     setShowDropdown(false);
                   }}>
                     <FontAwesomeIcon icon={faEdit} />
                     <span>Edit</span>
                   </button>
-                )}
-                
-                {/* DELETE - Pour l'auteur OU admin */}
-                {(isAuthor || isAdmin) && (
-                  <div onClick={() => {
-                    console.log('🗑️ Delete cliqué');
-                    setShowDropdown(false);
-                  }}>
-                    <FontAwesomeIcon icon={faTrash} />
+                  <button onClick={() => setShowDropdown(false)}>
                     <DeletePostButton 
                       postId={post._id}
                       onPostDeleted={handlePostDeleted}
                     />
-                  </div>
-                )}
-                
-                {/* REPORT - Pour tout le monde SAUF l'auteur */}
-                {!isAuthor && (
-                  <button onClick={handleReportClick}>
-                    <FontAwesomeIcon icon={faFlag} />
-                    <span>Report</span>
                   </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                </>
+              )}
+              
+              {/* Admin peut aussi supprimer */}
+              {!isAuthor && isAdmin && (
+                <button onClick={() => setShowDropdown(false)}>
+                  <DeletePostButton 
+                    postId={post._id}
+                    onPostDeleted={handlePostDeleted}
+                  />
+                </button>
+              )}
+              
+              {/* Tout le monde peut signaler sauf l'auteur */}
+              {!isAuthor && (
+                <button onClick={handleReportClick}>
+                  <FontAwesomeIcon icon={faFlag} />
+                  <span>Report</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       
       <div className={styles.postContent}>
