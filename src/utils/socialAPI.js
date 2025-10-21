@@ -72,18 +72,19 @@ const socialAPI = {
     }
   },
 
-  /**
-   * Supprimer un post (utilisateur)
-   */
-  deletePost: async (postId) => {
-    try {
-      const response = await api.delete(`/api/admim/posts/${postId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error deleting post:', error);
-      throw error;
-    }
-  },
+/**
+ * Supprimer un post (utilisateur)
+ */
+deletePost: async (postId) => {
+  try {
+   
+    const response = await api.delete(`/api/posts/${postId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    throw error;
+  }
+},
 
   /**
    * Supprimer un post (admin)
