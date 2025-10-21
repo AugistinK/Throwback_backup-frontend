@@ -37,15 +37,25 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
 
-  // Vérifier si l'utilisateur est l'auteur du post
-  const isAuthor = user && post.auteur && 
-                  (post.auteur._id === user.id || post.auteur.id === user.id);
-  
-  // Vérifier si l'utilisateur est admin
-  const isAdmin = user && (
-    (user.roles && user.roles.some(r => ['admin', 'superadmin'].includes(r.libelle_role))) ||
-    ['admin', 'superadmin'].includes(user.role)
+  // ✅ Vérification stricte de l'auteur du post
+  const isAuthor = user && post.auteur && (
+    (post.auteur._id && post.auteur._id === user.id) ||
+    (post.auteur.id && post.auteur.id === user.id) ||
+    (post.auteur._id && post.auteur._id === user._id) ||
+    (post.auteur.id && post.auteur.id === user._id)
   );
+  
+  // ✅ Vérification admin avec gestion robuste des rôles
+  const isAdmin = user && (
+    (user.roles && Array.isArray(user.roles) && user.roles.some(r => 
+      r.libelle_role && ['admin', 'superadmin'].includes(r.libelle_role.toLowerCase())
+    )) ||
+    (user.role && ['admin', 'superadmin'].includes(user.role.toLowerCase()))
+  );
+
+  // ✅ Permissions spécifiques
+  const canEdit = isAuthor; // Seul l'auteur peut éditer
+  const canDelete = isAuthor || isAdmin; // Auteur ou Admin peut supprimer
 
   // Fermer le dropdown au clic en dehors
   React.useEffect(() => {
@@ -234,19 +244,20 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           </div>
         </div>
         
-        <div className={styles.postActions} ref={dropdownRef}>
-          <button 
-            className={styles.actionButton}
-            onClick={() => setShowDropdown(!showDropdown)}
-          >
-            <FontAwesomeIcon icon={faEllipsisV} />
-          </button>
-          
-          {showDropdown && (
-            <div className={styles.actionsDropdown}>
-              {/* Afficher Edit et Delete seulement si l'utilisateur est l'auteur */}
-              {isAuthor && (
-                <>
+        {/* ✅ Afficher le menu seulement si l'utilisateur a des droits */}
+        {user && (canEdit || canDelete || !isAuthor) && (
+          <div className={styles.postActions} ref={dropdownRef}>
+            <button 
+              className={styles.actionButton}
+              onClick={() => setShowDropdown(!showDropdown)}
+            >
+              <FontAwesomeIcon icon={faEllipsisV} />
+            </button>
+            
+            {showDropdown && (
+              <div className={styles.actionsDropdown}>
+                {/* ✅ Edit - Seulement pour l'auteur */}
+                {canEdit && (
                   <button onClick={() => {
                     setIsEditing(true);
                     setShowDropdown(false);
@@ -254,35 +265,33 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                     <FontAwesomeIcon icon={faEdit} />
                     <span>Edit</span>
                   </button>
-                  <button onClick={() => setShowDropdown(false)}>
+                )}
+                
+                {/* ✅ Delete - Pour l'auteur ou admin */}
+                {canDelete && (
+                  <button 
+                    onClick={() => setShowDropdown(false)}
+                    className={styles.deleteButtonWrapper}
+                  >
                     <DeletePostButton 
                       postId={post._id}
+                      postAuthorId={post.auteur?._id || post.auteur?.id}
                       onPostDeleted={handlePostDeleted}
                     />
                   </button>
-                </>
-              )}
-              
-              {/* Admin peut aussi supprimer */}
-              {!isAuthor && isAdmin && (
-                <button onClick={() => setShowDropdown(false)}>
-                  <DeletePostButton 
-                    postId={post._id}
-                    onPostDeleted={handlePostDeleted}
-                  />
-                </button>
-              )}
-              
-              {/* Tout le monde peut signaler sauf l'auteur */}
-              {!isAuthor && (
-                <button onClick={handleReportClick}>
-                  <FontAwesomeIcon icon={faFlag} />
-                  <span>Report</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+                )}
+                
+                {/* ✅ Report - Pour tout le monde SAUF l'auteur */}
+                {!isAuthor && (
+                  <button onClick={handleReportClick}>
+                    <FontAwesomeIcon icon={faFlag} />
+                    <span>Report</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       <div className={styles.postContent}>
