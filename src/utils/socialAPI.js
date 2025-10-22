@@ -77,7 +77,6 @@ const socialAPI = {
  */
 deletePost: async (postId) => {
   try {
-   
     const response = await api.delete(`/api/posts/${postId}`);
     return response.data;
   } catch (error) {

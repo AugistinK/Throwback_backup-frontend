@@ -46,26 +46,6 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
     locale: fr
   });
 
-  // ✅ Vérification stricte de l'auteur du commentaire
-  const isAuthor = user && comment.auteur && (
-    (comment.auteur._id && comment.auteur._id === user.id) ||
-    (comment.auteur.id && comment.auteur.id === user.id) ||
-    (comment.auteur._id && comment.auteur._id === user._id) ||
-    (comment.auteur.id && comment.auteur.id === user._id)
-  );
-  
-  // ✅ Vérification admin avec gestion robuste des rôles
-  const isAdmin = user && (
-    (user.roles && Array.isArray(user.roles) && user.roles.some(r => 
-      r.libelle_role && ['admin', 'superadmin'].includes(r.libelle_role.toLowerCase())
-    )) ||
-    (user.role && ['admin', 'superadmin'].includes(user.role.toLowerCase()))
-  );
-
-  // ✅ Permissions spécifiques
-  const canEdit = isAuthor; // Seul l'auteur peut éditer
-  const canDelete = isAuthor || isAdmin; // Auteur ou Admin peut supprimer
-
   // Like handler
   const handleLikeClick = async () => {
     try {
@@ -310,6 +290,16 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
       setLoading(false);
     }
   };
+  
+  const isAuthor = user && comment.auteur && 
+                  (comment.auteur._id === user.id || comment.auteur.id === user.id);
+  const isAdmin = user && (
+    (user.roles && user.roles.some(r => ['admin', 'superadmin'].includes(r.libelle_role))) ||
+    ['admin', 'superadmin'].includes(user.role)
+  );
+
+  const canModify = isAuthor;
+  const canDelete = isAuthor || isAdmin;
 
   return (
     <div className={styles.commentItem}>
@@ -429,8 +419,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
           )}
         </div>
         
-        {/* ✅ Afficher le dropdown seulement si l'utilisateur a des droits */}
-        {user && (canEdit || canDelete || !isAuthor) && (
+        {user && (
           <div className={styles.dropdownContainer}>
             <button 
               className={styles.moreButton}
@@ -441,8 +430,7 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
             
             {showDropdown && (
               <div className={styles.dropdown}>
-                {/* ✅ Edit - Seulement pour l'auteur */}
-                {canEdit && (
+                {canModify && (
                   <button onClick={() => {
                     setIsEditing(true);
                     setShowDropdown(false);
@@ -452,18 +440,13 @@ const CommentItem = ({ comment, postId, onUpdateComment, onDeleteComment }) => {
                   </button>
                 )}
                 
-                {/* ✅ Delete - Pour l'auteur ou admin */}
                 {canDelete && (
                   <button onClick={handleDeleteClick}>
                     <FontAwesomeIcon icon={faTrash} />
                     <span>Delete</span>
-                    {isAdmin && !isAuthor && (
-                      <span className={styles.adminBadge}>Admin</span>
-                    )}
                   </button>
                 )}
                 
-                {/* ✅ Report - Pour tout le monde SAUF l'auteur */}
                 {!isAuthor && (
                   <button onClick={handleReportClick}>
                     <FontAwesomeIcon icon={faFlag} />

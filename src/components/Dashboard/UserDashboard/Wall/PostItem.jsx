@@ -37,25 +37,15 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
 
-  // ✅ Vérification stricte de l'auteur du post
-  const isAuthor = user && post.auteur && (
-    (post.auteur._id && post.auteur._id === user.id) ||
-    (post.auteur.id && post.auteur.id === user.id) ||
-    (post.auteur._id && post.auteur._id === user._id) ||
-    (post.auteur.id && post.auteur.id === user._id)
-  );
+  // VÃ©rifier si l'utilisateur est l'auteur du post
+  const isAuthor = user && post.auteur && 
+                  (post.auteur._id === user.id || post.auteur.id === user.id);
   
-  // ✅ Vérification admin avec gestion robuste des rôles
+  // VÃ©rifier si l'utilisateur est admin
   const isAdmin = user && (
-    (user.roles && Array.isArray(user.roles) && user.roles.some(r => 
-      r.libelle_role && ['admin', 'superadmin'].includes(r.libelle_role.toLowerCase())
-    )) ||
-    (user.role && ['admin', 'superadmin'].includes(user.role.toLowerCase()))
+    (user.roles && user.roles.some(r => ['admin', 'superadmin'].includes(r.libelle_role))) ||
+    ['admin', 'superadmin'].includes(user.role)
   );
-
-  // ✅ Permissions spécifiques
-  const canEdit = isAuthor; // Seul l'auteur peut éditer
-  const canDelete = isAuthor || isAdmin; // Auteur ou Admin peut supprimer
 
   // Fermer le dropdown au clic en dehors
   React.useEffect(() => {
@@ -82,7 +72,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       setLiked(response.data.liked);
       setLikeCount(response.data.likeCount);
       
-      // Mettre à jour le post dans la liste
+      // Mettre Ã  jour le post dans la liste
       if (onUpdatePost) {
         const updatedPost = {
           ...post,
@@ -108,7 +98,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       
       await api.post(`/api/posts/${post._id}/share`);
       
-      // Mettre à jour le compteur de partages
+      // Mettre Ã  jour le compteur de partages
       const updatedPost = {
         ...post,
         partages: (post.partages || 0) + 1
@@ -153,7 +143,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     }
   };
 
-  // Fonction appelée après la mise à jour du post
+  // Fonction appelÃ©e aprÃ¨s la mise Ã  jour du post
   const handlePostUpdated = (updatedPost) => {
     setIsEditing(false);
     if (onUpdatePost) {
@@ -161,14 +151,14 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     }
   };
 
-  // Fonction appelée après la suppression du post
+  // Fonction appelÃ©e aprÃ¨s la suppression du post
   const handlePostDeleted = (deletedPostId) => {
     if (onDeletePost) {
       onDeletePost(deletedPostId);
     }
   };
 
-  // Fonction pour afficher l'icône de visibilité
+  // Fonction pour afficher l'icÃ´ne de visibilitÃ©
   const renderVisibilityIcon = (visibility) => {
     switch (visibility) {
       case 'PUBLIC':
@@ -198,7 +188,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     return <div dangerouslySetInnerHTML={{ __html: contentWithHashtags }} />;
   };
 
-  // Si le mode édition est actif, afficher le formulaire d'édition
+  // Si le mode Ã©dition est actif, afficher le formulaire d'Ã©dition
   if (isEditing) {
     return (
       <div className={styles.postItem}>
@@ -244,20 +234,19 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           </div>
         </div>
         
-        {/* ✅ Afficher le menu seulement si l'utilisateur a des droits */}
-        {user && (canEdit || canDelete || !isAuthor) && (
-          <div className={styles.postActions} ref={dropdownRef}>
-            <button 
-              className={styles.actionButton}
-              onClick={() => setShowDropdown(!showDropdown)}
-            >
-              <FontAwesomeIcon icon={faEllipsisV} />
-            </button>
-            
-            {showDropdown && (
-              <div className={styles.actionsDropdown}>
-                {/* ✅ Edit - Seulement pour l'auteur */}
-                {canEdit && (
+        <div className={styles.postActions} ref={dropdownRef}>
+          <button 
+            className={styles.actionButton}
+            onClick={() => setShowDropdown(!showDropdown)}
+          >
+            <FontAwesomeIcon icon={faEllipsisV} />
+          </button>
+          
+          {showDropdown && (
+            <div className={styles.actionsDropdown}>
+              {/* Afficher Edit et Delete seulement si l'utilisateur est l'auteur */}
+              {isAuthor && (
+                <>
                   <button onClick={() => {
                     setIsEditing(true);
                     setShowDropdown(false);
@@ -265,33 +254,35 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                     <FontAwesomeIcon icon={faEdit} />
                     <span>Edit</span>
                   </button>
-                )}
-                
-                {/* ✅ Delete - Pour l'auteur ou admin */}
-                {canDelete && (
-                  <button 
-                    onClick={() => setShowDropdown(false)}
-                    className={styles.deleteButtonWrapper}
-                  >
+                  <button onClick={() => setShowDropdown(false)}>
                     <DeletePostButton 
                       postId={post._id}
-                      postAuthorId={post.auteur?._id || post.auteur?.id}
                       onPostDeleted={handlePostDeleted}
                     />
                   </button>
-                )}
-                
-                {/* ✅ Report - Pour tout le monde SAUF l'auteur */}
-                {!isAuthor && (
-                  <button onClick={handleReportClick}>
-                    <FontAwesomeIcon icon={faFlag} />
-                    <span>Report</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                </>
+              )}
+              
+              {/* Admin peut aussi supprimer */}
+              {!isAuthor && isAdmin && (
+                <button onClick={() => setShowDropdown(false)}>
+                  <DeletePostButton 
+                    postId={post._id}
+                    onPostDeleted={handlePostDeleted}
+                  />
+                </button>
+              )}
+              
+              {/* Tout le monde peut signaler sauf l'auteur */}
+              {!isAuthor && (
+                <button onClick={handleReportClick}>
+                  <FontAwesomeIcon icon={faFlag} />
+                  <span>Report</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       
       <div className={styles.postContent}>
