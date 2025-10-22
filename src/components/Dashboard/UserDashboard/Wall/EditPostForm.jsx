@@ -16,7 +16,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
 import { socialAPI } from '../../../../utils/api';
 import AvatarInitials from '../../../Common/AvatarInitials';
-import styles from './CreatePostForm.module.css';
+import styles from './EditPostForm.module.css';
 
 const EditPostForm = ({ post, onPostUpdated, onCancel }) => {
   const [content, setContent] = useState(post?.contenu || '');

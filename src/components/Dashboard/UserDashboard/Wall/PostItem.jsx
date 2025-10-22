@@ -27,7 +27,7 @@ import styles from './PostItem.module.css';
 const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const { user } = useAuth();
   
-  // 🔍 EXTRACTION ROBUSTE DES IDs
+  //  EXTRACTION ROBUSTE DES IDs
   const getUserId = () => {
     if (!user) return null;
     return user.id || user._id?.toString() || user._id;
