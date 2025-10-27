@@ -335,7 +335,7 @@ const PlaylistForm = () => {
                 value={formData.description}
                 onChange={handleInputChange}
                 className={`${styles.textarea} ${formErrors.description ? styles.inputError : ''}`}
-                placeholder="Décrivez votre playlist (optionnel)"
+                placeholder="Describe your playlist (optional)"
                 maxLength="500"
                 rows="4"
               />
@@ -479,7 +479,7 @@ const PlaylistForm = () => {
                   value={searchTerm}
                   onChange={handleSearchChange}
                   className={styles.searchInput}
-                  placeholder="Rechercher des vidéos à ajouter..."
+                  placeholder="Search for videos to add..."
                   onFocus={() => setShowSearchResults(true)}
                 />
               </div>
