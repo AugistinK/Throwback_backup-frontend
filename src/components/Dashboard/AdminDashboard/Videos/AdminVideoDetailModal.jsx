@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from './Videos.module.css';
 
 // Configuration de l'URL de l'API - Sans espace à la fin
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
 
 const VideoDetailModal = ({ isOpen, onClose, video }) => {
   const [videoError, setVideoError] = useState(false);

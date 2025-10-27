@@ -131,7 +131,7 @@ const VideoDetail = () => {
   const maxRetries = 3;
   const requestTokenRef = useRef({ video: 0, memories: 0 });
 
-  const baseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
+  const baseUrl = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
 
   useEffect(() => {
     fetchAllVideos();

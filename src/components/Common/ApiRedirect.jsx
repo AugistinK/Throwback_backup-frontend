@@ -21,7 +21,7 @@ const ApiRedirect = ({ endpoint }) => {
         console.log(` Redirection API: ${apiUrl}`);
         
         // Appeler l'API backend
-        const backendUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
+        const backendUrl = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
         const fullUrl = `${backendUrl}${apiUrl}`;
         
         console.log(` Appel API: ${fullUrl}`);

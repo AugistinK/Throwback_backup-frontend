@@ -14,7 +14,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
-import { socialAPI } from '../../../../utils/api';
+// Import corrigé de socialAPI
+import socialAPI from '../../../../utils/socialAPI';
 import AvatarInitials from '../../../Common/AvatarInitials';
 import styles from './EditPostForm.module.css';
 
@@ -118,12 +119,18 @@ const EditPostForm = ({ post, onPostUpdated, onCancel }) => {
         }
       }
       
-      // Mise à jour du post
-      const response = await socialAPI.updatePost(post._id, updateData);
+      // Mise à jour du post avec l'API directe au lieu de socialAPI
+      const response = await api.put(`/api/posts/${post._id}`, updateData);
       
-      // Callback après la mise à jour
-      if (onPostUpdated) {
-        onPostUpdated(response.data);
+      // Traitement correct de la réponse
+      if (response.data) {
+        // Récupère les données du post mis à jour (structure possible: data.data ou juste data)
+        const updatedPost = response.data.data || response.data;
+        
+        // Callback après la mise à jour
+        if (onPostUpdated) {
+          onPostUpdated(updatedPost);
+        }
       }
       
       // Fermer le formulaire d'édition

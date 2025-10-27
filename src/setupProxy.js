@@ -6,7 +6,7 @@ module.exports = function(app) {
     app.use(
       '/api',
       createProxyMiddleware({
-        target: 'https://throwback-backup-backend.onrender.com ',
+        target: 'api.throwback-connect.com ',
         changeOrigin: true,
       })
     );

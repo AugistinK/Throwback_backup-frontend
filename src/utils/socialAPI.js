@@ -275,6 +275,9 @@ deletePost: async (postId) => {
     }
   },
 
+
+  // utils/socialAPI.j
+
   /**
    * Modérer un post (ADMIN)
    */

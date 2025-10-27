@@ -9,7 +9,7 @@ const VideoUrlImport = ({ onVideoSelect, apiBaseUrl }) => {
   const [error, setError] = useState('');
   const [importedVideos, setImportedVideos] = useState([]);
 
-  const baseUrl = apiBaseUrl || process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
+  const baseUrl = apiBaseUrl || process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
 
   const getVideoSourceType = (url) => {
     if (!url) return null;

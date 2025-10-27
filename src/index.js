@@ -1,4 +1,4 @@
-// src/index.js (version compatible avec React 17 et antérieur)
+// src/index.js 
 import React from 'react';
 import ReactDOM from 'react-dom';
 import "./index.css";

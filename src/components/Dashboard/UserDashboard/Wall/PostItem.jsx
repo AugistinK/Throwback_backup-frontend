@@ -6,7 +6,6 @@ import {
   faComment, 
   faShare, 
   faEllipsisV,
-  faFlag,
   faEdit,
   faTrash,
   faGlobe,
@@ -43,12 +42,12 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   
   // 🔍 LOGS DE DIAGNOSTIC (à retirer en production)
   useEffect(() => {
-    console.group(`🔍 POST ITEM - ${post._id}`);
-    console.log("👤 User:", user);
-    console.log("📝 Post:", post);
-    console.log("🆔 Current User ID:", currentUserId);
-    console.log("🆔 Post Author ID:", postAuthorId);
-    console.log("⚖️ IDs Match:", currentUserId === postAuthorId);
+    console.group(` POST ITEM - ${post._id}`);
+    console.log(" User:", user);
+    console.log(" Post:", post);
+    console.log(" Current User ID:", currentUserId);
+    console.log(" Post Author ID:", postAuthorId);
+    console.log(" IDs Match:", currentUserId === postAuthorId);
     console.groupEnd();
   }, [user, post, currentUserId, postAuthorId]);
   
@@ -153,28 +152,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     }
   };
 
-  // Fonction pour signaler un post
-  const handleReportClick = async () => {
-    try {
-      const raison = prompt('Please specify the reason for reporting:');
-      
-      if (!raison) return;
-      
-      setLoading(true);
-      setShowDropdown(false);
-      setError(null);
-      
-      await api.post(`/api/posts/${post._id}/report`, { raison });
-      
-      alert('Post reported successfully. Our moderation team will review this content.');
-    } catch (err) {
-      console.error('Erreur lors du signalement:', err);
-      setError(errorMessages.postReport?.error || "Erreur lors du signalement");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Fonction appelée après la mise à jour du post
   const handlePostUpdated = (updatedPost) => {
     setIsEditing(false);
@@ -266,8 +243,8 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           </div>
         </div>
         
-        {/* ✅ Menu conditionnel */}
-        {user && (canEdit || canDelete || !isAuthor) && (
+        {/* ✅ Menu conditionnel - sans option de report */}
+        {user && (canEdit || canDelete) && (
           <div className={styles.postActions} ref={dropdownRef}>
             <button 
               className={styles.actionButton}
@@ -300,14 +277,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                       postAuthorId={postAuthorId}
                       onPostDeleted={handlePostDeleted}
                     />
-                  </button>
-                )}
-                
-                {/* Report - Pour tout le monde SAUF l'auteur */}
-                {!isAuthor && (
-                  <button onClick={handleReportClick}>
-                    <FontAwesomeIcon icon={faFlag} />
-                    <span>Report</span>
                   </button>
                 )}
               </div>

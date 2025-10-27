@@ -14,7 +14,7 @@ const DeleteConfirmModal = ({
   const [error, setError] = useState('');
   
   // Use base URL passed as prop or default
-  const baseUrl = apiBaseUrl || process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
+  const baseUrl = apiBaseUrl || process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
 
   const handleDelete = async () => {
     try {

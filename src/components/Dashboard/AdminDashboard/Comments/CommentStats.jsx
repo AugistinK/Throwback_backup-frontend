@@ -5,7 +5,7 @@ import styles from './CommentStats.module.css';
 const toAbsoluteUrl = (url) => {
   if (!url) return '/images/default-avatar.jpg';
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  const base = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
+  const base = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
   return url.startsWith('/') ? base + url : `${base}/${url}`;
 };
 

@@ -26,7 +26,7 @@ const Shorts = () => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
+    const apiBaseUrl = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
     const fullUrl = `${apiBaseUrl}${normalizedPath}`;
     return fullUrl;
   };

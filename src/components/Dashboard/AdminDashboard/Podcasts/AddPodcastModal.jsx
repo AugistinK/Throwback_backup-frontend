@@ -12,7 +12,7 @@ const CATEGORIES = [
 ];
 
 const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
   
   const [formData, setFormData] = useState({
     title: '',

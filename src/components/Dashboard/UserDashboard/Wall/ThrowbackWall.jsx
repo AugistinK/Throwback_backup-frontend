@@ -14,7 +14,7 @@ const ThrowbackWall = () => {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [currentFilter, setCurrentFilter] = useState('all'); // all, trending, personal
+  const [currentFilter, setCurrentFilter] = useState('all'); 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { user, isAuthenticated, token, loadUser } = useAuth();
 

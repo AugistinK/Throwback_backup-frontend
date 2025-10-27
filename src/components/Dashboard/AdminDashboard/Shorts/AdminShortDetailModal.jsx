@@ -11,7 +11,7 @@ const AdminShortDetailModal = ({ isOpen, onClose, short }) => {
       
      
       if (url && url.startsWith('/uploads/')) {
-        const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
+        const apiBaseUrl = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
         return `${apiBaseUrl}${url}`;
       }
       

@@ -17,7 +17,7 @@ const CATEGORIES = [
 
 const Podcasts = () => {
   // API base URL
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://throwback-backup-backend.onrender.com';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
   
   // Podcasts & loading state
   const [podcasts, setPodcasts] = useState([]);

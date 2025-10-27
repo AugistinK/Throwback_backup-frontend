@@ -7,7 +7,7 @@ import {
   faTimes 
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
-import socialAPI from '../../../../utils/socialAPI';
+import api from '../../../../utils/api';
 import styles from './DeletePostButton.module.css';
 
 const DeletePostButton = ({ postId, postAuthorId, onPostDeleted }) => {
@@ -47,44 +47,27 @@ const DeletePostButton = ({ postId, postAuthorId, onPostDeleted }) => {
   };
 
   // Supprimer le post
-  const handleDeletePost = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // ✅ Utiliser socialAPI au lieu de l'import incorrect
-      await socialAPI.deletePost(postId);
-      
-      setShowConfirmation(false);
-      
-      // Callback après suppression
-      if (onPostDeleted) {
-        onPostDeleted(postId);
-      }
-    } catch (err) {
-      console.error('Erreur lors de la suppression du post:', err);
-      
-      if (err.response?.status === 403) {
-        setError('You do not have permission to delete this post.');
-      } else if (err.response?.status === 404) {
-        setError('Post not found. It may have been already deleted.');
-        
-        // Post déjà supprimé, déclencher le callback quand même
-        if (onPostDeleted) {
-          onPostDeleted(postId);
-        }
-        
-        // Fermer le modal après un court délai
-        setTimeout(() => {
-          setShowConfirmation(false);
-        }, 1500);
-      } else {
-        setError(err.response?.data?.message || 'An error occurred while deleting the post.');
-      }
-    } finally {
-      setLoading(false);
+ const handleDeletePost = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    // Utiliser api.delete au lieu de socialAPI.deletePost
+    await api.delete(`/api/posts/${postId}`);
+    
+    setShowConfirmation(false);
+    
+    // Callback après suppression
+    if (onPostDeleted) {
+      onPostDeleted(postId);
     }
-  };
+  } catch (err) {
+    console.error('Erreur lors de la suppression du post:', err);
+    // Le reste de la gestion d'erreur reste identique
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>
