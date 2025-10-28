@@ -1,4 +1,4 @@
-// Fichier: components/Dashboard/UserDashboard/Wall/PostItem.jsx
+// components/Dashboard/UserDashboard/Wall/PostItem.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -10,9 +10,7 @@ import {
   faTrash,
   faGlobe,
   faUserFriends,
-  faLock,
-  faTimes,
-  faSave
+  faLock
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
@@ -20,6 +18,8 @@ import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { fr } from 'date-fns/locale';
 import CommentList from './CommentList';
 import AvatarInitials from '../../../Common/AvatarInitials';
+// Importation du composant EditPostForm fonctionnel
+import EditPostForm from './EditPostForm';
 import { errorMessages } from '../../../../utils/errorMessages';
 import styles from './PostItem.module.css';
 
@@ -80,12 +80,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
-  
-  // États spécifiques pour l'édition
-  const [editContent, setEditContent] = useState(post.contenu || '');
-  const [editVisibility, setEditVisibility] = useState(post.visibilite || 'PUBLIC');
-  const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState(null);
 
   // Fermer le dropdown au clic en dehors
   useEffect(() => {
@@ -158,41 +152,14 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     }
   };
 
-  // FONCTION INTÉGRÉE: Mise à jour du post
-  const handleUpdatePost = async (e) => {
-    e.preventDefault();
-    
-    if (!editContent.trim()) {
-      setEditError("Le contenu ne peut pas être vide");
-      return;
-    }
-    
-    try {
-      setEditLoading(true);
-      setEditError(null);
-      
-      const response = await api.put(`/api/posts/${post._id}`, {
-        contenu: editContent,
-        visibilite: editVisibility
-      });
-      
-      // Mise à jour réussie, on sort du mode édition
-      setIsEditing(false);
-      
-      // On met à jour le post dans le parent
-      if (onUpdatePost && response.data.post) {
-        onUpdatePost(response.data.post);
-      }
-    } catch (err) {
-      console.error('Erreur lors de la mise à jour du post:', err);
-      setEditError(err.response?.data?.message || 
-                  errorMessages.postUpdate?.error || 
-                  "Erreur lors de la mise à jour du post");
-    } finally {
-      setEditLoading(false);
+  // Fonction appelée après la mise à jour du post
+  const handlePostUpdated = (updatedPost) => {
+    setIsEditing(false);
+    if (onUpdatePost) {
+      onUpdatePost(updatedPost);
     }
   };
-  
+
   // FONCTION INTÉGRÉE: Suppression du post
   const handleDeletePost = async () => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce post ?')) {
@@ -250,98 +217,15 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     return <div dangerouslySetInnerHTML={{ __html: contentWithHashtags }} />;
   };
 
-  // Si le mode édition est actif
+  // Si le mode édition est actif, utiliser le composant EditPostForm
   if (isEditing) {
     return (
       <div className={styles.postItem}>
-        <div className={styles.postHeader}>
-          <div className={styles.userInfo}>
-            {post.auteur?.photo_profil ? (
-              <img 
-                src={post.auteur.photo_profil} 
-                alt={`${post.auteur.prenom} ${post.auteur.nom}`} 
-                className={styles.userAvatar}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextElementSibling.style.display = 'flex';
-                }}
-              />
-            ) : (
-              <AvatarInitials 
-                user={post.auteur} 
-                className={styles.userAvatar} 
-              />
-            )}
-            <div className={styles.userDetails}>
-              <div className={styles.userName}>
-                {post.auteur?.prenom} {post.auteur?.nom}
-              </div>
-              <div className={styles.postMetadata}>
-                <span className={styles.postDate}>{formattedDate}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <form onSubmit={handleUpdatePost} className={styles.editForm}>
-          <div className={styles.editControls}>
-            <button 
-              type="button" 
-              className={styles.visibilityButton}
-              onClick={() => {
-                const visibilities = ['PUBLIC', 'FRIENDS', 'PRIVATE'];
-                const currentIndex = visibilities.indexOf(editVisibility);
-                const nextIndex = (currentIndex + 1) % visibilities.length;
-                setEditVisibility(visibilities[nextIndex]);
-              }}
-            >
-              {renderVisibilityIcon(editVisibility)}
-              <span>
-                {editVisibility === 'PUBLIC' ? 'Public' : 
-                 editVisibility === 'FRIENDS' ? 'Amis' : 'Privé'}
-              </span>
-            </button>
-          </div>
-          
-          <textarea
-            className={styles.editTextarea}
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            rows={5}
-            placeholder="Partagez vos souvenirs..."
-            required
-          />
-          
-          {editError && (
-            <div className={styles.errorMessage}>{editError}</div>
-          )}
-          
-          <div className={styles.editActions}>
-            <button 
-              type="button" 
-              className={styles.cancelButton}
-              onClick={() => {
-                setIsEditing(false);
-                setEditContent(post.contenu || '');
-                setEditVisibility(post.visibilite || 'PUBLIC');
-                setEditError(null);
-              }}
-              disabled={editLoading}
-            >
-              <FontAwesomeIcon icon={faTimes} />
-              <span>Annuler</span>
-            </button>
-            
-            <button 
-              type="submit" 
-              className={styles.saveButton}
-              disabled={editLoading || !editContent.trim()}
-            >
-              <FontAwesomeIcon icon={faSave} />
-              <span>{editLoading ? 'Enregistrement...' : 'Enregistrer'}</span>
-            </button>
-          </div>
-        </form>
+        <EditPostForm 
+          post={post}
+          onPostUpdated={handlePostUpdated}
+          onCancel={() => setIsEditing(false)}
+        />
       </div>
     );
   }
@@ -395,8 +279,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                 {canEdit && (
                   <button onClick={() => {
                     setIsEditing(true);
-                    setEditContent(post.contenu || '');
-                    setEditVisibility(post.visibilite || 'PUBLIC');
                     setShowDropdown(false);
                   }}>
                     <FontAwesomeIcon icon={faEdit} />
