@@ -20,6 +20,20 @@
   text-shadow: 0 2px 8px #0008;
 }
 
+.centerImgWrap:hover .playBtn {
+  opacity: 1;
+}
+
+.playBtn {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Garder le bouton visible quand la vidéo est en pause */
+.centerImgWrap:not(.playing) .playBtn {
+  opacity: 1;
+}
+
 .shortsContentBg {
   background: none;
   border-radius: 0;

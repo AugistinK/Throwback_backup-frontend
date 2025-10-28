@@ -101,6 +101,7 @@ export default function Shorts() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const [showControls, setShowControls] = useState(false);
 
   // States for loading and pagination
   const [isLoadingShorts, setIsLoadingShorts] = useState(true);
@@ -117,7 +118,7 @@ export default function Shorts() {
   const [isShareLoading, setIsShareLoading] = useState(false);
   const [feedback, setFeedback] = useState({ visible: false, message: '', type: '' });
 
-  // ✅ handleChange: pas de filtrage des espaces
+  //  handleChange: pas de filtrage des espaces
   const handleChange = useCallback((e) => {
     e.stopPropagation();
     const { name, value } = e.target;
@@ -519,7 +520,7 @@ export default function Shorts() {
     };
   }, [isCenterPlaying]);
 
-  // ✅ Global keyboard: n'intercepte pas l'espace dans les champs éditables
+  //  Global keyboard: n'intercepte pas l'espace dans les champs éditables
   useEffect(() => {
     const handleKeyDownGlobal = (e) => {
       const t = e.target;
@@ -944,42 +945,52 @@ export default function Shorts() {
                     // Center card
                     return (
                       <div className={styles.centerCard} key={short._id}>
-                        <div className={styles.centerImgWrap}>
-                          <video
-                            key={short._id}
-                            ref={centerVideoRef}
-                            src={short.youtubeUrl}
-                            controls={false}
-                            className={styles.centerImg}
-                            autoPlay={false}
-                            muted={isMuted}
-                            loop
-                            playsInline
-                            crossOrigin="anonymous"
-                            onError={(e) => {
-                              console.error('Video loading error:', e);
-                              e.target.src = '/images/video-error.jpg';
-                            }}
-                          />
-                          <div className={styles.centerOverlay}></div>
-                          <button
-                            className={styles.playBtn}
-                            onClick={handlePlayPause}
-                            aria-label={isCenterPlaying ? "Pause" : "Play"}
-                          >
-                            {isCenterPlaying ? <FaPause /> : <FaPlay />}
-                          </button>
-                          <button
-                            className={styles.muteBtn}
-                            onClick={handleMuteToggle}
-                            aria-label={isMuted ? "Unmute" : "Mute"}
-                          >
-                            {isMuted ?
-                              <FaVolumeMute style={{ fontSize: '1.5rem' }} /> :
-                              <FaVolumeUp style={{ fontSize: '1.5rem' }} />
-                            }
-                          </button>
-                        </div>
+              <div
+              className={styles.centerImgWrap}
+              onMouseEnter={() => setShowControls(true)}
+              onMouseLeave={() => setShowControls(false)}
+            >
+              <video
+                key={short._id}
+                ref={centerVideoRef}
+                src={short.youtubeUrl}
+                controls={false}
+                className={styles.centerImg}
+                autoPlay={false}
+                muted={isMuted}
+                loop
+                playsInline
+                crossOrigin="anonymous"
+                onError={(e) => {
+                  console.error('Video loading error:', e);
+                  e.target.src = '/images/video-error.jpg';
+                }}
+              />
+              <div className={styles.centerOverlay}></div>
+              
+              {/* Condition pour afficher le bouton seulement au survol ou quand la vidéo est en pause */}
+              {(showControls || !isCenterPlaying) && (
+                <button
+                  className={styles.playBtn}
+                  onClick={handlePlayPause}
+                  aria-label={isCenterPlaying ? "Pause" : "Play"}
+                >
+                  {isCenterPlaying ? <FaPause /> : <FaPlay />}
+                </button>
+              )}
+              
+              {/* Le bouton de son peut rester visible tout le temps */}
+              <button
+                className={styles.muteBtn}
+                onClick={handleMuteToggle}
+                aria-label={isMuted ? "Unmute" : "Mute"}
+              >
+                {isMuted ?
+                  <FaVolumeMute style={{ fontSize: '1.5rem' }} /> :
+                  <FaVolumeUp style={{ fontSize: '1.5rem' }} />
+                }
+              </button>
+            </div>
 
                         {/* Progress bar */}
                         <div className={styles.progressContainer}>
@@ -1011,10 +1022,17 @@ export default function Shorts() {
                         </div>
 
                         <div className={styles.centerInfo}>
+                            {/* Titre principal */}
                           <div className={styles.centerUserRow}>
-                            <span className={styles.username}>{short.artiste || 'Unknown artist'}</span>
+                            <span className={styles.title}>{short.titre || 'Untitled'}</span>
                           </div>
-                          <div className={styles.centerDesc}>{short.description || short.titre || 'No description'}</div>
+                          
+                          {/* Description si disponible */}
+                          {short.description && (
+                            <div className={styles.centerDesc}>{short.description}</div>
+                          )}
+                          
+                          {/* Artiste affiché une seule fois */}
                           <div className={styles.centerMusic}>🎵 {short.artiste || 'Unknown artist'}</div>
                           <div className={styles.centerActions}>
                             <span className={styles.featured}><FaStar /> Featured</span>
