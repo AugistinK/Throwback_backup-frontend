@@ -1,17 +1,7 @@
 // components/Dashboard/UserDashboard/Wall/CommentItem.jsx
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faHeart, 
-  faReply, 
-  faEdit, 
-  faTrash,
-  faThumbsDown,
-  faFlag,
-  faEllipsisV,
-  faSave,
-  faTimes
-} from '@fortawesome/free-solid-svg-icons';
+import { faHeart, faReply, faEdit, faTrash, faThumbsDown, faFlag, faEllipsisV, faSave, faTimes} from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
 import CommentForm from './CommentForm';

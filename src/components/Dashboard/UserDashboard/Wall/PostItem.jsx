@@ -1,4 +1,4 @@
-// components/Dashboard/UserDashboard/Wall/PostItem.jsx
+// Fichier: components/Dashboard/UserDashboard/Wall/PostItem.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -10,7 +10,9 @@ import {
   faTrash,
   faGlobe,
   faUserFriends,
-  faLock
+  faLock,
+  faTimes,
+  faSave
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
@@ -18,15 +20,13 @@ import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { fr } from 'date-fns/locale';
 import CommentList from './CommentList';
 import AvatarInitials from '../../../Common/AvatarInitials';
-import EditPostForm from './EditPostForm';
-import DeletePostButton from './DeletePostButton';
 import { errorMessages } from '../../../../utils/errorMessages';
 import styles from './PostItem.module.css';
 
 const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const { user } = useAuth();
   
-  //  EXTRACTION ROBUSTE DES IDs
+  // EXTRACTION ROBUSTE DES IDs
   const getUserId = () => {
     if (!user) return null;
     return user.id || user._id?.toString() || user._id;
@@ -40,7 +40,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const currentUserId = getUserId();
   const postAuthorId = getPostAuthorId();
   
-  // 🔍 LOGS DE DIAGNOSTIC (à retirer en production)
+  // LOGS DE DIAGNOSTIC (à retirer en production)
   useEffect(() => {
     console.group(` POST ITEM - ${post._id}`);
     console.log(" User:", user);
@@ -51,11 +51,11 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     console.groupEnd();
   }, [user, post, currentUserId, postAuthorId]);
   
-  // ✅ Vérification stricte de l'auteur avec conversion en string
+  // Vérification stricte de l'auteur avec conversion en string
   const isAuthor = currentUserId && postAuthorId && 
                   currentUserId.toString() === postAuthorId.toString();
   
-  // ✅ Vérification admin robuste
+  // Vérification admin robuste
   const isAdmin = user && (
     user.role === 'admin' || 
     user.role === 'superadmin' ||
@@ -65,7 +65,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     ))
   );
 
-  // ✅ Permissions claires
+  // Permissions claires
   const canEdit = isAuthor;
   const canDelete = isAuthor || isAdmin;
   
@@ -80,6 +80,12 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
+  
+  // États spécifiques pour l'édition
+  const [editContent, setEditContent] = useState(post.contenu || '');
+  const [editVisibility, setEditVisibility] = useState(post.visibilite || 'PUBLIC');
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState(null);
 
   // Fermer le dropdown au clic en dehors
   useEffect(() => {
@@ -152,18 +158,65 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     }
   };
 
-  // Fonction appelée après la mise à jour du post
-  const handlePostUpdated = (updatedPost) => {
-    setIsEditing(false);
-    if (onUpdatePost) {
-      onUpdatePost(updatedPost);
+  // FONCTION INTÉGRÉE: Mise à jour du post
+  const handleUpdatePost = async (e) => {
+    e.preventDefault();
+    
+    if (!editContent.trim()) {
+      setEditError("Le contenu ne peut pas être vide");
+      return;
+    }
+    
+    try {
+      setEditLoading(true);
+      setEditError(null);
+      
+      const response = await api.put(`/api/posts/${post._id}`, {
+        contenu: editContent,
+        visibilite: editVisibility
+      });
+      
+      // Mise à jour réussie, on sort du mode édition
+      setIsEditing(false);
+      
+      // On met à jour le post dans le parent
+      if (onUpdatePost && response.data.post) {
+        onUpdatePost(response.data.post);
+      }
+    } catch (err) {
+      console.error('Erreur lors de la mise à jour du post:', err);
+      setEditError(err.response?.data?.message || 
+                  errorMessages.postUpdate?.error || 
+                  "Erreur lors de la mise à jour du post");
+    } finally {
+      setEditLoading(false);
     }
   };
-
-  // Fonction appelée après la suppression du post
-  const handlePostDeleted = (deletedPostId) => {
-    if (onDeletePost) {
-      onDeletePost(deletedPostId);
+  
+  // FONCTION INTÉGRÉE: Suppression du post
+  const handleDeletePost = async () => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce post ?')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await api.delete(`/api/posts/${post._id}`);
+      
+      // Notification au parent de la suppression
+      if (onDeletePost) {
+        onDeletePost(post._id);
+      }
+    } catch (err) {
+      console.error('Erreur lors de la suppression du post:', err);
+      setError(err.response?.data?.message || 
+              errorMessages.postDelete?.error || 
+              "Erreur lors de la suppression du post");
+    } finally {
+      setLoading(false);
+      setShowDropdown(false);
     }
   };
 
@@ -201,11 +254,94 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   if (isEditing) {
     return (
       <div className={styles.postItem}>
-        <EditPostForm 
-          post={post}
-          onPostUpdated={handlePostUpdated}
-          onCancel={() => setIsEditing(false)}
-        />
+        <div className={styles.postHeader}>
+          <div className={styles.userInfo}>
+            {post.auteur?.photo_profil ? (
+              <img 
+                src={post.auteur.photo_profil} 
+                alt={`${post.auteur.prenom} ${post.auteur.nom}`} 
+                className={styles.userAvatar}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextElementSibling.style.display = 'flex';
+                }}
+              />
+            ) : (
+              <AvatarInitials 
+                user={post.auteur} 
+                className={styles.userAvatar} 
+              />
+            )}
+            <div className={styles.userDetails}>
+              <div className={styles.userName}>
+                {post.auteur?.prenom} {post.auteur?.nom}
+              </div>
+              <div className={styles.postMetadata}>
+                <span className={styles.postDate}>{formattedDate}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <form onSubmit={handleUpdatePost} className={styles.editForm}>
+          <div className={styles.editControls}>
+            <button 
+              type="button" 
+              className={styles.visibilityButton}
+              onClick={() => {
+                const visibilities = ['PUBLIC', 'FRIENDS', 'PRIVATE'];
+                const currentIndex = visibilities.indexOf(editVisibility);
+                const nextIndex = (currentIndex + 1) % visibilities.length;
+                setEditVisibility(visibilities[nextIndex]);
+              }}
+            >
+              {renderVisibilityIcon(editVisibility)}
+              <span>
+                {editVisibility === 'PUBLIC' ? 'Public' : 
+                 editVisibility === 'FRIENDS' ? 'Amis' : 'Privé'}
+              </span>
+            </button>
+          </div>
+          
+          <textarea
+            className={styles.editTextarea}
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={5}
+            placeholder="Partagez vos souvenirs..."
+            required
+          />
+          
+          {editError && (
+            <div className={styles.errorMessage}>{editError}</div>
+          )}
+          
+          <div className={styles.editActions}>
+            <button 
+              type="button" 
+              className={styles.cancelButton}
+              onClick={() => {
+                setIsEditing(false);
+                setEditContent(post.contenu || '');
+                setEditVisibility(post.visibilite || 'PUBLIC');
+                setEditError(null);
+              }}
+              disabled={editLoading}
+            >
+              <FontAwesomeIcon icon={faTimes} />
+              <span>Annuler</span>
+            </button>
+            
+            <button 
+              type="submit" 
+              className={styles.saveButton}
+              disabled={editLoading || !editContent.trim()}
+            >
+              <FontAwesomeIcon icon={faSave} />
+              <span>{editLoading ? 'Enregistrement...' : 'Enregistrer'}</span>
+            </button>
+          </div>
+        </form>
       </div>
     );
   }
@@ -243,7 +379,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           </div>
         </div>
         
-        {/* ✅ Menu conditionnel - sans option de report */}
+        {/* Menu conditionnel - sans option de report */}
         {user && (canEdit || canDelete) && (
           <div className={styles.postActions} ref={dropdownRef}>
             <button 
@@ -259,24 +395,20 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                 {canEdit && (
                   <button onClick={() => {
                     setIsEditing(true);
+                    setEditContent(post.contenu || '');
+                    setEditVisibility(post.visibilite || 'PUBLIC');
                     setShowDropdown(false);
                   }}>
                     <FontAwesomeIcon icon={faEdit} />
-                    <span>Edit</span>
+                    <span>Modifier</span>
                   </button>
                 )}
                 
                 {/* Delete - Pour l'auteur ou admin */}
                 {canDelete && (
-                  <button 
-                    onClick={() => setShowDropdown(false)}
-                    className={styles.deleteButtonWrapper}
-                  >
-                    <DeletePostButton 
-                      postId={post._id}
-                      postAuthorId={postAuthorId}
-                      onPostDeleted={handlePostDeleted}
-                    />
+                  <button onClick={handleDeletePost}>
+                    <FontAwesomeIcon icon={faTrash} />
+                    <span>Supprimer</span>
                   </button>
                 )}
               </div>
