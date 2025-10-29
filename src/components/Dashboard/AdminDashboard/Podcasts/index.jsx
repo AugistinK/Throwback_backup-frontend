@@ -220,7 +220,54 @@ const Podcasts = () => {
     setEditModalOpen(true);
   };
 
-  // Extract Vimeo ID from URL
+  // Fonction pour détecter la plateforme vidéo à partir d'une URL
+  const detectVideoSource = (url) => {
+    try {
+      if (!url) return { platform: '', videoId: null };
+      
+      const videoUrl = new URL(url);
+      const hostname = videoUrl.hostname.toLowerCase();
+      
+      // YouTube
+      if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+        let videoId;
+        if (hostname.includes('youtu.be')) {
+          videoId = videoUrl.pathname.substring(1);
+        } else if (videoUrl.pathname.includes('/embed/')) {
+          videoId = videoUrl.pathname.split('/embed/')[1];
+        } else if (videoUrl.pathname.includes('/shorts/')) {
+          videoId = videoUrl.pathname.split('/shorts/')[1];
+        } else {
+          videoId = videoUrl.searchParams.get('v');
+        }
+        return { platform: 'YOUTUBE', videoId };
+      }
+      
+      // Vimeo
+      else if (hostname.includes('vimeo.com')) {
+        const pathParts = videoUrl.pathname.split('/').filter(Boolean);
+        return { platform: 'VIMEO', videoId: pathParts[0] };
+      }
+      
+      // Dailymotion
+      else if (hostname.includes('dailymotion.com')) {
+        const pathParts = videoUrl.pathname.split('/').filter(Boolean);
+        let videoId = pathParts[pathParts.length - 1];
+        if (videoId.includes('video/')) {
+          videoId = videoId.split('video/')[1];
+        }
+        return { platform: 'DAILYMOTION', videoId };
+      }
+      
+      // Autre
+      return { platform: 'OTHER', videoId: null };
+    } catch (error) {
+      console.error('Error detecting video platform:', error);
+      return { platform: '', videoId: null };
+    }
+  };
+
+  // Extract Vimeo ID from URL (pour rétrocompatibilité)
   const getVimeoId = (url) => {
     try {
       if (!url) return null;
@@ -244,42 +291,51 @@ const Podcasts = () => {
     }
   };
 
-  // Build Vimeo thumbnail URL or fallbacks
-const getVideoThumbnail = (podcast) => {
-  // 1. Si une image de couverture personnalisée existe et n'est pas l'image par défaut
-  if (podcast.coverImage && !podcast.coverImage.includes('podcast-default.jpg')) {
-    return podcast.coverImage;
-  }
-  
-  // 2. Si une URL de thumbnail a été récupérée du backend
-  if (podcast.thumbnailUrl) {
-    return podcast.thumbnailUrl;
-  }
-  
-  // 3. Si la plateforme et l'ID vidéo sont disponibles, générer l'URL de la thumbnail
-  if (podcast.platform && podcast.videoId) {
-    switch(podcast.platform) {
-      case 'YOUTUBE':
-        return `https://img.youtube.com/vi/${podcast.videoId}/maxresdefault.jpg`;
-      case 'VIMEO':
-        // Pour Vimeo, il faudrait idéalement l'API, on utilise un placeholder
+  // Get video thumbnail (remplace getVimeoThumbnail)
+  const getVideoThumbnail = (podcast) => {
+    // 1. Si une image de couverture personnalisée existe et n'est pas l'image par défaut
+    if (podcast.coverImage && !podcast.coverImage.includes('podcast-default.jpg')) {
+      return podcast.coverImage;
+    }
+    
+    // 2. Si une URL de thumbnail a été récupérée du backend
+    if (podcast.thumbnailUrl) {
+      return podcast.thumbnailUrl;
+    }
+    
+    // 3. Si la plateforme et l'ID vidéo sont disponibles, générer l'URL de la thumbnail
+    if (podcast.platform && podcast.videoId) {
+      switch(podcast.platform) {
+        case 'YOUTUBE':
+          return `https://img.youtube.com/vi/${podcast.videoId}/maxresdefault.jpg`;
+        case 'VIMEO':
+          // Pour Vimeo, il faudrait idéalement l'API, on utilise un placeholder
+          return `/images/vimeo-placeholder.jpg`;
+        case 'DAILYMOTION':
+          return `https://www.dailymotion.com/thumbnail/video/${podcast.videoId}`;
+      }
+    }
+    
+    // 4. Si c'est l'ancien format avec vimeoUrl
+    if (podcast.vimeoUrl) {
+      const vimeoId = getVimeoId(podcast.vimeoUrl);
+      if (vimeoId) {
         return `/images/vimeo-placeholder.jpg`;
-      case 'DAILYMOTION':
-        return `https://www.dailymotion.com/thumbnail/video/${podcast.videoId}`;
+      }
     }
-  }
-  
-  // 4. Si c'est l'ancien format avec vimeoUrl
-  if (podcast.vimeoUrl) {
-    const vimeoId = getVimeoId(podcast.vimeoUrl);
-    if (vimeoId) {
-      return `/images/vimeo-placeholder.jpg`;
+    
+    // 5. Pour les vidéos YouTube, essayons d'extraire directement
+    if (podcast.videoUrl) {
+      const { platform, videoId } = detectVideoSource(podcast.videoUrl);
+      if (platform === 'YOUTUBE' && videoId) {
+        return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      }
     }
-  }
-  
-  // 5. Fallback sur l'image par défaut
-  return '/images/podcast-default.jpg';
-};
+    
+    // 6. Fallback sur l'image par défaut
+    return '/images/podcast-default.jpg';
+  };
+
   // Format episode (EP.01)
   const formatEpisode = (episode) => {
     return `EP.${episode.toString().padStart(2, '0')}`;
@@ -294,13 +350,13 @@ const getVideoThumbnail = (podcast) => {
         onClick={() => handleViewDetails(podcast)}
       >
         <img 
-        src={getVideoThumbnail(podcast)}
-        alt={podcast.title}
-        onError={(e) => {
-          e.target.onerror = null;
-          e.target.src = '/images/podcast-default.jpg';
-        }}
-      />
+          src={getVideoThumbnail(podcast)}
+          alt={podcast.title}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = '/images/podcast-default.jpg';
+          }}
+        />
         
         <div className={styles.podcastEpisode}>{formatEpisode(podcast.episode)}</div>
         
@@ -317,7 +373,7 @@ const getVideoThumbnail = (podcast) => {
         </h3>
         <div className={styles.podcastMeta}>
           <div className={styles.podcastHost}>
-            {podcast.guestName ? `Guest: ${podcast.guestName}` : `Host: ${podcast.hostName}`}
+            {podcast.guestName ? `Guest: ${podcast.guestName}` : `Host: ${podcast.hostName || 'Mike Levis'}`}
           </div>
           <div className={styles.podcastDate}>
             {new Date(podcast.publishDate).toLocaleDateString()}
@@ -361,15 +417,15 @@ const getVideoThumbnail = (podcast) => {
   const renderPodcastTableRow = (podcast) => (
     <tr key={podcast._id} className={styles.podcastTableRow}>
       <td className={styles.thumbnailCell}>
-       <img 
-        src={getVideoThumbnail(podcast)}
-        alt={podcast.title}
-        className={styles.tableThumbnail}
-        onError={(e) => {
-          e.target.onerror = null;
-          e.target.src = '/images/podcast-default.jpg';
-        }}
-      />
+        <img 
+          src={getVideoThumbnail(podcast)}
+          alt={podcast.title}
+          className={styles.tableThumbnail}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = '/images/podcast-default.jpg';
+          }}
+        />
       </td>
       <td>
         {!podcast.isPublished && (
@@ -480,7 +536,6 @@ const getVideoThumbnail = (podcast) => {
           </div>
         ))}
       </div>
-
 
       {/* Search & filters */}
       <div className={styles.filtersContainer}>
