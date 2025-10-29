@@ -245,17 +245,41 @@ const Podcasts = () => {
   };
 
   // Build Vimeo thumbnail URL or fallbacks
-  const getVimeoThumbnail = (podcast) => {
-    if (podcast.coverImage && !podcast.coverImage.includes('podcast-default.jpg')) {
-      return podcast.coverImage;
+const getVideoThumbnail = (podcast) => {
+  // 1. Si une image de couverture personnalisée existe et n'est pas l'image par défaut
+  if (podcast.coverImage && !podcast.coverImage.includes('podcast-default.jpg')) {
+    return podcast.coverImage;
+  }
+  
+  // 2. Si une URL de thumbnail a été récupérée du backend
+  if (podcast.thumbnailUrl) {
+    return podcast.thumbnailUrl;
+  }
+  
+  // 3. Si la plateforme et l'ID vidéo sont disponibles, générer l'URL de la thumbnail
+  if (podcast.platform && podcast.videoId) {
+    switch(podcast.platform) {
+      case 'YOUTUBE':
+        return `https://img.youtube.com/vi/${podcast.videoId}/maxresdefault.jpg`;
+      case 'VIMEO':
+        // Pour Vimeo, il faudrait idéalement l'API, on utilise un placeholder
+        return `/images/vimeo-placeholder.jpg`;
+      case 'DAILYMOTION':
+        return `https://www.dailymotion.com/thumbnail/video/${podcast.videoId}`;
     }
+  }
+  
+  // 4. Si c'est l'ancien format avec vimeoUrl
+  if (podcast.vimeoUrl) {
     const vimeoId = getVimeoId(podcast.vimeoUrl);
     if (vimeoId) {
       return `/images/vimeo-placeholder.jpg`;
     }
-    return '/images/podcast-default.jpg';
-  };
-
+  }
+  
+  // 5. Fallback sur l'image par défaut
+  return '/images/podcast-default.jpg';
+};
   // Format episode (EP.01)
   const formatEpisode = (episode) => {
     return `EP.${episode.toString().padStart(2, '0')}`;
@@ -270,13 +294,13 @@ const Podcasts = () => {
         onClick={() => handleViewDetails(podcast)}
       >
         <img 
-          src={getVimeoThumbnail(podcast)}
-          alt={podcast.title}
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = '/images/podcast-default.jpg';
-          }}
-        />
+        src={getVideoThumbnail(podcast)}
+        alt={podcast.title}
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = '/images/podcast-default.jpg';
+        }}
+      />
         
         <div className={styles.podcastEpisode}>{formatEpisode(podcast.episode)}</div>
         
@@ -337,15 +361,15 @@ const Podcasts = () => {
   const renderPodcastTableRow = (podcast) => (
     <tr key={podcast._id} className={styles.podcastTableRow}>
       <td className={styles.thumbnailCell}>
-        <img 
-          src={getVimeoThumbnail(podcast)}
-          alt={podcast.title}
-          className={styles.tableThumbnail}
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = '/images/podcast-default.jpg';
-          }}
-        />
+       <img 
+        src={getVideoThumbnail(podcast)}
+        alt={podcast.title}
+        className={styles.tableThumbnail}
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = '/images/podcast-default.jpg';
+        }}
+      />
       </td>
       <td>
         {!podcast.isPublished && (
@@ -457,8 +481,6 @@ const Podcasts = () => {
         ))}
       </div>
 
-
-      
 
       {/* Search & filters */}
       <div className={styles.filtersContainer}>
