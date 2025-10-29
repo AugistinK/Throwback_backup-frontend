@@ -1,32 +1,78 @@
+// Podcast/PodcastDetailModal.jsx
 import React from 'react';
 import styles from './Podcasts.module.css';
 
 const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
   if (!isOpen || !podcast) return null;
 
-  // Extract Vimeo ID from URL
-  const getVimeoEmbedUrl = (url) => {
+  // Fonction pour extraire l'URL d'embed à partir de l'URL de la vidéo
+  const getVideoEmbedUrl = (url, platform, videoId) => {
     try {
       if (!url) return null;
       
-      const vimeoUrl = new URL(url);
-      let vimeoId = '';
-      
-      if (vimeoUrl.hostname.includes('vimeo.com')) {
-        // Format: https://vimeo.com/123456789
-        const pathParts = vimeoUrl.pathname.split('/').filter(Boolean);
-        vimeoId = pathParts[0];
-      } else if (vimeoUrl.hostname.includes('player.vimeo.com')) {
-        // Format: https://player.vimeo.com/video/123456789
-        const pathParts = vimeoUrl.pathname.split('/').filter(Boolean);
-        if (pathParts[0] === 'video') {
-          vimeoId = pathParts[1];
+      // Si nous avons déjà la plateforme et l'ID vidéo
+      if (platform && videoId) {
+        switch (platform) {
+          case 'YOUTUBE':
+            return `https://www.youtube.com/embed/${videoId}`;
+          case 'VIMEO':
+            return `https://player.vimeo.com/video/${videoId}`;
+          case 'DAILYMOTION':
+            return `https://www.dailymotion.com/embed/video/${videoId}`;
+          default:
+            // Essayer d'extraire l'URL manuellement
+            break;
         }
       }
       
-      return vimeoId ? `https://player.vimeo.com/video/${vimeoId}` : null;
+      const videoUrl = new URL(url);
+      const hostname = videoUrl.hostname.toLowerCase();
+      
+      // YouTube
+      if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+        let videoId;
+        if (hostname.includes('youtu.be')) {
+          videoId = videoUrl.pathname.substring(1);
+        } else if (videoUrl.pathname.includes('/embed/')) {
+          videoId = videoUrl.pathname.split('/embed/')[1];
+        } else if (videoUrl.pathname.includes('/shorts/')) {
+          videoId = videoUrl.pathname.split('/shorts/')[1];
+        } else {
+          videoId = videoUrl.searchParams.get('v');
+        }
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+      }
+      
+      // Vimeo
+      else if (hostname.includes('vimeo.com')) {
+        const pathParts = videoUrl.pathname.split('/').filter(Boolean);
+        const vimeoId = pathParts[0];
+        return vimeoId ? `https://player.vimeo.com/video/${vimeoId}` : null;
+      }
+      
+      // Dailymotion
+      else if (hostname.includes('dailymotion.com')) {
+        const pathParts = videoUrl.pathname.split('/').filter(Boolean);
+        let videoId = pathParts[pathParts.length - 1];
+        if (videoId.includes('video/')) {
+          videoId = videoId.split('video/')[1];
+        }
+        return videoId ? `https://www.dailymotion.com/embed/video/${videoId}` : null;
+      }
+      
+      // Si l'URL est déjà au format d'embed
+      if (
+        url.includes('youtube.com/embed/') || 
+        url.includes('player.vimeo.com/video/') ||
+        url.includes('dailymotion.com/embed/video/')
+      ) {
+        return url;
+      }
+      
+      // URL non reconnue
+      return null;
     } catch (error) {
-      console.error('Error extracting Vimeo embed URL:', error);
+      console.error('Error extracting video embed URL:', error);
       return null;
     }
   };
@@ -36,7 +82,10 @@ const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
     return `EP.${episode.toString().padStart(2, '0')}`;
   };
 
-  const embedUrl = getVimeoEmbedUrl(podcast.vimeoUrl);
+  // Obtenir l'URL d'embed
+  const embedUrl = podcast.videoId && podcast.platform 
+    ? getVideoEmbedUrl(podcast.videoUrl, podcast.platform, podcast.videoId)
+    : getVideoEmbedUrl(podcast.videoUrl);
   
   // Dates
   const formattedDate = podcast.publishDate ? new Date(podcast.publishDate).toLocaleDateString() : 'Not set';
@@ -55,6 +104,39 @@ const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
     
     return categoryColors[category] || '#868e96';
   };
+
+  // Get platform icon
+  const getPlatformIcon = (platform) => {
+    switch (platform) {
+      case 'YOUTUBE':
+        return 'fab fa-youtube';
+      case 'VIMEO':
+        return 'fab fa-vimeo';
+      case 'DAILYMOTION':
+        return 'fas fa-video';
+      default:
+        return 'fas fa-video';
+    }
+  };
+
+  // Formatage de la plateforme
+  const formatPlatform = (platform) => {
+    if (!platform) return 'Unknown';
+    
+    const platformMap = {
+      'YOUTUBE': 'YouTube',
+      'VIMEO': 'Vimeo',
+      'DAILYMOTION': 'Dailymotion',
+      'OTHER': 'Other'
+    };
+    
+    return platformMap[platform] || platform;
+  };
+
+  // URL visible
+  const displayUrl = podcast.videoUrl.length > 50 
+    ? podcast.videoUrl.substring(0, 47) + '...' 
+    : podcast.videoUrl;
 
   return (
     <div className={styles.modalOverlay}>
@@ -79,16 +161,16 @@ const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
             </div>
           ) : (
             <div className={styles.podcastUnavailable}>
-              <i className="fas fa-podcast"></i>
+              <i className={podcast.platform ? getPlatformIcon(podcast.platform) : "fas fa-podcast"}></i>
               <p>Podcast preview unavailable</p>
-              {podcast.vimeoUrl && (
+              {podcast.videoUrl && (
                 <a 
-                  href={podcast.vimeoUrl} 
+                  href={podcast.videoUrl} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className={styles.externalLink}
                 >
-                  Open on Vimeo <i className="fas fa-external-link-alt"></i>
+                  Open on {formatPlatform(podcast.platform)} <i className="fas fa-external-link-alt"></i>
                 </a>
               )}
             </div>
@@ -109,6 +191,11 @@ const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
                 <div className={styles.podcastSeason}>
                   Season {podcast.season}
                 </div>
+                {podcast.platform && (
+                  <div className={styles.platformBadge}>
+                    <i className={getPlatformIcon(podcast.platform)}></i> {formatPlatform(podcast.platform)}
+                  </div>
+                )}
                 {!podcast.isPublished && (
                   <div className={styles.unpublishedBadge}>
                     <i className="fas fa-eye-slash"></i> Unpublished
@@ -162,6 +249,13 @@ const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
                   >
                     {podcast.category}
                   </span>
+                </p>
+              </div>
+
+              <div className={styles.detailItem}>
+                <h4>Platform</h4>
+                <p>
+                  <i className={getPlatformIcon(podcast.platform)}></i> {formatPlatform(podcast.platform)}
                 </p>
               </div>
 
@@ -221,14 +315,15 @@ const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
               </div>
               
               <div className={styles.detailItem}>
-                <h4>Vimeo URL</h4>
-                <p className={styles.vimeoUrl}>
+                <h4>Video URL</h4>
+                <p className={styles.videoUrl}>
                   <a 
-                    href={podcast.vimeoUrl} 
+                    href={podcast.videoUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
+                    title={podcast.videoUrl}
                   >
-                    {podcast.vimeoUrl} <i className="fas fa-external-link-alt"></i>
+                    {displayUrl} <i className="fas fa-external-link-alt"></i>
                   </a>
                 </p>
               </div>
@@ -250,6 +345,38 @@ const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
                   ) : '—'}
                 </p>
               </div>
+              
+              {podcast.thumbnailUrl && (
+                <div className={styles.detailItem}>
+                  <h4>Thumbnail URL</h4>
+                  <p className={styles.thumbnailUrl}>
+                    <a 
+                      href={podcast.thumbnailUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      title={podcast.thumbnailUrl}
+                    >
+                      {podcast.thumbnailUrl.substring(0, 30)}... <i className="fas fa-external-link-alt"></i>
+                    </a>
+                  </p>
+                </div>
+              )}
+              
+              {podcast.coverImage && (
+                <div className={styles.detailItem}>
+                  <h4>Cover Image</h4>
+                  <p className={styles.coverImage}>
+                    <a 
+                      href={podcast.coverImage} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      title={podcast.coverImage}
+                    >
+                      {podcast.coverImage.includes('podcast-default.jpg') ? 'Default Image' : podcast.coverImage.substring(0, 30) + '...'} <i className="fas fa-image"></i>
+                    </a>
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

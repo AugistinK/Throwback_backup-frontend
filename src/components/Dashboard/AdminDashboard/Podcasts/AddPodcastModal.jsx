@@ -1,7 +1,16 @@
-import React, { useState } from 'react';
+// file_create: /home/claude/AddPodcastModal.jsx
+import React, { useState, useEffect } from 'react';
 import styles from './Podcasts.module.css';
 
-// List of available categories
+// Liste des plateformes supportées
+const PLATFORMS = [
+  'YouTube',
+  'Vimeo',
+  'Dailymotion',
+  'Autre'
+];
+
+// Liste des catégories disponibles
 const CATEGORIES = [
   'PERSONAL BRANDING',
   'MUSIC BUSINESS',
@@ -18,9 +27,9 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
     title: '',
     episode: '',
     season: '1',
-    vimeoUrl: '',
+    videoUrl: '',
     duration: '',
-    coverImage: '',
+    coverImage: null,
     description: '',
     guestName: '',
     hostName: 'Mike Levis',
@@ -33,27 +42,80 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [detectedPlatform, setDetectedPlatform] = useState('');
+  const [videoIdPreview, setVideoIdPreview] = useState(null);
+
+  useEffect(() => {
+    // Nettoyage lors de la fermeture du modal
+    if (!isOpen) {
+      setSelectedFile(null);
+      setPreviewUrl('');
+      setDetectedPlatform('');
+      setVideoIdPreview(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const getVimeoId = (url) => {
-    if (!url) return null;
-    
+  // Fonctions pour détecter la plateforme vidéo
+  const detectVideoSource = (url) => {
     try {
-      const vimeoUrl = new URL(url);
-      if (vimeoUrl.hostname.includes('vimeo.com')) {
-        const segments = vimeoUrl.pathname.split('/').filter(Boolean);
-        return segments[0];
-      } else if (vimeoUrl.hostname.includes('player.vimeo.com')) {
-        const segments = vimeoUrl.pathname.split('/').filter(Boolean);
-        if (segments[0] === 'video') {
-          return segments[1];
+      if (!url) return { platform: '', videoId: null };
+      
+      const videoUrl = new URL(url);
+      const hostname = videoUrl.hostname.toLowerCase();
+      
+      // YouTube
+      if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+        let videoId;
+        if (hostname.includes('youtu.be')) {
+          videoId = videoUrl.pathname.substring(1);
+        } else if (videoUrl.pathname.includes('/embed/')) {
+          videoId = videoUrl.pathname.split('/embed/')[1];
+        } else if (videoUrl.pathname.includes('/shorts/')) {
+          videoId = videoUrl.pathname.split('/shorts/')[1];
+        } else {
+          videoId = videoUrl.searchParams.get('v');
         }
+        return { platform: 'YouTube', videoId };
       }
-      return null;
+      
+      // Vimeo
+      else if (hostname.includes('vimeo.com')) {
+        const pathParts = videoUrl.pathname.split('/').filter(Boolean);
+        return { platform: 'Vimeo', videoId: pathParts[0] };
+      }
+      
+      // Dailymotion
+      else if (hostname.includes('dailymotion.com')) {
+        const pathParts = videoUrl.pathname.split('/').filter(Boolean);
+        let videoId = pathParts[pathParts.length - 1];
+        if (videoId.includes('video/')) {
+          videoId = videoId.split('video/')[1];
+        }
+        return { platform: 'Dailymotion', videoId };
+      }
+      
+      // Autre
+      return { platform: 'Autre', videoId: null };
     } catch (error) {
-      console.error('Error extracting Vimeo ID:', error);
-      return null;
+      console.error('Error detecting video platform:', error);
+      return { platform: '', videoId: null };
+    }
+  };
+
+  const getVideoThumbnailUrl = (platform, videoId) => {
+    switch (platform) {
+      case 'YouTube':
+        return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      case 'Vimeo':
+        // Pour Vimeo, idéalement utiliser l'API
+        return '/images/vimeo-placeholder.jpg';
+      case 'Dailymotion':
+        return `https://www.dailymotion.com/thumbnail/video/${videoId}`;
+      default:
+        return '/images/podcast-default.jpg';
     }
   };
 
@@ -64,20 +126,31 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
       [name]: value
     }));
 
-    if (name === 'vimeoUrl') {
-      const vimeoId = getVimeoId(value);
-      if (vimeoId) {
-        setPreviewUrl('/images/podcast-default.jpg');
+    if (name === 'videoUrl') {
+      const { platform, videoId } = detectVideoSource(value);
+      setDetectedPlatform(platform);
+      setVideoIdPreview(videoId);
+      
+      if (videoId) {
+        const thumbnailUrl = getVideoThumbnailUrl(platform, videoId);
+        setPreviewUrl(thumbnailUrl);
       } else {
         setPreviewUrl('');
       }
     }
 
-    if (name === 'coverImage' && value) {
-      setPreviewUrl(value);
-    }
-
     if (error) setError('');
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    } else {
+      setSelectedFile(null);
+      setPreviewUrl('');
+    }
   };
 
   const validateForm = () => {
@@ -89,8 +162,8 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
       setError('Episode number is required');
       return false;
     }
-    if (!formData.vimeoUrl.trim()) {
-      setError('Vimeo URL is required');
+    if (!formData.videoUrl.trim()) {
+      setError('Video URL is required');
       return false;
     }
     if (!formData.duration.trim()) {
@@ -98,9 +171,9 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
       return false;
     }
     
-    const vimeoId = getVimeoId(formData.vimeoUrl);
-    if (!vimeoId) {
-      setError('Please enter a valid Vimeo URL');
+    const { platform, videoId } = detectVideoSource(formData.videoUrl);
+    if (!platform) {
+      setError('Please enter a valid video URL');
       return false;
     }
 
@@ -124,20 +197,36 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
         ? formData.topics.split(',').map(topic => topic.trim())
         : [];
       
+      // Créer un FormData pour l'envoi de fichiers
+      const formDataToSend = new FormData();
+      
+      // Ajouter les champs du formulaire
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('episode', formData.episode);
+      formDataToSend.append('season', formData.season);
+      formDataToSend.append('videoUrl', formData.videoUrl);
+      formDataToSend.append('duration', formData.duration);
+      formDataToSend.append('description', formData.description || '');
+      formDataToSend.append('guestName', formData.guestName || '');
+      formDataToSend.append('hostName', formData.hostName || 'Mike Levis');
+      formDataToSend.append('publishDate', formData.publishDate);
+      formDataToSend.append('category', formData.category);
+      formDataToSend.append('isPublished', formData.isPublished);
+      
+      // Ajouter les topics en tant que JSON
+      formDataToSend.append('topics', JSON.stringify(topicsArray));
+      
+      // Si un fichier a été sélectionné, l'ajouter
+      if (selectedFile) {
+        formDataToSend.append('coverImage', selectedFile);
+      }
+      
       const response = await fetch(`${API_BASE_URL}/api/podcasts`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...formData,
-          episode: parseInt(formData.episode),
-          season: parseInt(formData.season),
-          duration: parseInt(formData.duration),
-          topics: topicsArray,
-          isPublished: formData.isPublished === true || formData.isPublished === 'true'
-        })
+        body: formDataToSend
       });
       
       if (!response.ok) {
@@ -147,13 +236,14 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
       
       const data = await response.json();
       
+      // Réinitialiser le formulaire
       setFormData({
         title: '',
         episode: '',
         season: '1',
-        vimeoUrl: '',
+        videoUrl: '',
         duration: '',
-        coverImage: '',
+        coverImage: null,
         description: '',
         guestName: '',
         hostName: 'Mike Levis',
@@ -162,7 +252,10 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
         category: 'PERSONAL BRANDING',
         isPublished: true
       });
+      setSelectedFile(null);
       setPreviewUrl('');
+      setDetectedPlatform('');
+      setVideoIdPreview(null);
       
       onPodcastCreated(data.data);
       
@@ -180,9 +273,9 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
         title: '',
         episode: '',
         season: '1',
-        vimeoUrl: '',
+        videoUrl: '',
         duration: '',
-        coverImage: '',
+        coverImage: null,
         description: '',
         guestName: '',
         hostName: 'Mike Levis',
@@ -191,7 +284,10 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
         category: 'PERSONAL BRANDING',
         isPublished: true
       });
+      setSelectedFile(null);
       setPreviewUrl('');
+      setDetectedPlatform('');
+      setVideoIdPreview(null);
       setError('');
       onClose();
     }
@@ -267,23 +363,59 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
           </div>
 
           <div className={styles.formGroup}>
-            <label htmlFor="vimeoUrl">
-              Vimeo URL <span className={styles.required}>*</span>
+            <label htmlFor="videoUrl">
+              Video URL <span className={styles.required}>*</span>
             </label>
             <input
               type="url"
-              id="vimeoUrl"
-              name="vimeoUrl"
-              value={formData.vimeoUrl}
+              id="videoUrl"
+              name="videoUrl"
+              value={formData.videoUrl}
               onChange={handleChange}
-              placeholder="https://vimeo.com/123456789"
+              placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
               disabled={loading}
               required
             />
             <small className={styles.formHelp}>
-              {formData.vimeoUrl ? 
-                (getVimeoId(formData.vimeoUrl) ? 'Valid Vimeo URL' : 'Invalid Vimeo URL') :
-                'Example: https://vimeo.com/123456789'}
+              {formData.videoUrl ? (
+                detectedPlatform ? (
+                  <span className={styles.detectedPlatform}>
+                    <i className="fas fa-check-circle"></i> {detectedPlatform} video detected
+                  </span>
+                ) : (
+                  <span className={styles.invalidPlatform}>
+                    <i className="fas fa-exclamation-triangle"></i> Invalid video URL
+                  </span>
+                )
+              ) : (
+                'Enter YouTube, Vimeo or Dailymotion URL'
+              )}
+            </small>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="coverImage">
+              Cover Image (Optional)
+            </label>
+            <div className={styles.fileUploadContainer}>
+              <input
+                type="file"
+                id="coverImage"
+                name="coverImage"
+                onChange={handleFileChange}
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                disabled={loading}
+                className={styles.fileInput}
+              />
+              <label htmlFor="coverImage" className={styles.fileUploadButton}>
+                <i className="fas fa-upload"></i> {selectedFile ? 'Change Image' : 'Select Image'}
+              </label>
+              <span className={styles.fileName}>
+                {selectedFile ? selectedFile.name : 'No file selected'}
+              </span>
+            </div>
+            <small className={styles.formHelp}>
+              {!selectedFile && videoIdPreview ? 'Video thumbnail will be used if no image is uploaded' : 'Max size: 5MB. Recommended: 1280x720px'}
             </small>
           </div>
 
@@ -292,6 +424,11 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
               <label>Preview</label>
               <div className={styles.thumbnailPreview}>
                 <img src={previewUrl} alt="Podcast thumbnail" />
+                {!selectedFile && videoIdPreview && (
+                  <div className={styles.autoThumbnailBadge}>
+                    <i className="fas fa-sync-alt"></i> Auto thumbnail
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -362,21 +499,6 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
                 disabled={loading}
               />
             </div>
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="coverImage">
-              Cover Image URL
-            </label>
-            <input
-              type="url"
-              id="coverImage"
-              name="coverImage"
-              value={formData.coverImage}
-              onChange={handleChange}
-              placeholder="https://example.com/image.jpg (optional)"
-              disabled={loading}
-            />
           </div>
 
           <div className={styles.formGroup}>
