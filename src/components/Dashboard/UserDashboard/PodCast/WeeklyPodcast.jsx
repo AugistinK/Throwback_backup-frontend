@@ -1,4 +1,3 @@
-// file_create: /home/claude/WeeklyPodcast.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -16,7 +15,8 @@ import {
 import styles from './WeeklyPodcast.module.css';
 import PodcastCard from './PodcastCard';
 import api from '../../../../utils/api';
-import { getPodcastImageUrl, handlePodcastImageError } from '../utils/imageUtils';
+
+const DEFAULT_IMAGE_PATH = '/images/podcast-default.jpg';
 
 const WeeklyPodcast = () => {
   const [podcasts, setPodcasts] = useState([]);
@@ -99,13 +99,85 @@ const WeeklyPodcast = () => {
         duration: 60,
         publishDate: new Date().toISOString(),
         description: 'Exploring how music has evolved from the 60s to today, with insights from music historian Anna Smith.',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-        platform: 'YOUTUBE',
-        videoId: 'dQw4w9WgXcQ',
+        vimeoUrl: 'https://vimeo.com/123456789',
         viewCount: 1542,
         likeCount: 287
       },
-      // Autres podcasts mockés...
+      {
+        _id: '2',
+        title: 'Building Your Music Brand From Scratch',
+        episode: 2,
+        season: 1,
+        hostName: 'MIKE LEVIS',
+        guestName: 'John Doe',
+        category: 'PERSONAL BRANDING',
+        duration: 55,
+        publishDate: new Date().toISOString(),
+        description: 'Learn how to build your unique identity as an artist in the crowded music industry.',
+        vimeoUrl: 'https://vimeo.com/123456790',
+        viewCount: 1245,
+        likeCount: 198
+      },
+      {
+        _id: '3',
+        title: 'The 80s Music Revolution',
+        episode: 3,
+        season: 1,
+        hostName: 'MIKE LEVIS',
+        guestName: 'Sarah Johnson',
+        category: 'THROWBACK HISTORY',
+        duration: 62,
+        publishDate: new Date().toISOString(),
+        description: 'A deep dive into the 80s music scene and how it changed the industry forever.',
+        vimeoUrl: 'https://vimeo.com/123456791',
+        viewCount: 980,
+        likeCount: 145
+      },
+      {
+        _id: '4',
+        title: 'Finding Your Unique Voice As An Artist',
+        episode: 4,
+        season: 1,
+        hostName: 'MIKE LEVIS',
+        guestName: 'Michael Brown',
+        category: 'ARTIST INTERVIEW',
+        duration: 58,
+        publishDate: new Date().toISOString(),
+        description: 'Michael Brown shares his journey of discovering his unique sound and artistic identity.',
+        vimeoUrl: 'https://vimeo.com/123456792',
+        viewCount: 845,
+        likeCount: 123
+      },
+      {
+        _id: '5',
+        title: 'The Business Side of Music',
+        episode: 5,
+        season: 1,
+        hostName: 'MIKE LEVIS',
+        guestName: 'Emily Williams',
+        category: 'MUSIC BUSINESS',
+        duration: 65,
+        publishDate: new Date().toISOString(),
+        description: 'Understanding contracts, royalties, and the financial aspects of the music industry.',
+        vimeoUrl: 'https://vimeo.com/123456793',
+        viewCount: 732,
+        likeCount: 98
+      },
+      {
+        _id: '6',
+        title: 'Digital Music Distribution in 2025',
+        episode: 6,
+        season: 1,
+        hostName: 'MIKE LEVIS',
+        guestName: 'David Wilson',
+        category: 'INDUSTRY INSIGHTS',
+        duration: 60,
+        publishDate: new Date().toISOString(),
+        description: 'How digital platforms have transformed music distribution and whats coming next.',
+        vimeoUrl: 'https://vimeo.com/123456794',
+        viewCount: 654,
+        likeCount: 87
+      }
     ];
     
     setPodcasts(mockPodcasts);
@@ -124,6 +196,23 @@ const WeeklyPodcast = () => {
       // In production, redirect to podcast page
       navigate(`/dashboard/podcast/${podcast._id}`);
     }
+  };
+
+  // Function to handle image errors
+  const handleImageError = (e) => {
+    e.target.onerror = null;
+    e.target.src = DEFAULT_IMAGE_PATH;
+  };
+
+  // Function to get secure image path
+  const getImagePath = (podcast) => {
+    if (podcast.coverImage) {
+      return podcast.coverImage;
+    }
+    // Use modulo on a secure numeric value
+    // Convert string ID to a number by summing char codes
+    const idSum = podcast._id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return `/images/podcast-${(idSum % 6) + 1}.jpg`;
   };
 
   return (
@@ -162,9 +251,9 @@ const WeeklyPodcast = () => {
                 />
               </div>
               <img
-                src={getPodcastImageUrl(featuredPodcast)}
+                src={getImagePath(featuredPodcast)}
                 alt={featuredPodcast.title}
-                onError={(e) => handlePodcastImageError(e)}
+                onError={handleImageError}
                 crossOrigin="anonymous"
               />
             </div>
@@ -232,6 +321,8 @@ const WeeklyPodcast = () => {
                   podcast={podcast}
                   onPlay={() => handlePlay(podcast)}
                   isPlaying={isPlaying && nowPlaying?._id === podcast._id}
+                  getImagePath={getImagePath}
+                  handleImageError={handleImageError}
                 />
               ))}
             </div>

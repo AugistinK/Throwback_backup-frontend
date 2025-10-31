@@ -1,0 +1,115 @@
+.playerContainer {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 Aspect Ratio */
+  background-color: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.playerContainer.fullscreen {
+  padding-top: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+.videoPlayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  z-index: 1;
+}
+
+.playerControls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.playerContainer:hover .playerControls {
+  opacity: 1;
+}
+
+.playButton,
+.muteButton,
+.fullscreenButton {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.playButton:hover,
+.muteButton:hover,
+.fullscreenButton:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.playerPlaceholder,
+.playerError,
+.playerUnavailable {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #222;
+  color: white;
+}
+
+.playerError {
+  background-color: #5a0000;
+  text-align: center;
+}
+
+.playerUnavailable a {
+  margin-top: 10px;
+  color: #f1c40f;
+  text-decoration: underline;
+}
+
+.playerError a {
+  color: #f1c40f;
+  text-decoration: underline;
+}
+
+/* Styles responsives */
+@media (max-width: 768px) {
+  .playerContainer {
+    border-radius: 8px;
+  }
+
+  .playerControls {
+    padding: 8px;
+  }
+
+  .playButton,
+  .muteButton,
+  .fullscreenButton {
+    width: 32px;
+    height: 32px;
+  }
+}
