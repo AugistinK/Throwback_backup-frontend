@@ -1,3 +1,4 @@
+// file_create: /home/claude/PodcastCard.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -6,11 +7,10 @@ import {
   faPause,
   faCalendarAlt
 } from '@fortawesome/free-solid-svg-icons';
+import { getPodcastImageUrl, handlePodcastImageError } from '../utils/imageUtils';
 import styles from './WeeklyPodcast.module.css';
 
-const DEFAULT_IMAGE_PATH = '/images/podcast-default.jpg';
-
-const PodcastCard = ({ podcast, onPlay, isPlaying, getImagePath, handleImageError }) => {
+const PodcastCard = ({ podcast, onPlay, isPlaying }) => {
   // Format episode number (e.g., EP.01)
   const formatEpisodeNumber = (episode) => {
     return `EP.${episode.toString().padStart(2, '0')}`;
@@ -26,30 +26,8 @@ const PodcastCard = ({ podcast, onPlay, isPlaying, getImagePath, handleImageErro
     });
   };
 
-  // Handle image errors with fallback
-  const onImageError = (e) => {
-    if (handleImageError) {
-      handleImageError(e);
-    } else {
-      e.target.onerror = null;
-      e.target.src = DEFAULT_IMAGE_PATH;
-    }
-  };
-
-  // Get secure image path
-  const getImageSrc = () => {
-    if (getImagePath) {
-      return getImagePath(podcast);
-    }
-    
-    if (podcast.coverImage) {
-      return podcast.coverImage;
-    }
-    
-    // Fallback: create a number from the string ID
-    const idSum = podcast._id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    return `/images/podcast-${(idSum % 6) + 1}.jpg`;
-  };
+  // Récupérer l'URL de l'image
+  const imageUrl = getPodcastImageUrl(podcast);
 
   return (
     <div className={styles.podcastCard}>
@@ -65,10 +43,11 @@ const PodcastCard = ({ podcast, onPlay, isPlaying, getImagePath, handleImageErro
           <FontAwesomeIcon icon={isPlaying ? faPause : faPlay} />
         </div>
         <img
-          src={getImageSrc()}
+          src={imageUrl}
           alt={podcast.title}
           className={styles.podcastCardImage}
-          onError={onImageError}
+          data-podcast-id={podcast._id}
+          onError={handlePodcastImageError}
           crossOrigin="anonymous"
         />
       </div>
