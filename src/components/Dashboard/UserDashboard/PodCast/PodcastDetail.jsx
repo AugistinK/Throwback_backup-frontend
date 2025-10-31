@@ -1,29 +1,15 @@
+// file_create: /home/claude/PodcastDetailFixed.js
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFacebook, faTwitter, faWhatsapp } from '@fortawesome/free-brands-svg-icons';
 import {
-  faPlay,
-  faPause,
-  faVolumeUp,
-  faVolumeMute,
-  faArrowLeft,
-  faSpinner,
-  faCalendarAlt,
-  faUser,
-  faTag,
-  faEye,
-  faHeart,
-  faBookmark,
-  faShare,
-  faDownload,
-  faInfoCircle,
-  faExclamationTriangle,
-  faCopy,
-  faList
+  faPlay, faPause, faVolumeUp, faVolumeMute, faArrowLeft, faSpinner,
+  faCalendarAlt, faUser, faTag, faEye, faHeart, faBookmark, faShare,
+  faDownload, faInfoCircle, faExclamationTriangle, faCopy, faList
 } from '@fortawesome/free-solid-svg-icons';
 import styles from './PodcastDetail.module.css';
-// Import new components
+import VideoPlayer from './VideoPlayer';
 import PlaylistSelectionModal from './PlaylistSelectionModal';
 import MemoryList from './MemoryList';
 import podcastAPI from '../../../../utils/podcastAPI';
@@ -60,8 +46,10 @@ const PodcastDetail = () => {
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [shareMessage, setShareMessage] = useState('');
   
+  // Player ref
   const audioRef = useRef(null);
   const progressRef = useRef(null);
+  const [playerKey, setPlayerKey] = useState(Date.now()); // Pour forcer le rechargement du player
 
   // Format episode number (EP.01)
   const formatEpisodeNumber = (episode) => {
@@ -86,6 +74,8 @@ const PodcastDetail = () => {
     if (id) {
       fetchPodcastById(id);
       window.scrollTo(0, 0);
+      // Forcer le rechargement du player vidéo quand l'ID change
+      setPlayerKey(Date.now());
     }
   }, [id]);
 
@@ -197,7 +187,7 @@ const PodcastDetail = () => {
       description: 'In this episode, we explore the fascinating journey of hip hop music from its early days in the 1980s through its golden age in the 90s to its current mainstream dominance. Our guest, DJ Flash, shares insights from decades in the industry.',
       coverImage: `/images/podcast-${(parseInt(id) % 6) + 1}.jpg`,
       audioUrl: '/audio/sample-podcast.mp3',
-      vimeoUrl: 'https://vimeo.com/123456789',
+      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Ajout d'une URL YouTube par défaut
       topics: ['Hip Hop', 'Music History', 'DJ Culture', 'Music Production'],
       viewCount: 1542,
       likeCount: 287,
@@ -458,30 +448,6 @@ const PodcastDetail = () => {
     });
   };
 
-  // Extract Vimeo ID for iframe embedding
-  const getVimeoEmbedUrl = (vimeoUrl) => {
-    if (!vimeoUrl) return null;
-    
-    try {
-      const url = new URL(vimeoUrl);
-      let vimeoId = '';
-      
-      if (url.hostname.includes('vimeo.com')) {
-        const pathParts = url.pathname.split('/').filter(Boolean);
-        vimeoId = pathParts[0];
-      } else if (url.hostname.includes('player.vimeo.com')) {
-        const pathParts = url.pathname.split('/').filter(Boolean);
-        if (pathParts[0] === 'video') {
-          vimeoId = pathParts[1];
-        }
-      }
-      
-      return vimeoId ? `https://player.vimeo.com/video/${vimeoId}` : null;
-    } catch (error) {
-      return null;
-    }
-  };
-
   // Get secure image path
   const getImagePath = (imagePath) => {
     if (!imagePath) {
@@ -572,8 +538,6 @@ const PodcastDetail = () => {
       </div>
     );
   }
-
-  const embedUrl = getVimeoEmbedUrl(podcast.vimeoUrl);
 
   return (
     <div className={styles.throwbackPodcastBg}>
@@ -715,26 +679,18 @@ const PodcastDetail = () => {
             )}
           </div>
           
-          {/* Include the MemoryList component instead of direct input field */}
+          {/* Memories section */}
           <div className={styles.memoriesContainer}>
             <MemoryList podcastId={id} />
           </div>
           
           {/* Podcast Video Preview Section */}
-          {embedUrl && (
-            <div className={styles.podcastVideoSection}>
-              <h3 className={styles.sectionTitle}>Podcast Video Preview</h3>
-              <div className={styles.embedContainer}>
-                <iframe
-                  src={embedUrl}
-                  frameBorder="0"
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowFullScreen
-                  title={podcast.title}
-                ></iframe>
-              </div>
+          <div className={styles.podcastVideoSection}>
+            <h3 className={styles.sectionTitle}>Podcast Video Preview</h3>
+            <div className={styles.embedContainer}>
+              <VideoPlayer key={playerKey} podcast={podcast} />
             </div>
-          )}
+          </div>
           
           {/* Topics Section */}
           {podcast.topics && podcast.topics.length > 0 && (
@@ -773,7 +729,6 @@ const PodcastDetail = () => {
           </div>
         </main>
 
-        {/* No need to display memories in the sidebar as they're already handled by the MemoryList component */}
         <aside className={styles.rightCards}>
           <h3 className={styles.memoriesSectionTitle}>Featured Podcasts</h3>
           {allPodcasts.length > 0 && (

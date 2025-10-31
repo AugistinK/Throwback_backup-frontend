@@ -1,0 +1,96 @@
+.playerContainer {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 Aspect Ratio */
+  background-color: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.playerContainer.fullscreen {
+  padding-top: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+.videoPlayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.playerControls {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  gap: 10px;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.playerContainer:hover .playerControls {
+  opacity: 1;
+}
+
+.fullscreenButton,
+.externalLinkButton {
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.fullscreenButton:hover,
+.externalLinkButton:hover {
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.playerPlaceholder,
+.playerUnavailable,
+.playerError {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a1a1a;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+
+.playerError {
+  background-color: #3a0000;
+}
+
+.playerError svg {
+  margin-bottom: 15px;
+  color: #f88;
+}
+
+.externalLinkButton {
+  margin-top: 15px;
+  padding: 10px 15px;
+  background-color: #c00;
+  transition: background-color 0.3s;
+}
+
+.externalLinkButton:hover {
+  background-color: #d00;
+}
