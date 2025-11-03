@@ -67,15 +67,21 @@ const friendsService = {
    * @param {string} friendshipId - ID de la demande d'amitié
    * @returns {Promise} Résultat de l'opération
    */
-  acceptFriendRequest: async (friendshipId) => {
-    try {
-      const response = await api.put(`/api/friends/accept/${friendshipId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error accepting friend request:', error);
-      throw error;
+
+acceptFriendRequest: async (friendshipId) => {
+  try {
+    // S'assurer que friendshipId est une chaîne valide
+    if (!friendshipId || typeof friendshipId !== 'string') {
+      throw new Error('Invalid friendship ID');
     }
-  },
+    
+    const response = await api.put(`/api/friends/accept/${friendshipId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error accepting friend request:', error);
+    throw error;
+  }
+},
 
   /**
    * Refuser une demande d'ami

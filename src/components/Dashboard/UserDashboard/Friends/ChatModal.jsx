@@ -1,4 +1,4 @@
-// src/components/Dashboard/UserDashboard/Friends/ChatModal.jsx - VERSION SOCKET.IO
+// src/components/Dashboard/UserDashboard/Friends/ChatModal.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Music, Image, Smile, MoreVertical, Phone, Video } from 'lucide-react';
 import { useSocket } from '../../../../contexts/SocketContext';

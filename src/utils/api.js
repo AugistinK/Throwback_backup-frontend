@@ -7,7 +7,7 @@ import socialAPI from './socialAPI';
 import { adminAPI } from './adminAPI';
 
 
-// Configuration de base (⚠️ espace en trop supprimé à la fin de l'URL)
+// Configuration de base ( espace en trop supprimé à la fin de l'URL)
 
 const BASE_URL = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
 
