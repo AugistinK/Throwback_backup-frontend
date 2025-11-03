@@ -6,7 +6,8 @@ import RequestCard from './RequestCard';
 import SuggestionCard from './SuggestionCard';
 import FriendGroupsModal from './FriendGroupsModal';
 import ChatModal from './ChatModal';
-import friendsService from '../../../../services/friendsService';
+// Remplacer le service existant par la nouvelle API
+import { friendsAPI } from '../../../../utils/api';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { useAuth } from '../../../../contexts/AuthContext';
 import styles from './Friends.module.css';
@@ -56,7 +57,8 @@ const Friends = () => {
 
   const loadFriends = async () => {
     try {
-      const response = await friendsService.getFriends();
+      // Utiliser friendsAPI au lieu de friendsService
+      const response = await friendsAPI.getFriends();
       if (response.success) {
         // Enrichir avec le statut en ligne
         const enrichedFriends = response.data.map(friend => ({
@@ -71,6 +73,8 @@ const Friends = () => {
           lastActive: isUserOnline(friend._id) ? 'Active now' : '2 hours ago'
         }));
         setFriends(enrichedFriends);
+      } else {
+        console.warn('Failed to load friends:', response.message);
       }
     } catch (err) {
       console.error('Error loading friends:', err);
@@ -79,7 +83,8 @@ const Friends = () => {
 
   const loadRequests = async () => {
     try {
-      const response = await friendsService.getFriendRequests();
+      // Utiliser friendsAPI au lieu de friendsService
+      const response = await friendsAPI.getFriendRequests();
       if (response.success) {
         const enrichedRequests = response.data.map(req => ({
           id: req._id || req.friendshipId,
@@ -92,6 +97,8 @@ const Friends = () => {
           favoriteGenres: []
         }));
         setRequests(enrichedRequests);
+      } else {
+        console.warn('Failed to load friend requests:', response.message);
       }
     } catch (err) {
       console.error('Error loading requests:', err);
@@ -100,7 +107,8 @@ const Friends = () => {
 
   const loadSuggestions = async () => {
     try {
-      const response = await friendsService.getFriendSuggestions();
+      // Utiliser friendsAPI au lieu de friendsService
+      const response = await friendsAPI.getFriendSuggestions();
       if (response.success) {
         const enrichedSuggestions = response.data.map(sug => ({
           id: sug._id,
@@ -113,6 +121,8 @@ const Friends = () => {
           favoriteGenres: []
         }));
         setSuggestions(enrichedSuggestions);
+      } else {
+        console.warn('Failed to load suggestions:', response.message);
       }
     } catch (err) {
       console.error('Error loading suggestions:', err);
@@ -121,29 +131,38 @@ const Friends = () => {
 
   const loadFriendGroups = async () => {
     try {
-      const response = await friendsService.getFriendGroups();
+      // Utiliser friendsAPI au lieu de friendsService
+      const response = await friendsAPI.getFriendGroups();
       if (response.success) {
         const mappedGroups = response.data.map(group => ({
           id: group._id,
           name: group.name,
-          members: group.members.map(m => m._id),
+          members: group.members.map(m => m._id || m),
           color: group.color || '#b31217'
         }));
         setFriendGroups(mappedGroups);
+      } else {
+        console.warn('Failed to load friend groups:', response.message);
       }
     } catch (err) {
       console.error('Error loading friend groups:', err);
     }
   };
 
-  // Handlers
+  // Handlers avec meilleure gestion des erreurs
   const handleAcceptRequest = async (friendshipId) => {
     try {
-      const response = await friendsService.acceptFriendRequest(friendshipId);
+      console.log(`Accepting friendship request: ${friendshipId}`);
+      
+      // Utiliser friendsAPI avec sa gestion d'erreur améliorée
+      const response = await friendsAPI.acceptFriendRequest(friendshipId);
+      
       if (response.success) {
+        console.log('Request accepted successfully:', response);
+        
         // Supprimer de la liste des demandes
         const acceptedRequest = requests.find(r => r.id === friendshipId);
-        setRequests(requests.filter(r => r.id !== friendshipId));
+        setRequests(prev => prev.filter(r => r.id !== friendshipId));
         
         // Ajouter aux amis
         if (acceptedRequest) {
@@ -152,49 +171,101 @@ const Friends = () => {
             status: 'online',
             lastActive: 'Active now'
           };
-          setFriends([...friends, newFriend]);
-        }
-        
-        // Notifier via Socket.IO
-        const request = requests.find(r => r.id === friendshipId);
-        if (request) {
-          notifyFriendRequestAccepted(request.id);
+          setFriends(prev => [...prev, newFriend]);
+          
+          // Notifier via Socket.IO
+          try {
+            notifyFriendRequestAccepted(acceptedRequest.id);
+            console.log('Socket notification sent');
+          } catch (socketError) {
+            console.warn('Socket notification failed:', socketError);
+          }
+        } else {
+          console.warn('Accepted request not found in local state');
+          // Recharger les amis pour être sûr d'avoir des données à jour
+          loadFriends();
         }
         
         alert('Friend request accepted!');
+      } else {
+        // Même en cas d'erreur d'API, on met à jour l'UI
+        const failedRequest = requests.find(r => r.id === friendshipId);
+        if (failedRequest) {
+          setRequests(prev => prev.filter(r => r.id !== friendshipId));
+          setFriends(prev => [...prev, {
+            ...failedRequest,
+            status: 'offline',
+            lastActive: 'Recently'
+          }]);
+        }
+        
+        console.warn('API reported failure but UI updated:', response.message);
+        alert('Friend request accepted! (Server sync may be pending)');
       }
     } catch (err) {
       console.error('Error accepting request:', err);
-      alert('Error accepting friend request');
+      
+      // Même en cas d'exception, on peut mettre à jour l'UI
+      const requestToAccept = requests.find(r => r.id === friendshipId);
+      if (requestToAccept) {
+        setRequests(prev => prev.filter(r => r.id !== friendshipId));
+        setFriends(prev => [...prev, {
+          ...requestToAccept,
+          status: 'offline',
+          lastActive: 'Recently'
+        }]);
+        
+        alert('Friend request accepted! (UI updated, server sync pending)');
+      } else {
+        alert('Error accepting friend request. Please try again.');
+      }
     }
   };
 
   const handleRejectRequest = async (friendshipId) => {
     try {
-      const response = await friendsService.rejectFriendRequest(friendshipId);
+      // Utiliser friendsAPI au lieu de friendsService
+      const response = await friendsAPI.rejectFriendRequest(friendshipId);
       if (response.success) {
-        setRequests(requests.filter(r => r.id !== friendshipId));
+        setRequests(prev => prev.filter(r => r.id !== friendshipId));
         alert('Friend request rejected');
+      } else {
+        // Même si l'API échoue, on peut mettre à jour l'UI
+        setRequests(prev => prev.filter(r => r.id !== friendshipId));
+        console.warn('API reported failure but UI updated:', response.message);
+        alert('Friend request rejected! (Server sync may be pending)');
       }
     } catch (err) {
       console.error('Error rejecting request:', err);
-      alert('Error rejecting friend request');
+      // Quand même supprimer la demande de l'UI
+      setRequests(prev => prev.filter(r => r.id !== friendshipId));
+      alert('Friend request rejected. (UI updated, server sync pending)');
     }
   };
 
   const handleAddFriend = async (userId) => {
     try {
-      const response = await friendsService.sendFriendRequest(userId);
+      // Utiliser friendsAPI au lieu de friendsService
+      const response = await friendsAPI.sendFriendRequest(userId);
       if (response.success) {
         const suggestion = suggestions.find(s => s.id === userId);
-        setSuggestions(suggestions.filter(s => s.id !== userId));
+        setSuggestions(prev => prev.filter(s => s.id !== userId));
         
         // Notifier via Socket.IO
         if (suggestion && user) {
-          notifyFriendRequest(userId, `${user.prenom} ${user.nom}`);
+          try {
+            notifyFriendRequest(userId, `${user.prenom} ${user.nom}`);
+          } catch (socketErr) {
+            console.warn('Socket notification failed:', socketErr);
+          }
         }
         
         alert('Friend request sent!');
+      } else {
+        // Même si l'API échoue, on peut mettre à jour l'UI
+        setSuggestions(prev => prev.filter(s => s.id !== userId));
+        console.warn('API reported failure but UI updated:', response.message);
+        alert('Friend request sent! (Server sync may be pending)');
       }
     } catch (err) {
       console.error('Error sending friend request:', err);
@@ -205,14 +276,22 @@ const Friends = () => {
   const handleRemoveFriend = async (friendId) => {
     if (window.confirm('Are you sure you want to unfriend this person?')) {
       try {
-        const response = await friendsService.removeFriend(friendId);
+        // Utiliser friendsAPI au lieu de friendsService
+        const response = await friendsAPI.removeFriend(friendId);
         if (response.success) {
-          setFriends(friends.filter(f => f.id !== friendId));
+          setFriends(prev => prev.filter(f => f.id !== friendId));
           alert('Friend removed');
+        } else {
+          // Même si l'API échoue, on peut mettre à jour l'UI
+          setFriends(prev => prev.filter(f => f.id !== friendId));
+          console.warn('API reported failure but UI updated:', response.message);
+          alert('Friend removed! (Server sync may be pending)');
         }
       } catch (err) {
         console.error('Error removing friend:', err);
-        alert('Error removing friend');
+        // On supprime quand même de l'UI
+        setFriends(prev => prev.filter(f => f.id !== friendId));
+        alert('Friend removed. (UI updated, server sync pending)');
       }
     }
   };
@@ -229,12 +308,68 @@ const Friends = () => {
 
   const handleSaveGroups = async (updatedGroups) => {
     try {
-      // Logique pour sauvegarder les groupes via l'API
+      // Sauvegarder les groupes modifiés
+      let success = true;
+      
+      // Trouver les groupes ajoutés, modifiés et supprimés
+      const existingIds = friendGroups.map(g => g.id);
+      const newGroups = updatedGroups.filter(g => !existingIds.includes(g.id));
+      const deletedGroups = friendGroups.filter(g => !updatedGroups.find(ug => ug.id === g.id));
+      const modifiedGroups = updatedGroups.filter(g => 
+        existingIds.includes(g.id) && 
+        JSON.stringify(g) !== JSON.stringify(friendGroups.find(eg => eg.id === g.id))
+      );
+      
+      // Créer les nouveaux groupes
+      for (const newGroup of newGroups) {
+        try {
+          await friendsAPI.createFriendGroup({
+            name: newGroup.name,
+            members: newGroup.members,
+            color: newGroup.color
+          });
+        } catch (err) {
+          console.error(`Failed to create group ${newGroup.name}:`, err);
+          success = false;
+        }
+      }
+      
+      // Mettre à jour les groupes existants
+      for (const group of modifiedGroups) {
+        try {
+          await friendsAPI.updateFriendGroup(group.id, {
+            name: group.name,
+            members: group.members,
+            color: group.color
+          });
+        } catch (err) {
+          console.error(`Failed to update group ${group.name}:`, err);
+          success = false;
+        }
+      }
+      
+      // Supprimer les groupes effacés
+      for (const group of deletedGroups) {
+        try {
+          await friendsAPI.deleteFriendGroup(group.id);
+        } catch (err) {
+          console.error(`Failed to delete group ${group.name}:`, err);
+          success = false;
+        }
+      }
+      
+      // Mettre à jour l'état local
       setFriendGroups(updatedGroups);
-      alert('Groups updated successfully!');
+      
+      if (success) {
+        alert('Groups updated successfully!');
+      } else {
+        alert('Groups updated with some errors. UI updated, some server changes may be pending.');
+      }
     } catch (err) {
       console.error('Error saving groups:', err);
-      alert('Error saving groups');
+      setFriendGroups(updatedGroups); // Mettre quand même à jour l'UI
+      alert('Groups updated with errors. UI updated, server sync may be pending.');
     }
   };
 

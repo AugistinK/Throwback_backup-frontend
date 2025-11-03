@@ -5,6 +5,7 @@ import playlistAPI from './playlistAPI';
 import searchAPI from './searchAPI';
 import socialAPI from './socialAPI';
 import { adminAPI } from './adminAPI';
+import friendsAPI from './friendsAPI';
 
 
 // Configuration de base ( espace en trop supprimé à la fin de l'URL)
@@ -247,4 +248,5 @@ export { playlistAPI };
 export { searchAPI };
 export { socialAPI};
 export { adminAPI};
+export { friendsAPI };
 export default api;

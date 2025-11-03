@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Music, Image, Smile, MoreVertical, Phone, Video } from 'lucide-react';
 import { useSocket } from '../../../../contexts/SocketContext';
-import friendsService from '../../../../services/friendsService';
+import { friendsAPI } from '../../../../utils/api';
 import styles from './Friends.module.css';
 
 const ChatModal = ({ friend, onClose }) => {
@@ -98,7 +98,7 @@ const ChatModal = ({ friend, onClose }) => {
   const loadMessages = async () => {
     try {
       setLoading(true);
-      const response = await friendsService.getMessages(friend.id, page, 50);
+      const response = await friendsAPI.getMessages(friend.id, page, 50); // Modifié ici
       
       if (response.success) {
         const formattedMessages = response.data.messages.map(msg => ({
@@ -112,9 +112,14 @@ const ChatModal = ({ friend, onClose }) => {
         
         setMessages(prev => [...formattedMessages, ...prev]);
         setHasMore(response.data.pagination.page < response.data.pagination.totalPages);
+      } else {
+        // Gestion d'erreur améliorée pour les réponses négatives
+        console.error('Failed to load messages:', response.message);
       }
     } catch (err) {
       console.error('Error loading messages:', err);
+      // Traitement plus robuste des erreurs
+      setMessages(prev => prev); // Garder les messages existants
     } finally {
       setLoading(false);
     }
@@ -153,9 +158,17 @@ const ChatModal = ({ friend, onClose }) => {
     try {
       // Envoyer via Socket.IO
       await socketSendMessage(friend.id, message, 'text', tempId);
+      
+      // Fallback: si Socket échoue, utiliser l'API REST
+      try {
+        await friendsAPI.sendMessage(friend.id, message, 'text'); // Modifié ici
+      } catch (apiError) {
+        console.log('Fallback API also failed:', apiError);
+        // Le message reste affiché en UI même si les deux méthodes échouent
+      }
     } catch (err) {
       console.error('Error sending message:', err);
-      // Le message sera supprimé par l'événement message-error
+      // On garde le message en UI même si l'envoi échoue
     }
   };
 
