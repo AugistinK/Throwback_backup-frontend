@@ -1,12 +1,17 @@
-// src/utils/friendsAPI.js
+// src/utils/friendsAPI.js - VERSION CORRIGÉE
 import api from './api';
 
 /**
- * API spécialisée pour les fonctionnalités sociales/amis avec gestion d'erreur robuste
- * et stratégies de contournement pour les routes problématiques
+ *  API CORRIGÉE pour les fonctionnalités sociales/amis
+ * 
+ * CHANGEMENTS MAJEURS :
+ * - Suppression de la logique multi-tentatives inutile
+ * - Utilisation directe des routes correctes
+ * - Meilleure gestion d'erreurs
+ * - Plus de simulation de réponse
  */
 const friendsAPI = {
-  // ===== Gestion des amis =====
+  // ===== GESTION DES AMIS =====
 
   /**
    * Récupérer tous les amis de l'utilisateur connecté
@@ -17,20 +22,44 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error fetching friends:', error);
-      return { success: false, message: 'Failed to load friends', data: [] };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to load friends', 
+        data: [] 
+      };
     }
   },
 
   /**
-   * Récupérer les demandes d'amis en attente
+   *  CORRECTION: Récupérer les demandes d'amis en attente
+   * Le backend retourne maintenant le bon format avec _id (friendshipId) séparé de senderId
    */
   getFriendRequests: async () => {
     try {
       const response = await api.get('/api/friends/requests');
+      
+      // Vérification du format de réponse
+      if (response.data.success && Array.isArray(response.data.data)) {
+        // Log pour debug (à retirer en production)
+        if (response.data.data.length > 0) {
+          const firstRequest = response.data.data[0];
+          console.log(' Friend request format check:', {
+            has_id: !!firstRequest._id,
+            has_friendshipId: !!firstRequest.friendshipId,
+            has_senderId: !!firstRequest.senderId,
+            ids_different: firstRequest._id !== firstRequest.senderId
+          });
+        }
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Error fetching friend requests:', error);
-      return { success: false, message: 'Failed to load friend requests', data: [] };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to load friend requests', 
+        data: [] 
+      };
     }
   },
 
@@ -43,7 +72,11 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error fetching friend suggestions:', error);
-      return { success: false, message: 'Failed to load suggestions', data: [] };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to load suggestions', 
+        data: [] 
+      };
     }
   },
 
@@ -52,122 +85,83 @@ const friendsAPI = {
    */
   sendFriendRequest: async (friendId) => {
     try {
+      if (!friendId) {
+        throw new Error('Friend ID is required');
+      }
+      
       const response = await api.post('/api/friends/request', { friendId });
       return response.data;
     } catch (error) {
       console.error('Error sending friend request:', error);
-      return { success: false, message: 'Failed to send friend request' };
-    }
-  },
-
-  /**
-   * Accepter une demande d'ami - SOLUTION MULTI-TENTATIVE
-   * Cette fonction essaie plusieurs méthodes HTTP et formats de route
-   * pour contourner le problème de la route manquante
-   */
-  acceptFriendRequest: async (friendshipId) => {
-    try {
-      // Méthode 1: PUT standard (selon la route définie)
-      try {
-        console.log(`Tentative 1: PUT /api/friends/accept/${friendshipId}`);
-        const response = await api.put(`/api/friends/accept/${friendshipId}`);
-        return response.data;
-      } catch (error1) {
-        console.log("Erreur tentative 1:", error1.message);
-        
-        // Méthode 2: POST sur le même chemin (en cas de problème de méthode HTTP)
-        try {
-          console.log(`Tentative 2: POST /api/friends/accept/${friendshipId}`);
-          const response2 = await api.post(`/api/friends/accept/${friendshipId}`);
-          return response2.data;
-        } catch (error2) {
-          console.log("Erreur tentative 2:", error2.message);
-          
-          // Méthode 3: PATCH sur la route des requêtes
-          try {
-            console.log(`Tentative 3: PATCH /api/friends/requests/${friendshipId}`);
-            const response3 = await api.patch(`/api/friends/requests/${friendshipId}`, {
-              status: 'accepted'
-            });
-            return response3.data;
-          } catch (error3) {
-            console.log("Erreur tentative 3:", error3.message);
-            
-            // Méthode 4: POST avec ID dans le body
-            try {
-              console.log(`Tentative 4: POST /api/friends/accept`);
-              const response4 = await api.post('/api/friends/accept', { 
-                friendshipId: friendshipId 
-              });
-              return response4.data;
-            } catch (error4) {
-              console.log("Erreur tentative 4:", error4.message);
-              
-              // Méthode 5: PUT direct sur l'URL de base friends avec action dans body
-              try {
-                console.log(`Tentative 5: PUT /api/friends`);
-                const response5 = await api.put('/api/friends', { 
-                  action: 'accept',
-                  friendshipId: friendshipId 
-                });
-                return response5.data;
-              } catch (error5) {
-                console.log("Erreur tentative 5:", error5.message);
-                throw new Error("Tous les essais d'acceptation ont échoué");
-              }
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error accepting friend request (all methods failed):', error);
-      
-      // Réponse simulée pour que l'UI continue de fonctionner
-      return {
-        success: true,
-        message: "Friend request accepted (UI only - server sync pending)",
-        data: {
-          _id: friendshipId,
-          status: 'accepted'
-        }
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to send friend request' 
       };
     }
   },
 
   /**
-   * Refuser une demande d'ami
+   *  CORRECTION MAJEURE: Accepter une demande d'ami
+   * 
+   * AVANT: Multi-tentatives compliquées qui masquaient le vrai problème
+   * APRÈS: Utilisation directe de la route correcte PUT /api/friends/accept/:friendshipId
+   * 
+   * IMPORTANT: friendshipId DOIT être l'ID du document Friendship (_id), 
+   * PAS l'ID de l'utilisateur (senderId)
+   */
+  acceptFriendRequest: async (friendshipId) => {
+    try {
+      // Validation
+      if (!friendshipId || typeof friendshipId !== 'string') {
+        throw new Error('Invalid friendship ID');
+      }
+      
+      console.log(' Accepting friend request with ID:', friendshipId);
+      
+      // Route correcte : PUT /api/friends/accept/:friendshipId
+      const response = await api.put(`/api/friends/accept/${friendshipId}`);
+      
+      console.log(' Friend request accepted successfully');
+      return response.data;
+      
+    } catch (error) {
+      console.error('❌ Error accepting friend request:', error);
+      
+      // Ne plus simuler de réponse - retourner l'erreur réelle
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to accept friend request',
+        error: error.message
+      };
+    }
+  },
+
+  /**
+   *  CORRECTION: Refuser une demande d'ami
+   * Simplifié sans multi-tentatives
    */
   rejectFriendRequest: async (friendshipId) => {
     try {
-      // Essayer d'abord DELETE standard
-      try {
-        const response = await api.delete(`/api/friends/reject/${friendshipId}`);
-        return response.data;
-      } catch (deleteError) {
-        console.log("Erreur DELETE reject:", deleteError.message);
-        
-        // Tenter un POST comme alternative
-        try {
-          const postResponse = await api.post('/api/friends/reject', { friendshipId });
-          return postResponse.data;
-        } catch (postError) {
-          console.log("Erreur POST reject:", postError.message);
-          
-          // Dernière tentative: PUT avec action dans le body
-          const putResponse = await api.put('/api/friends', {
-            action: 'reject',
-            friendshipId
-          });
-          return putResponse.data;
-        }
+      // Validation
+      if (!friendshipId || typeof friendshipId !== 'string') {
+        throw new Error('Invalid friendship ID');
       }
-    } catch (error) {
-      console.error('Error rejecting friend request:', error);
       
-      // Réponse simulée
+      console.log('Rejecting friend request with ID:', friendshipId);
+      
+      // Route correcte : DELETE /api/friends/reject/:friendshipId
+      const response = await api.delete(`/api/friends/reject/${friendshipId}`);
+      
+      console.log(' Friend request rejected successfully');
+      return response.data;
+      
+    } catch (error) {
+      console.error('❌ Error rejecting friend request:', error);
+      
       return { 
-        success: true, 
-        message: "Friend request rejected (UI only - server sync pending)" 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to reject friend request',
+        error: error.message
       };
     }
   },
@@ -177,11 +171,18 @@ const friendsAPI = {
    */
   removeFriend: async (friendId) => {
     try {
+      if (!friendId) {
+        throw new Error('Friend ID is required');
+      }
+      
       const response = await api.delete(`/api/friends/remove/${friendId}`);
       return response.data;
     } catch (error) {
       console.error('Error removing friend:', error);
-      return { success: false, message: 'Failed to remove friend' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to remove friend' 
+      };
     }
   },
 
@@ -190,11 +191,18 @@ const friendsAPI = {
    */
   blockUser: async (userId) => {
     try {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+      
       const response = await api.post('/api/friends/block', { userId });
       return response.data;
     } catch (error) {
       console.error('Error blocking user:', error);
-      return { success: false, message: 'Failed to block user' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to block user' 
+      };
     }
   },
 
@@ -203,11 +211,18 @@ const friendsAPI = {
    */
   unblockUser: async (userId) => {
     try {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+      
       const response = await api.delete(`/api/friends/unblock/${userId}`);
       return response.data;
     } catch (error) {
       console.error('Error unblocking user:', error);
-      return { success: false, message: 'Failed to unblock user' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to unblock user' 
+      };
     }
   },
 
@@ -220,7 +235,11 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error fetching blocked users:', error);
-      return { success: false, message: 'Failed to load blocked users', data: [] };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to load blocked users', 
+        data: [] 
+      };
     }
   },
 
@@ -229,11 +248,23 @@ const friendsAPI = {
    */
   searchUsers: async (query) => {
     try {
+      if (!query || query.trim().length < 2) {
+        return { 
+          success: false, 
+          message: 'Search query must be at least 2 characters', 
+          data: [] 
+        };
+      }
+      
       const response = await api.get(`/api/users/search?q=${encodeURIComponent(query)}`);
       return response.data;
     } catch (error) {
       console.error('Error searching users:', error);
-      return { success: false, message: 'Search failed', data: [] };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Search failed', 
+        data: [] 
+      };
     }
   },
 
@@ -242,15 +273,23 @@ const friendsAPI = {
    */
   getMutualFriends: async (userId) => {
     try {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+      
       const response = await api.get(`/api/friends/mutual/${userId}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching mutual friends:', error);
-      return { success: false, message: 'Failed to load mutual friends', data: [] };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to load mutual friends', 
+        data: [] 
+      };
     }
   },
 
-  // ===== Gestion des groupes d'amis =====
+  // ===== GESTION DES GROUPES D'AMIS =====
 
   /**
    * Récupérer tous les groupes d'amis
@@ -261,7 +300,11 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error fetching friend groups:', error);
-      return { success: false, message: 'Failed to load friend groups', data: [] };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to load friend groups', 
+        data: [] 
+      };
     }
   },
 
@@ -274,7 +317,10 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error creating friend group:', error);
-      return { success: false, message: 'Failed to create friend group' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to create friend group' 
+      };
     }
   },
 
@@ -287,7 +333,10 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error updating friend group:', error);
-      return { success: false, message: 'Failed to update friend group' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to update friend group' 
+      };
     }
   },
 
@@ -300,7 +349,10 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error deleting friend group:', error);
-      return { success: false, message: 'Failed to delete friend group' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to delete friend group' 
+      };
     }
   },
 
@@ -313,7 +365,10 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error adding members to group:', error);
-      return { success: false, message: 'Failed to add members to group' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to add members to group' 
+      };
     }
   },
 
@@ -328,11 +383,14 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error removing members from group:', error);
-      return { success: false, message: 'Failed to remove members from group' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to remove members from group' 
+      };
     }
   },
 
-  // ===== Gestion des messages =====
+  // ===== GESTION DES MESSAGES =====
 
   /**
    * Récupérer les conversations de l'utilisateur
@@ -343,12 +401,17 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      return { success: false, message: 'Failed to load conversations', data: [] };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to load conversations', 
+        data: [] 
+      };
     }
   },
 
   /**
-   * Récupérer les messages d'une conversation
+   *  CORRECTION: Récupérer les messages d'une conversation
+   * Meilleure gestion de l'erreur 403 (pas amis)
    */
   getMessages: async (friendId, page = 1, limit = 50) => {
     try {
@@ -356,7 +419,22 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error fetching messages:', error);
-      return { success: false, message: 'Failed to load messages', data: { messages: [] } };
+      
+      // Gestion spéciale pour 403 (pas amis)
+      if (error.response?.status === 403) {
+        return { 
+          success: false, 
+          message: 'You must be friends to message this user',
+          errorType: 'NOT_FRIENDS',
+          data: { messages: [] } 
+        };
+      }
+      
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to load messages', 
+        data: { messages: [] } 
+      };
     }
   },
 
@@ -365,6 +443,10 @@ const friendsAPI = {
    */
   sendMessage: async (receiverId, content, type = 'text') => {
     try {
+      if (!receiverId || !content) {
+        throw new Error('Receiver ID and content are required');
+      }
+      
       const response = await api.post('/api/messages', { 
         receiverId, 
         content, 
@@ -373,7 +455,10 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error sending message:', error);
-      return { success: false, message: 'Failed to send message' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to send message' 
+      };
     }
   },
 
@@ -386,7 +471,10 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error marking message as read:', error);
-      return { success: false, message: 'Failed to mark message as read' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to mark message as read' 
+      };
     }
   },
 
@@ -399,7 +487,10 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error deleting message:', error);
-      return { success: false, message: 'Failed to delete message' };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to delete message' 
+      };
     }
   },
 
@@ -412,14 +503,18 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error fetching unread count:', error);
-      return { success: false, message: 'Failed to get unread count', data: { count: 0 } };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to get unread count', 
+        data: { count: 0 } 
+      };
     }
   },
 
-  // ===== Statistiques =====
+  // ===== STATISTIQUES =====
 
   /**
-   * Récupérer les statistiques d'amitié
+   *  NOUVEAU: Récupérer les statistiques d'amitié
    */
   getFriendshipStats: async () => {
     try {
@@ -427,17 +522,26 @@ const friendsAPI = {
       return response.data;
     } catch (error) {
       console.error('Error fetching friendship stats:', error);
-      return { success: false, message: 'Failed to load friendship statistics', data: {} };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to load friendship statistics', 
+        data: {
+          friends: 0,
+          pendingRequests: 0,
+          sentRequests: 0
+        } 
+      };
     }
   },
   
-  // ===== Utilitaires de diagnostic =====
+  // ===== UTILITAIRES DE DIAGNOSTIC =====
   
   /**
    * Tester la connexion aux routes d'amis
    * Utilisez cette méthode pour diagnostiquer les problèmes de connexion
    */
   testFriendRoutes: async () => {
+    console.log('🔍 Testing friend routes...');
     const results = {};
     
     // Tester les routes GET
@@ -445,27 +549,27 @@ const friendsAPI = {
       '/api/friends',
       '/api/friends/requests',
       '/api/friends/suggestions',
+      '/api/friends/stats',
       '/api/friends/groups'
     ];
     
     for (const route of getRoutes) {
       try {
-        await api.get(route);
-        results[route] = 'SUCCESS';
+        const response = await api.get(route);
+        results[route] = {
+          status: 'SUCCESS',
+          statusCode: response.status
+        };
       } catch (error) {
-        results[route] = `ERROR: ${error.message}`;
+        results[route] = {
+          status: 'ERROR',
+          statusCode: error.response?.status,
+          message: error.message
+        };
       }
     }
     
-    // Tester un POST (avec un faux ID)
-    try {
-      await api.post('/api/friends/request', { friendId: 'test123' });
-      results['POST /api/friends/request'] = 'SUCCESS';
-    } catch (error) {
-      results['POST /api/friends/request'] = `ERROR: ${error.message}`;
-    }
-    
-    console.log('Route test results:', results);
+    console.log(' Route test results:', results);
     return results;
   }
 };

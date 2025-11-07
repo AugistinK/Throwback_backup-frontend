@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.jsx - VERSION SIMPLIFIÉE
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
@@ -77,7 +78,7 @@ export function AuthProvider({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Liste des routes publiques qui ne nécessitent pas d'authentification
+  // Liste des routes publiques
   const publicRoutes = [
     '/login',
     '/register',
@@ -111,7 +112,9 @@ export function AuthProvider({ children }) {
     }
   }, [state.isAuthenticated, state.isLoading, state.token, location.pathname, navigate]);
 
-  //  CORRECTION CRITIQUE : Charge le profil complet depuis /api/auth/me
+  /**
+   *  CORRECTION SIMPLIFIÉE: Charge le profil complet depuis /api/auth/me
+   */
   const loadUser = useCallback(async () => {
     if (!tokenRef.current) return;
     
@@ -120,35 +123,22 @@ export function AuthProvider({ children }) {
       
       const res = await api.get('/api/auth/me');
       
-      console.log("📥 Response from /api/auth/me:", res.data);
-      
       if (res.data.success) {
-        const full = res.data.data;
+        const userData = res.data.data;
         
-        console.log("📦 Full user data:", full);
-        
-        //  CRITICAL: Convertir _id en string si c'est un ObjectId
-        const userId = full.id || 
-                      (full._id?.toString ? full._id.toString() : full._id) || 
-                      full._id;
-        
-        console.log("🆔 Extracted user ID:", userId, "Type:", typeof userId);
-        
-        //  Construire l'objet utilisateur avec ID en string
-        const userData = {
-          ...full,
-          id: userId, //  ID en string pour comparaison
-          _id: userId //  _id aussi en string
+        //  SIMPLIFICATION: Conversion directe d'ObjectId en string
+        const userWithStringId = {
+          ...userData,
+          id: userData._id ? userData._id.toString() : userData.id,
+          _id: userData._id ? userData._id.toString() : userData.id
         };
         
-        console.log(" User data prepared:", {
-          id: userData.id,
-          _id: userData._id,
-          email: userData.email,
-          role: userData.role
+        console.log(" User loaded:", {
+          id: userWithStringId.id,
+          email: userWithStringId.email
         });
         
-        dispatch({ type: AUTH_ACTIONS.LOAD_USER, payload: userData });
+        dispatch({ type: AUTH_ACTIONS.LOAD_USER, payload: userWithStringId });
       }
     } catch(err) {
       console.error("❌ Error loading user:", err);
@@ -170,29 +160,30 @@ export function AuthProvider({ children }) {
     }
   }, [state.token, loadUser]);
 
-  //  CORRECTION : Login avec conversion d'ID
+  /**
+   *  CORRECTION: Login avec conversion d'ID simplifiée
+   */
   const login = (token, partialUser) => {
-    console.log(" Login called with:", { token: token ? "Present" : "Absent", partialUser });
+    console.log("🔑 Login called");
     
     localStorage.setItem('token', token);
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
     
-    //  Convertir l'ID aussi au login
-    const userId = partialUser.id || 
-                  (partialUser._id?.toString ? partialUser._id.toString() : partialUser._id) || 
-                  partialUser._id;
-    
-    const userWithId = {
+    //  Conversion d'ID simplifiée
+    const userWithStringId = {
       ...partialUser,
-      id: userId,
-      _id: userId
+      id: partialUser._id ? partialUser._id.toString() : partialUser.id,
+      _id: partialUser._id ? partialUser._id.toString() : partialUser.id
     };
     
-    console.log(" User at login:", userWithId);
+    console.log(" User at login:", {
+      id: userWithStringId.id,
+      email: userWithStringId.email
+    });
     
     dispatch({
       type: AUTH_ACTIONS.LOGIN_SUCCESS,
-      payload: { token, user: userWithId }
+      payload: { token, user: userWithStringId }
     });
     
     loadUser();
@@ -216,28 +207,28 @@ export function AuthProvider({ children }) {
   const setError = err => dispatch({ type: AUTH_ACTIONS.LOGIN_FAILURE, payload: err });
   const clearError = () => dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
 
+  /**
+   *  CORRECTION: SetUser avec conversion d'ID simplifiée
+   */
   const setUser = (user) => {
-    //  Aussi convertir l'ID quand on set manuellement l'user
-    const userId = user.id || 
-                  (user._id?.toString ? user._id.toString() : user._id) || 
-                  user._id;
-    
-    const userWithId = {
+    const userWithStringId = {
       ...user,
-      id: userId,
-      _id: userId
+      id: user._id ? user._id.toString() : user.id,
+      _id: user._id ? user._id.toString() : user.id
     };
     
-    dispatch({ type: AUTH_ACTIONS.LOAD_USER, payload: userWithId });
+    dispatch({ type: AUTH_ACTIONS.LOAD_USER, payload: userWithStringId });
   };
 
-  //  Log pour surveiller l'état utilisateur
+  // Log pour surveiller l'état utilisateur
   useEffect(() => {
-    console.log(" Auth state changed:", {
-      isAuthenticated: state.isAuthenticated,
-      userId: state.user?.id,
-      userEmail: state.user?.email
-    });
+    if (state.user) {
+      console.log("👤 Auth state:", {
+        isAuthenticated: state.isAuthenticated,
+        userId: state.user.id,
+        userEmail: state.user.email
+      });
+    }
   }, [state.user, state.isAuthenticated]);
 
   return (

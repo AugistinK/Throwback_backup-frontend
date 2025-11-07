@@ -1,15 +1,13 @@
-// components/utils/api.js 
+// src/utils/api.js - VERSION CORRIGÉE POUR INTÉGRATION COMPLÈTE
 import axios from 'axios';
 import podcastAPI from './podcastAPI';
 import playlistAPI from './playlistAPI';
 import searchAPI from './searchAPI';
 import socialAPI from './socialAPI';
 import { adminAPI } from './adminAPI';
-import friendsAPI from './friendsAPI';
+import friendsAPI from './friendsAPI'; //  Import corrigé
 
-
-// Configuration de base ( espace en trop supprimé à la fin de l'URL)
-
+//  Configuration de base (espace en trop supprimé à la fin de l'URL)
 const BASE_URL = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
 
 // Créer une instance axios avec configuration par défaut
@@ -22,6 +20,10 @@ const api = axios.create({
   withCredentials: true 
 });
 
+// ============================================
+// INTERCEPTEURS
+// ============================================
+
 // Intercepteur de requête pour ajouter le token automatiquement
 api.interceptors.request.use(
   (config) => {
@@ -30,11 +32,13 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
+    // Logging sélectif pour debug
     if (
       config.url.includes('/videos/') || 
       config.url.includes('/memories') || 
       config.url.includes('/like') || 
-      config.url.includes('/profile')
+      config.url.includes('/profile') ||
+      config.url.includes('/friends') //  Ajout pour debug amis
     ) {
       console.log(` API Request: ${config.method?.toUpperCase()} ${config.url}`);
       if (config.data && typeof config.data !== 'object') {
@@ -43,17 +47,22 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error(' Request error:', error);
+    return Promise.reject(error);
+  }
 );
 
 // Intercepteur de réponse
 api.interceptors.response.use(
   (response) => {
+    // Logging sélectif pour debug
     if (
       response.config.url.includes('/videos/') || 
       response.config.url.includes('/memories') || 
       response.config.url.includes('/like') || 
-      response.config.url.includes('/profile')
+      response.config.url.includes('/profile') ||
+      response.config.url.includes('/friends') 
     ) {
       console.log(` API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`);
       console.log(' Response data:', response.data);
@@ -61,12 +70,50 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error(' API Error:', error);
+    //  Meilleure gestion des erreurs
+    if (error.response) {
+      // Le serveur a répondu avec un code d'erreur
+      console.error(' API Error Response:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        url: error.config?.url,
+        method: error.config?.method?.toUpperCase(),
+        data: error.response.data
+      });
+      
+      //  Gestion spéciale pour 401 (non authentifié)
+      if (error.response.status === 401) {
+        console.warn(' Unauthorized - Token may be invalid');
+        // Optionnel : rediriger vers login
+        // window.location.href = '/login';
+      }
+      
+      //  Gestion spéciale pour 403 (interdit)
+      if (error.response.status === 403) {
+        console.warn(' Forbidden - Insufficient permissions');
+      }
+      
+      //  Gestion spéciale pour 404 (non trouvé)
+      if (error.response.status === 404) {
+        console.warn(' Not Found:', error.config?.url);
+      }
+      
+    } else if (error.request) {
+      // La requête a été envoyée mais pas de réponse
+      console.error(' No response received:', error.request);
+    } else {
+      // Erreur lors de la configuration de la requête
+      console.error(' Request setup error:', error.message);
+    }
+    
     return Promise.reject(error);
   }
 );
 
-// ---------- Vidéos / Souvenirs ----------
+// ============================================
+// VIDEO API
+// ============================================
+
 const videoAPI = {
   // Récupérer toutes les vidéos publiques
   getAllVideos: async (params = {}) => {
@@ -167,7 +214,7 @@ const videoAPI = {
         }
         return r.data;
       }
-      throw new Error(r.data?.message || 'Erreur lors de l’ajout du souvenir');
+      throw new Error(r.data?.message || 'Erreur lors de ajout du souvenir');
     } catch (e) {
       const fr = await api.post(`/api/videos/${videoId}/memories`, payload);
       if (fr.data?.success) {
@@ -197,12 +244,12 @@ const videoAPI = {
   // Like/unlike un souvenir OU une réponse (même endpoint)
   likeMemory: async (memoryId) => {
     try {
-      // Priorité à la route interne, qui est certaine d’exister
+      // Priorité à la route interne, qui est certaine d'exister
       const r = await api.post(`/api/memories/${memoryId}/like`);
       if (r.data?.success) return r.data;
       throw new Error(r.data?.message || 'Échec du like');
     } catch (e) {
-      // Fallback public s’il existe côté serveur
+      // Fallback public s'il existe côté serveur
       try {
         const pr = await api.post(`/api/public/memories/${memoryId}/like`);
         if (pr.data?.success) return pr.data;
@@ -240,13 +287,18 @@ const videoAPI = {
   }
 };
 
-// Experter les modules API
+// ============================================
+// EXPORTS
+// ============================================
 
+// Exporter les modules API
 export { videoAPI };
 export { podcastAPI };
 export { playlistAPI };
 export { searchAPI };
-export { socialAPI};
-export { adminAPI};
-export { friendsAPI };
+export { socialAPI };
+export { adminAPI };
+export { friendsAPI }; //  Export corrigé
+
+// Export par défaut de l'instance axios
 export default api;
