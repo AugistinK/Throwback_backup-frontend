@@ -10,7 +10,7 @@ import {
   faMagnifyingGlass,
   faChevronDown,
   faPlus,
-  faEllipsis,
+  faEllipsisVertical,
   faPhone,
   faVideo,
   faPaperclip,
@@ -18,19 +18,33 @@ import {
   faMicrophone,
   faPaperPlane,
   faCircle,
+  faCheck,
+  faCheckDouble,
+  faBell,
 } from "@fortawesome/free-solid-svg-icons";
 
-/* ----------------------------- Types/helpers ----------------------------- */
+/* ----------------------------- helpers ----------------------------- */
 
-const formatTime = (iso) => {
+const toTime = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
 };
-
-const initialsOf = (full = "") =>
+const toDayKey = (iso) => {
+  const d = new Date(iso);
+  return d.toDateString();
+};
+const dayLabel = (iso) => {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = (now - d) / (1000 * 60 * 60 * 24);
+  if (diff < 1 && d.getDate() === now.getDate()) return "Today";
+  if (diff < 2 && d.getDate() === new Date(now - 86400000).getDate()) return "Yesterday";
+  return d.toLocaleDateString();
+};
+const initials = (full = "") =>
   full
     .trim()
     .split(/\s+/)
@@ -39,7 +53,16 @@ const initialsOf = (full = "") =>
     .slice(0, 2)
     .toUpperCase();
 
-/* ------------------------------- Components ------------------------------ */
+/* ----------------------------- UI bits ----------------------------- */
+
+const Chip = ({ active, children, onClick }) => (
+  <button
+    className={`${styles.chip} ${active ? styles.chipActive : ""}`}
+    onClick={onClick}
+  >
+    {children}
+  </button>
+);
 
 const ConversationItem = ({ convo, active, onClick }) => {
   const last = convo.lastMessage;
@@ -49,16 +72,10 @@ const ConversationItem = ({ convo, active, onClick }) => {
       onClick={onClick}
     >
       <div className={styles.convoAvatar}>
-        {convo.avatar ? (
-          <img src={convo.avatar} alt={convo.name} />
-        ) : (
-          <span>{initialsOf(convo.name)}</span>
-        )}
+        {convo.avatar ? <img src={convo.avatar} alt={convo.name} /> : <span>{initials(convo.name)}</span>}
         <span
           className={styles.statusDot}
-          style={{
-            backgroundColor: convo.online ? "#10b981" : "#9ca3af",
-          }}
+          style={{ backgroundColor: convo.online ? "#10b981" : "#9ca3af" }}
           title={convo.online ? "Online" : "Offline"}
         />
       </div>
@@ -67,7 +84,7 @@ const ConversationItem = ({ convo, active, onClick }) => {
         <div className={styles.convoTopRow}>
           <span className={styles.convoName}>{convo.name}</span>
           <span className={styles.convoTime}>
-            {last?.createdAt ? formatTime(last.createdAt) : ""}
+            {last?.createdAt ? toTime(last.createdAt) : ""}
           </span>
         </div>
 
@@ -86,222 +103,293 @@ const ConversationItem = ({ convo, active, onClick }) => {
   );
 };
 
-const MessageBubble = ({ me, msg, avatar }) => {
-  return (
-    <div
-      className={`${styles.msgRow} ${me ? styles.msgRight : styles.msgLeft}`}
-    >
-      {!me && (
-        <div className={styles.msgAvatar}>
-          {avatar ? (
-            <img src={avatar} alt="" />
-          ) : (
-            <span>{/* empty */}</span>
-          )}
-        </div>
-      )}
-      <div className={`${styles.msgBubble} ${me ? styles.mine : styles.theirs}`}>
-        <p className={styles.msgText}>{msg.content}</p>
-        <div className={styles.msgMeta}>{formatTime(msg.createdAt)}</div>
+const Bubble = ({ me, msg, showStatus, readByPeer, avatar }) => (
+  <div className={`${styles.msgRow} ${me ? styles.msgRight : styles.msgLeft}`}>
+    {!me && (
+      <div className={styles.msgAvatar}>
+        {avatar ? <img src={avatar} alt="" /> : <span />}
+      </div>
+    )}
+
+    <div className={`${styles.msgBubble} ${me ? styles.mine : styles.theirs}`}>
+      <p className={styles.msgText}>{msg.content}</p>
+      <div className={styles.msgMeta}>
+        <span>{toTime(msg.createdAt)}</span>
+        {me && showStatus && (
+          <span className={styles.msgTicks} title={readByPeer ? "Read" : "Sent"}>
+            <FontAwesomeIcon icon={readByPeer ? faCheckDouble : faCheck} />
+          </span>
+        )}
       </div>
     </div>
-  );
-};
+  </div>
+);
 
-/* --------------------------------- Page ---------------------------------- */
+/* ------------------------------- Page ------------------------------- */
 
 const Chat = () => {
   const { user } = useAuth();
-  const socketCtx = useSocket(); // optional real-time
-  const isUserOnline = socketCtx?.isUserOnline;
+  const {
+    socket,
+    isConnected,
+    isUserOnline,
+    sendMessage: socketSend,
+    joinConversation,
+    startTyping,
+    stopTyping,
+    markMessagesAsRead,
+  } = useSocket();
 
-  const [loading, setLoading] = useState(true);
-  const [conversations, setConversations] = useState([]); // [{id, userId, name, avatar, online, lastMessage, unread}]
+  const [filters, setFilters] = useState("all"); // all | unread | favorites | groups
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("recent"); // recent | unread | name
+
+  const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
 
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("recent"); // 'recent' | 'unread' | 'name'
-
-  const [messages, setMessages] = useState([]); // [{_id, senderId, content, createdAt}]
-  const [sending, setSending] = useState(false);
+  const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const [typingFromPeer, setTypingFromPeer] = useState(false);
+  const [readPeers, setReadPeers] = useState(new Set()); // users who read my msgs (by id)
 
   const listRef = useRef(null);
+  const typingTimer = useRef(null);
 
-  /* ------------------------------ Load data ------------------------------ */
+  /* -------------------------- bootstrap convos -------------------------- */
 
   useEffect(() => {
     (async () => {
-      setLoading(true);
-      try {
-        // Conversations
-        const convRes = await friendsAPI.getConversations();
-        const items =
-          convRes?.data?.map((c) => ({
-            id: c._id || c.id || c.partnerId, // partner conversation id
-            userId: c.partnerId || c.userId,
-            name: c.partnerName || `${c.partnerPrenom ?? ""} ${c.partnerNom ?? ""}`.trim() || "Friend",
-            avatar: c.partnerPhoto || c.avatar || "",
-            online: isUserOnline ? isUserOnline(c.partnerId || c.userId) : false,
-            lastMessage: c.lastMessage
-              ? {
-                  content: c.lastMessage.content,
-                  createdAt: c.lastMessage.createdAt || c.lastMessage.created_date,
-                  fromMe: String(c.lastMessage.senderId) === String(user?._id),
-                }
-              : null,
-            unread: c.unreadCount || 0,
-          })) || [];
+      const res = await friendsAPI.getConversations();
+      const items =
+        res?.data?.map((c) => ({
+          id: c._id || c.id || c.partnerId,
+          userId: c.partnerId || c.userId,
+          name:
+            c.partnerName ||
+            `${c.partnerPrenom ?? ""} ${c.partnerNom ?? ""}`.trim() ||
+            "Friend",
+          avatar: c.partnerPhoto || c.avatar || "",
+          online: isUserOnline ? isUserOnline(c.partnerId || c.userId) : false,
+          lastMessage: c.lastMessage
+            ? {
+                content: c.lastMessage.content,
+                createdAt: c.lastMessage.createdAt || c.lastMessage.created_date,
+                fromMe: String(c.lastMessage.senderId) === String(user?._id),
+              }
+            : null,
+          unread: c.unreadCount || 0,
+          favorite: !!c.favorite,
+          isGroup: !!c.isGroup,
+        })) || [];
 
-        setConversations(items);
-
-        // Preselect first conversation
-        if (items.length > 0) setActiveId(items[0].userId);
-      } finally {
-        setLoading(false);
-      }
+      setConversations(items);
+      if (items.length > 0) setActiveId(items[0].userId);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load messages when active changes
+  /* ---------------------------- load messages ---------------------------- */
+
   useEffect(() => {
     if (!activeId) return;
+
     (async () => {
-      const res = await friendsAPI.getMessages(activeId, 1, 60);
-      const list = res?.data?.messages || res?.data || [];
-      const normalized = list.map((m) => ({
+      // rejoindre la room socket + marquer lus
+      joinConversation(activeId);
+      markMessagesAsRead(activeId);
+
+      const res = await friendsAPI.getMessages(activeId, 1, 100);
+      const raw = res?.data?.messages || res?.data || [];
+      const list = raw.map((m) => ({
         _id: m._id || m.id,
-        senderId: m.senderId || m.sender || m.from,
+        senderId: m.sender?._id || m.senderId || m.sender || m.from,
         content: m.content || "",
         createdAt: m.createdAt || m.created_date || new Date().toISOString(),
+        read: !!m.read,
       }));
-      setMessages(normalized);
+      setMessages(list);
 
-      // mark unread as read (best-effort if API exists)
-      try {
-        // if backend exposes bulk read, you can call it here
-      } catch {}
-      // scroll to bottom
+      // reset marqueurs
+      setTypingFromPeer(false);
+      setReadPeers((s) => {
+        const ns = new Set(s);
+        ns.delete(String(activeId));
+        return ns;
+      });
+
+      // scroll bas
       queueMicrotask(() => {
-        if (listRef.current)
-          listRef.current.scrollTop = listRef.current.scrollHeight;
+        if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
       });
     })();
-  }, [activeId]);
+  }, [activeId, joinConversation, markMessagesAsRead]);
 
-  /* --------------------------- Realtime (optional) --------------------------- */
+  /* --------------------------- socket listeners --------------------------- */
+
   useEffect(() => {
-    if (!socketCtx?.socket) return;
-    const onIncoming = (payload) => {
-      // payload: {senderId, content, createdAt}
+    if (!socket) return;
+
+    const onNewMessage = (payload) => {
+      const m = payload.message;
+      const fromId = m.sender?._id?.toString?.() || m.sender?.toString?.() || m.sender || m.senderId;
+
       setMessages((prev) => [
         ...prev,
         {
-          _id: payload._id || Math.random().toString(36),
-          senderId: payload.senderId,
-          content: payload.content,
-          createdAt: payload.createdAt || new Date().toISOString(),
+          _id: m._id,
+          senderId: fromId,
+          content: m.content,
+          createdAt: m.created_date || m.createdAt || new Date().toISOString(),
+          read: m.read || false,
         },
       ]);
 
-      // bump conversation preview/unread
+      // déplacer conversation en haut + aperçu
       setConversations((prev) => {
         const copy = [...prev];
-        const idx = copy.findIndex(
-          (c) => String(c.userId) === String(payload.senderId)
-        );
+        const idx = copy.findIndex((c) => String(c.userId) === String(fromId));
         if (idx > -1) {
-          copy[idx] = {
+          const updated = {
             ...copy[idx],
+            unread:
+              String(activeId) === String(fromId) ? 0 : (copy[idx].unread || 0) + 1,
             lastMessage: {
-              content: payload.content,
-              createdAt: payload.createdAt || new Date().toISOString(),
+              content: m.content,
+              createdAt: m.created_date || new Date().toISOString(),
               fromMe: false,
             },
-            unread:
-              String(activeId) === String(payload.senderId)
-                ? 0
-                : (copy[idx].unread || 0) + 1,
           };
-          // move to top
-          const [spliced] = copy.splice(idx, 1);
-          copy.unshift(spliced);
+          copy.splice(idx, 1);
+          copy.unshift(updated);
         }
         return copy;
       });
 
-      queueMicrotask(() => {
-        if (listRef.current)
-          listRef.current.scrollTop = listRef.current.scrollHeight;
-      });
+      // si c'est la conversation active → marquer lus
+      if (String(activeId) === String(fromId)) {
+        markMessagesAsRead(fromId);
+        queueMicrotask(() => {
+          if (listRef.current)
+            listRef.current.scrollTop = listRef.current.scrollHeight;
+        });
+      }
     };
 
-    socketCtx.socket.on?.("message:receive", onIncoming);
+    const onTyping = (data) => {
+      if (String(data.userId) === String(activeId)) {
+        setTypingFromPeer(!!data.isTyping);
+        if (data.isTyping) {
+          clearTimeout(typingTimer.current);
+          typingTimer.current = setTimeout(() => setTypingFromPeer(false), 2500);
+        }
+      }
+    };
+
+    const onRead = (data) => {
+      // le correspondant a lu → marquer tous mes messages vers lui comme "read"
+      const readerId = data.readerId;
+      setReadPeers((s) => new Set(s).add(String(readerId)));
+    };
+
+    socket.on("new-message", onNewMessage);
+    socket.on("user-typing", onTyping);
+    socket.on("messages-read", onRead);
+
     return () => {
-      socketCtx.socket.off?.("message:receive", onIncoming);
+      socket.off("new-message", onNewMessage);
+      socket.off("user-typing", onTyping);
+      socket.off("messages-read", onRead);
     };
-  }, [socketCtx, activeId]);
+  }, [socket, activeId, markMessagesAsRead]);
 
-  /* ------------------------------ Derived list ----------------------------- */
+  /* ----------------------------- derived state ---------------------------- */
 
   const filteredConvos = useMemo(() => {
-    let list = conversations.filter(
-      (c) =>
+    let list = conversations.filter((c) => {
+      const matchesSearch =
         c.name.toLowerCase().includes(search.toLowerCase()) ||
         (c.lastMessage?.content || "")
           .toLowerCase()
-          .includes(search.toLowerCase())
-    );
+          .includes(search.toLowerCase());
+
+      const matchesFilter =
+        (filters === "all") ||
+        (filters === "unread" && c.unread > 0) ||
+        (filters === "favorites" && c.favorite) ||
+        (filters === "groups" && c.isGroup);
+
+      return matchesSearch && matchesFilter;
+    });
+
     if (sort === "unread") {
-      list = list.sort((a, b) => (b.unread || 0) - (a.unread || 0));
+      list = [...list].sort((a, b) => (b.unread || 0) - (a.unread || 0));
     } else if (sort === "name") {
-      list = list.sort((a, b) => a.name.localeCompare(b.name));
+      list = [...list].sort((a, b) => a.name.localeCompare(b.name));
     } else {
-      // recent
-      list = list.sort(
+      list = [...list].sort(
         (a, b) =>
           new Date(b.lastMessage?.createdAt || 0) -
           new Date(a.lastMessage?.createdAt || 0)
       );
     }
     return list;
-  }, [conversations, search, sort]);
+  }, [conversations, filters, search, sort]);
 
   const activeConvo = useMemo(
     () => conversations.find((c) => String(c.userId) === String(activeId)),
     [conversations, activeId]
   );
 
-  /* ------------------------------ Send message ----------------------------- */
+  // messages groupés par date (pour chips de date)
+  const grouped = useMemo(() => {
+    const map = new Map();
+    messages.forEach((m) => {
+      const k = toDayKey(m.createdAt);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(m);
+    });
+    return Array.from(map.entries()).map(([k, arr]) => ({
+      key: k,
+      label: dayLabel(arr[0].createdAt),
+      items: arr,
+    }));
+  }, [messages]);
+
+  /* ------------------------------- sending ------------------------------- */
 
   const onSend = async () => {
     const content = text.trim();
     if (!content || !activeConvo) return;
+
     setSending(true);
 
-    // optimistic add
+    // optimistic
     const optimistic = {
       _id: `tmp_${Date.now()}`,
       senderId: user?._id,
       content,
       createdAt: new Date().toISOString(),
+      read: false,
     };
     setMessages((m) => [...m, optimistic]);
-
     setText("");
+
     queueMicrotask(() => {
-      if (listRef.current)
-        listRef.current.scrollTop = listRef.current.scrollHeight;
+      if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
     });
 
     try {
-      const res = await friendsAPI.sendMessage(activeConvo.userId, content);
-      const saved = res?.data || {};
-      setMessages((prev) =>
-        prev.map((m) => (m._id === optimistic._id ? { ...m, _id: saved._id || m._id } : m))
-      );
-      // update convo preview
+      // socket-first (avec ack géré par le provider)
+      await socketSend(activeConvo.userId, content, "text", optimistic._id);
+
+      // fallback REST best-effort (si non idempotent, laisse tel quel)
+      try {
+        await friendsAPI.sendMessage(activeConvo.userId, content, "text");
+      } catch {}
+
+      // maj aperçu
       setConversations((prev) =>
         prev.map((c) =>
           String(c.userId) === String(activeConvo.userId)
@@ -316,13 +404,8 @@ const Chat = () => {
             : c
         )
       );
-      // emit socket optionally
-      socketCtx?.socket?.emit?.("message:send", {
-        to: activeConvo.userId,
-        content,
-      });
     } catch (e) {
-      // rollback on error
+      // rollback
       setMessages((prev) => prev.filter((m) => m._id !== optimistic._id));
       alert("Failed to send message");
     } finally {
@@ -330,25 +413,69 @@ const Chat = () => {
     }
   };
 
-  /* --------------------------------- UI ---------------------------------- */
+  /* ------------------------------ typing emit ----------------------------- */
+
+  const onType = (v) => {
+    setText(v);
+    if (!activeConvo) return;
+    startTyping(activeConvo.userId);
+    clearTimeout(typingTimer.current);
+    typingTimer.current = setTimeout(
+      () => stopTyping(activeConvo.userId),
+      1200
+    );
+  };
+
+  /* --------------------------------- UI --------------------------------- */
 
   return (
     <div className={styles.chatLayout}>
-      {/* ----------------------------- Left column ----------------------------- */}
+      {/* --------------------------- LEFT / Sidebar --------------------------- */}
       <aside className={styles.sidebar}>
+        <div className={styles.sidebarHead}>
+          <div className={styles.brandRow}>
+            <div className={styles.brandDot} />
+            <span className={styles.brand}>Throwback Chat</span>
+          </div>
+          <button className={styles.bellBtn} title="Notifications">
+            <FontAwesomeIcon icon={faBell} />
+          </button>
+        </div>
+
         <div className={styles.sidebarSearch}>
           <div className={styles.searchBox}>
             <FontAwesomeIcon icon={faMagnifyingGlass} />
             <input
-              placeholder="Search for user..."
+              placeholder="Search or start a chat"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <div className={styles.toolbarRow}>
-            <div className={styles.sort}>
-              <span>Sort</span>
+          <div className={styles.filterRow}>
+            <Chip active={filters === "all"} onClick={() => setFilters("all")}>
+              All
+            </Chip>
+            <Chip
+              active={filters === "unread"}
+              onClick={() => setFilters("unread")}
+            >
+              Unread
+            </Chip>
+            <Chip
+              active={filters === "favorites"}
+              onClick={() => setFilters("favorites")}
+            >
+              Favorites
+            </Chip>
+            <Chip
+              active={filters === "groups"}
+              onClick={() => setFilters("groups")}
+            >
+              Groups
+            </Chip>
+
+            <div className={styles.sortWrap}>
               <button
                 className={styles.sortBtn}
                 onClick={() =>
@@ -358,17 +485,13 @@ const Chat = () => {
                 }
                 title={`Sort: ${sort}`}
               >
-                <span className={styles.sortLabel}>
-                  {sort === "recent" ? "Recent" : sort === "unread" ? "Unread" : "Name"}
-                </span>
+                <span>{sort === "recent" ? "Recent" : sort === "unread" ? "Unread" : "Name"}</span>
                 <FontAwesomeIcon icon={faChevronDown} />
               </button>
+              <button className={styles.addBtn} title="New Chat">
+                <FontAwesomeIcon icon={faPlus} />
+              </button>
             </div>
-
-            <button className={styles.addNew}>
-              <span>Add New</span>
-              <FontAwesomeIcon icon={faPlus} />
-            </button>
           </div>
         </div>
 
@@ -381,31 +504,27 @@ const Chat = () => {
               onClick={() => setActiveId(c.userId)}
             />
           ))}
-
-          {(!loading && filteredConvos.length === 0) && (
-            <div className={styles.emptySidebar}>No conversations yet</div>
+          {filteredConvos.length === 0 && (
+            <div className={styles.emptySidebar}>No conversations</div>
           )}
         </div>
       </aside>
 
-      {/* ---------------------------- Right column ---------------------------- */}
+      {/* -------------------------- RIGHT / Thread --------------------------- */}
       <section className={styles.thread}>
         {activeConvo ? (
           <>
-            {/* Header */}
             <div className={styles.threadHeader}>
               <div className={styles.threadUser}>
                 <div className={styles.headerAvatar}>
                   {activeConvo.avatar ? (
                     <img src={activeConvo.avatar} alt={activeConvo.name} />
                   ) : (
-                    <span>{initialsOf(activeConvo.name)}</span>
+                    <span>{initials(activeConvo.name)}</span>
                   )}
                   <span
                     className={styles.headerDot}
-                    style={{
-                      backgroundColor: activeConvo.online ? "#10b981" : "#9ca3af",
-                    }}
+                    style={{ backgroundColor: activeConvo.online ? "#10b981" : "#9ca3af" }}
                   />
                 </div>
                 <div>
@@ -414,6 +533,7 @@ const Chat = () => {
                     <FontAwesomeIcon icon={faCircle} />
                     <span>
                       {activeConvo.online ? "Online" : "Last seen 3 hours ago"}
+                      {typingFromPeer ? " • typing…" : ""}
                     </span>
                   </div>
                 </div>
@@ -427,27 +547,48 @@ const Chat = () => {
                   <FontAwesomeIcon icon={faVideo} />
                 </button>
                 <button title="More">
-                  <FontAwesomeIcon icon={faEllipsis} />
+                  <FontAwesomeIcon icon={faEllipsisVertical} />
                 </button>
               </div>
             </div>
 
-            {/* Messages */}
             <div className={styles.messages} ref={listRef}>
-              {messages.map((m) => {
-                const me = String(m.senderId) === String(user?._id);
-                return (
-                  <MessageBubble
-                    key={m._id}
-                    me={me}
-                    msg={m}
-                    avatar={!me ? activeConvo.avatar : null}
-                  />
-                );
-              })}
+              {grouped.map((g) => (
+                <div key={g.key}>
+                  <div className={styles.dayChip}>{g.label}</div>
+                  {g.items.map((m) => {
+                    const me = String(m.senderId) === String(user?._id);
+                    const readByPeer = readPeers.has(String(activeConvo.userId));
+                    return (
+                      <Bubble
+                        key={m._id}
+                        me={me}
+                        msg={m}
+                        showStatus={me}
+                        readByPeer={readByPeer || m.read}
+                        avatar={!me ? activeConvo.avatar : null}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+
+              {typingFromPeer && (
+                <div className={`${styles.msgRow} ${styles.msgLeft}`}>
+                  <div className={styles.msgAvatar}>
+                    {activeConvo.avatar ? <img src={activeConvo.avatar} alt="" /> : <span />}
+                  </div>
+                  <div className={`${styles.msgBubble} ${styles.theirs}`}>
+                    <div className={styles.typing}>
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Input */}
             <div className={styles.inputBar}>
               <div className={styles.inputActions}>
                 <button title="Attach">
@@ -463,21 +604,22 @@ const Chat = () => {
 
               <input
                 className={styles.textField}
-                placeholder="Type your message..."
+                placeholder={isConnected ? "Type a message…" : "Connecting…"}
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => onType(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     onSend();
                   }
                 }}
+                disabled={!isConnected}
               />
 
               <button
                 className={styles.sendBtn}
                 onClick={onSend}
-                disabled={sending || text.trim().length === 0}
+                disabled={sending || text.trim().length === 0 || !isConnected}
                 title="Send"
               >
                 <FontAwesomeIcon icon={faPaperPlane} />
@@ -485,9 +627,7 @@ const Chat = () => {
             </div>
           </>
         ) : (
-          <div className={styles.threadEmpty}>
-            Select a conversation to start chatting
-          </div>
+          <div className={styles.threadEmpty}>Select a conversation to start chatting</div>
         )}
       </section>
     </div>
