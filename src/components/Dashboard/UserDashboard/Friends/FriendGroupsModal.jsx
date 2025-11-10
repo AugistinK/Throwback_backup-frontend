@@ -1,7 +1,17 @@
 // src/components/Dashboard/UserDashboard/Friends/FriendGroupsModal.jsx
 import React, { useState } from 'react';
-import { X, Plus, Edit2, Trash2, Users, Check } from 'lucide-react';
 import styles from './Friends.module.css';
+
+// Font Awesome
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faXmark,
+  faPlus,
+  faPen,
+  faTrash,
+  faUsers,
+  faCheck
+} from '@fortawesome/free-solid-svg-icons';
 
 const FriendGroupsModal = ({ groups, friends, onClose, onSave }) => {
   const [localGroups, setLocalGroups] = useState(groups);
@@ -91,11 +101,11 @@ const FriendGroupsModal = ({ groups, friends, onClose, onSave }) => {
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>
-            <Users size={24} />
+            <FontAwesomeIcon icon={faUsers} style={{ fontSize: 24 }} />
             Friend Groups
           </h2>
           <button className={styles.closeButton} onClick={onClose}>
-            <X size={24} />
+            <FontAwesomeIcon icon={faXmark} style={{ fontSize: 24 }} />
           </button>
         </div>
 
@@ -128,7 +138,7 @@ const FriendGroupsModal = ({ groups, friends, onClose, onSave }) => {
                       style={{ backgroundColor: color }}
                       onClick={() => setSelectedColor(color)}
                     >
-                      {selectedColor === color && <Check size={16} color="white" />}
+                      {selectedColor === color && <FontAwesomeIcon icon={faCheck} style={{ fontSize: 16, color: 'white' }} />}
                     </button>
                   ))}
                 </div>
@@ -195,14 +205,14 @@ const FriendGroupsModal = ({ groups, friends, onClose, onSave }) => {
                         onClick={() => handleEditGroup(group)}
                         title="Edit group"
                       >
-                        <Edit2 size={18} />
+                        <FontAwesomeIcon icon={faPen} style={{ fontSize: 18 }} />
                       </button>
                       <button 
                         className={`${styles.iconButton} ${styles.dangerButton}`}
                         onClick={() => handleDeleteGroup(group.id)}
                         title="Delete group"
                       >
-                        <Trash2 size={18} />
+                        <FontAwesomeIcon icon={faTrash} style={{ fontSize: 18 }} />
                       </button>
                     </div>
                   </div>
@@ -210,7 +220,7 @@ const FriendGroupsModal = ({ groups, friends, onClose, onSave }) => {
 
                 {localGroups.length === 0 && (
                   <div className={styles.emptyGroups}>
-                    <Users size={48} color="#ccc" />
+                    <FontAwesomeIcon icon={faUsers} style={{ fontSize: 48, color: '#ccc' }} />
                     <p>No groups yet</p>
                     <p className={styles.emptySubtext}>Create groups to organize your friends</p>
                   </div>
@@ -221,7 +231,7 @@ const FriendGroupsModal = ({ groups, friends, onClose, onSave }) => {
                 className={styles.createGroupButton}
                 onClick={() => setShowCreateForm(true)}
               >
-                <Plus size={20} />
+                <FontAwesomeIcon icon={faPlus} style={{ fontSize: 20 }} />
                 Create New Group
               </button>
             </>

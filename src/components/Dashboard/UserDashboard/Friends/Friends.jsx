@@ -1,16 +1,24 @@
-// src/components/Dashboard/UserDashboard/Friends/Friends.jsx
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, UserCheck, Search, Filter, MessageCircle, UsersRound } from 'lucide-react';
 import FriendCard from './FriendCard';
 import RequestCard from './RequestCard';
 import SuggestionCard from './SuggestionCard';
 import FriendGroupsModal from './FriendGroupsModal';
 import ChatModal from './ChatModal';
-// Remplacer le service existant par la nouvelle API
+import FriendProfileModal from './FriendProfileModal';
 import { friendsAPI } from '../../../../utils/api';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { useAuth } from '../../../../contexts/AuthContext';
 import styles from './Friends.module.css';
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faUsers,
+  faUserPlus,
+  faUserCheck,
+  faMagnifyingGlass,
+  faFilter,
+  faMessage
+} from '@fortawesome/free-solid-svg-icons';
 
 const Friends = () => {
   const { user } = useAuth();
@@ -23,19 +31,21 @@ const Friends = () => {
   const [showGroupsModal, setShowGroupsModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedChatFriend, setSelectedChatFriend] = useState(null);
+
+  // NEW: profile modal states
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedProfileFriend, setSelectedProfileFriend] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // États pour les données
+  // Data
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [friendGroups, setFriendGroups] = useState([]);
 
-  // Charger les données initiales
-  useEffect(() => {
-    loadAllData();
-  }, []);
+  useEffect(() => { loadAllData(); }, []);
 
   const loadAllData = async () => {
     setLoading(true);
@@ -57,20 +67,19 @@ const Friends = () => {
 
   const loadFriends = async () => {
     try {
-      // Utiliser friendsAPI au lieu de friendsService
       const response = await friendsAPI.getFriends();
       if (response.success) {
-        // Enrichir avec le statut en ligne
         const enrichedFriends = response.data.map(friend => ({
           id: friend._id,
           name: `${friend.prenom} ${friend.nom}`,
           username: `@${friend.email.split('@')[0]}`,
           avatar: friend.photo_profil || '',
           status: isUserOnline(friend._id) ? 'online' : 'offline',
-          mutualFriends: 0, // À implémenter
+          mutualFriends: 0,
           location: friend.ville || 'Unknown',
-          favoriteGenres: [], // À implémenter
-          lastActive: isUserOnline(friend._id) ? 'Active now' : '2 hours ago'
+          favoriteGenres: [],
+          lastActive: isUserOnline(friend._id) ? 'Active now' : '2 hours ago',
+          bio: friend.bio || ''
         }));
         setFriends(enrichedFriends);
       } else {
@@ -83,7 +92,6 @@ const Friends = () => {
 
   const loadRequests = async () => {
     try {
-      // Utiliser friendsAPI au lieu de friendsService
       const response = await friendsAPI.getFriendRequests();
       if (response.success) {
         const enrichedRequests = response.data.map(req => ({
@@ -107,7 +115,6 @@ const Friends = () => {
 
   const loadSuggestions = async () => {
     try {
-      // Utiliser friendsAPI au lieu de friendsService
       const response = await friendsAPI.getFriendSuggestions();
       if (response.success) {
         const enrichedSuggestions = response.data.map(sug => ({
@@ -131,7 +138,6 @@ const Friends = () => {
 
   const loadFriendGroups = async () => {
     try {
-      // Utiliser friendsAPI au lieu de friendsService
       const response = await friendsAPI.getFriendGroups();
       if (response.success) {
         const mappedGroups = response.data.map(group => ({
@@ -149,22 +155,13 @@ const Friends = () => {
     }
   };
 
-  // Handlers avec meilleure gestion des erreurs
+  // Actions
   const handleAcceptRequest = async (friendshipId) => {
     try {
-      console.log(`Accepting friendship request: ${friendshipId}`);
-      
-      // Utiliser friendsAPI avec sa gestion d'erreur améliorée
       const response = await friendsAPI.acceptFriendRequest(friendshipId);
-      
       if (response.success) {
-        console.log('Request accepted successfully:', response);
-        
-        // Supprimer de la liste des demandes
         const acceptedRequest = requests.find(r => r.id === friendshipId);
         setRequests(prev => prev.filter(r => r.id !== friendshipId));
-        
-        // Ajouter aux amis
         if (acceptedRequest) {
           const newFriend = {
             ...acceptedRequest,
@@ -172,49 +169,27 @@ const Friends = () => {
             lastActive: 'Active now'
           };
           setFriends(prev => [...prev, newFriend]);
-          
-          // Notifier via Socket.IO
-          try {
-            notifyFriendRequestAccepted(acceptedRequest.id);
-            console.log('Socket notification sent');
-          } catch (socketError) {
-            console.warn('Socket notification failed:', socketError);
-          }
+          try { notifyFriendRequestAccepted(acceptedRequest.id); } catch {}
         } else {
-          console.warn('Accepted request not found in local state');
-          // Recharger les amis pour être sûr d'avoir des données à jour
           loadFriends();
         }
-        
         alert('Friend request accepted!');
       } else {
-        // Même en cas d'erreur d'API, on met à jour l'UI
         const failedRequest = requests.find(r => r.id === friendshipId);
         if (failedRequest) {
           setRequests(prev => prev.filter(r => r.id !== friendshipId));
           setFriends(prev => [...prev, {
-            ...failedRequest,
-            status: 'offline',
-            lastActive: 'Recently'
+            ...failedRequest, status: 'offline', lastActive: 'Recently'
           }]);
         }
-        
-        console.warn('API reported failure but UI updated:', response.message);
         alert('Friend request accepted! (Server sync may be pending)');
       }
     } catch (err) {
       console.error('Error accepting request:', err);
-      
-      // Même en cas d'exception, on peut mettre à jour l'UI
-      const requestToAccept = requests.find(r => r.id === friendshipId);
-      if (requestToAccept) {
+      const req = requests.find(r => r.id === friendshipId);
+      if (req) {
         setRequests(prev => prev.filter(r => r.id !== friendshipId));
-        setFriends(prev => [...prev, {
-          ...requestToAccept,
-          status: 'offline',
-          lastActive: 'Recently'
-        }]);
-        
+        setFriends(prev => [...prev, { ...req, status: 'offline', lastActive: 'Recently' }]);
         alert('Friend request accepted! (UI updated, server sync pending)');
       } else {
         alert('Error accepting friend request. Please try again.');
@@ -224,49 +199,26 @@ const Friends = () => {
 
   const handleRejectRequest = async (friendshipId) => {
     try {
-      // Utiliser friendsAPI au lieu de friendsService
       const response = await friendsAPI.rejectFriendRequest(friendshipId);
-      if (response.success) {
-        setRequests(prev => prev.filter(r => r.id !== friendshipId));
-        alert('Friend request rejected');
-      } else {
-        // Même si l'API échoue, on peut mettre à jour l'UI
-        setRequests(prev => prev.filter(r => r.id !== friendshipId));
+      setRequests(prev => prev.filter(r => r.id !== friendshipId));
+      if (!response.success) {
         console.warn('API reported failure but UI updated:', response.message);
-        alert('Friend request rejected! (Server sync may be pending)');
       }
     } catch (err) {
       console.error('Error rejecting request:', err);
-      // Quand même supprimer la demande de l'UI
       setRequests(prev => prev.filter(r => r.id !== friendshipId));
-      alert('Friend request rejected. (UI updated, server sync pending)');
     }
   };
 
   const handleAddFriend = async (userId) => {
     try {
-      // Utiliser friendsAPI au lieu de friendsService
       const response = await friendsAPI.sendFriendRequest(userId);
-      if (response.success) {
-        const suggestion = suggestions.find(s => s.id === userId);
-        setSuggestions(prev => prev.filter(s => s.id !== userId));
-        
-        // Notifier via Socket.IO
-        if (suggestion && user) {
-          try {
-            notifyFriendRequest(userId, `${user.prenom} ${user.nom}`);
-          } catch (socketErr) {
-            console.warn('Socket notification failed:', socketErr);
-          }
-        }
-        
-        alert('Friend request sent!');
-      } else {
-        // Même si l'API échoue, on peut mettre à jour l'UI
-        setSuggestions(prev => prev.filter(s => s.id !== userId));
-        console.warn('API reported failure but UI updated:', response.message);
-        alert('Friend request sent! (Server sync may be pending)');
+      const suggestion = suggestions.find(s => s.id === userId);
+      setSuggestions(prev => prev.filter(s => s.id !== userId));
+      if (suggestion && user) {
+        try { notifyFriendRequest(userId, `${user.prenom} ${user.nom}`); } catch {}
       }
+      if (!response.success) console.warn('API reported failure but UI updated:', response.message);
     } catch (err) {
       console.error('Error sending friend request:', err);
       alert('Error sending friend request');
@@ -276,22 +228,12 @@ const Friends = () => {
   const handleRemoveFriend = async (friendId) => {
     if (window.confirm('Are you sure you want to unfriend this person?')) {
       try {
-        // Utiliser friendsAPI au lieu de friendsService
         const response = await friendsAPI.removeFriend(friendId);
-        if (response.success) {
-          setFriends(prev => prev.filter(f => f.id !== friendId));
-          alert('Friend removed');
-        } else {
-          // Même si l'API échoue, on peut mettre à jour l'UI
-          setFriends(prev => prev.filter(f => f.id !== friendId));
-          console.warn('API reported failure but UI updated:', response.message);
-          alert('Friend removed! (Server sync may be pending)');
-        }
+        setFriends(prev => prev.filter(f => f.id !== friendId));
+        if (!response.success) console.warn('API reported failure but UI updated:', response.message);
       } catch (err) {
         console.error('Error removing friend:', err);
-        // On supprime quand même de l'UI
         setFriends(prev => prev.filter(f => f.id !== friendId));
-        alert('Friend removed. (UI updated, server sync pending)');
       }
     }
   };
@@ -301,17 +243,41 @@ const Friends = () => {
     setShowChatModal(true);
   };
 
-  const handleViewProfile = (friendId) => {
-    console.log('View profile:', friendId);
-    // Navigation vers le profil
+  // NEW: open profile modal (with optional fetch if not in local list)
+  const handleViewProfile = async (friendId) => {
+    let f = friends.find(x => x.id === friendId);
+
+    if (!f && friendsAPI?.getFriendById) {
+      try {
+        const res = await friendsAPI.getFriendById(friendId);
+        if (res?.success && res?.data) {
+          f = {
+            id: res.data._id,
+            name: `${res.data.prenom} ${res.data.nom}`,
+            username: `@${res.data.email?.split('@')[0]}`,
+            avatar: res.data.photo_profil || '',
+            status: isUserOnline(res.data._id) ? 'online' : 'offline',
+            mutualFriends: 0,
+            location: res.data.ville || 'Unknown',
+            favoriteGenres: res.data.favoriteGenres || [],
+            lastActive: isUserOnline(res.data._id) ? 'Active now' : 'Recently',
+            bio: res.data.bio || ''
+          };
+        }
+      } catch (e) {
+        console.warn('getFriendById failed, using minimal profile');
+      }
+    }
+
+    if (!f) f = { id: friendId, name: 'Friend', username: '@user', status: 'offline' };
+
+    setSelectedProfileFriend(f);
+    setShowProfileModal(true);
   };
 
   const handleSaveGroups = async (updatedGroups) => {
     try {
-      // Sauvegarder les groupes modifiés
       let success = true;
-      
-      // Trouver les groupes ajoutés, modifiés et supprimés
       const existingIds = friendGroups.map(g => g.id);
       const newGroups = updatedGroups.filter(g => !existingIds.includes(g.id));
       const deletedGroups = friendGroups.filter(g => !updatedGroups.find(ug => ug.id === g.id));
@@ -320,67 +286,35 @@ const Friends = () => {
         JSON.stringify(g) !== JSON.stringify(friendGroups.find(eg => eg.id === g.id))
       );
       
-      // Créer les nouveaux groupes
       for (const newGroup of newGroups) {
-        try {
-          await friendsAPI.createFriendGroup({
-            name: newGroup.name,
-            members: newGroup.members,
-            color: newGroup.color
-          });
-        } catch (err) {
-          console.error(`Failed to create group ${newGroup.name}:`, err);
-          success = false;
-        }
+        try { await friendsAPI.createFriendGroup({ name: newGroup.name, members: newGroup.members, color: newGroup.color }); }
+        catch { success = false; }
       }
-      
-      // Mettre à jour les groupes existants
       for (const group of modifiedGroups) {
-        try {
-          await friendsAPI.updateFriendGroup(group.id, {
-            name: group.name,
-            members: group.members,
-            color: group.color
-          });
-        } catch (err) {
-          console.error(`Failed to update group ${group.name}:`, err);
-          success = false;
-        }
+        try { await friendsAPI.updateFriendGroup(group.id, { name: group.name, members: group.members, color: group.color }); }
+        catch { success = false; }
       }
-      
-      // Supprimer les groupes effacés
       for (const group of deletedGroups) {
-        try {
-          await friendsAPI.deleteFriendGroup(group.id);
-        } catch (err) {
-          console.error(`Failed to delete group ${group.name}:`, err);
-          success = false;
-        }
+        try { await friendsAPI.deleteFriendGroup(group.id); }
+        catch { success = false; }
       }
-      
-      // Mettre à jour l'état local
       setFriendGroups(updatedGroups);
-      
-      if (success) {
-        alert('Groups updated successfully!');
-      } else {
-        alert('Groups updated with some errors. UI updated, some server changes may be pending.');
-      }
+      if (!success) alert('Groups updated with some errors. UI updated, some server changes may be pending.');
+      else alert('Groups updated successfully!');
     } catch (err) {
       console.error('Error saving groups:', err);
-      setFriendGroups(updatedGroups); // Mettre quand même à jour l'UI
+      setFriendGroups(updatedGroups);
       alert('Groups updated with errors. UI updated, server sync may be pending.');
     }
   };
 
-  // Fonction utilitaire pour formater les dates
+  // Utils
   const formatDate = (date) => {
     if (!date) return 'Recently';
     const d = new Date(date);
     const now = new Date();
     const diff = now - d;
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
     if (days === 0) return 'Today';
     if (days === 1) return 'Yesterday';
     if (days < 7) return `${days} days ago`;
@@ -396,9 +330,9 @@ const Friends = () => {
   });
 
   const tabs = [
-    { id: 'friends', label: 'My Friends', count: friends.length, icon: Users },
-    { id: 'requests', label: 'Requests', count: requests.length, icon: UserPlus },
-    { id: 'suggestions', label: 'Suggestions', count: suggestions.length, icon: UserCheck }
+    { id: 'friends', label: 'My Friends', count: friends.length, icon: faUsers },
+    { id: 'requests', label: 'Requests', count: requests.length, icon: faUserPlus },
+    { id: 'suggestions', label: 'Suggestions', count: suggestions.length, icon: faUserCheck }
   ];
 
   if (loading) {
@@ -432,7 +366,7 @@ const Friends = () => {
         <div className={styles.headerContent}>
           <div>
             <h1 className={styles.title}>
-              <Users size={32} />
+              <FontAwesomeIcon icon={faUsers} style={{ fontSize: 32 }} />
               Friends
             </h1>
             <p className={styles.subtitle}>Connect with people who love the same throwback music</p>
@@ -442,7 +376,7 @@ const Friends = () => {
               className={styles.groupsButton}
               onClick={() => setShowGroupsModal(true)}
             >
-              <UsersRound size={20} />
+              <FontAwesomeIcon icon={faUsers} style={{ fontSize: 20 }} />
               Groups ({friendGroups.length})
             </button>
           </div>
@@ -451,27 +385,24 @@ const Friends = () => {
 
       {/* Tabs */}
       <div className={styles.tabs}>
-        {tabs.map(tab => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`${styles.tab} ${activeTab === tab.id ? styles.activeTab : ''}`}
-            >
-              <Icon size={20} />
-              <span className={styles.tabLabel}>{tab.label}</span>
-              <span className={styles.badge}>{tab.count}</span>
-            </button>
-          );
-        })}
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`${styles.tab} ${activeTab === tab.id ? styles.activeTab : ''}`}
+          >
+            <FontAwesomeIcon icon={tab.icon} style={{ fontSize: 20 }} />
+            <span className={styles.tabLabel}>{tab.label}</span>
+            <span className={styles.badge}>{tab.count}</span>
+          </button>
+        ))}
       </div>
 
       {/* Search and Filter */}
       {activeTab === 'friends' && (
         <div className={styles.searchBar}>
           <div className={styles.searchInput}>
-            <Search size={20} />
+            <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: 20 }} />
             <input
               type="text"
               placeholder="Search friends..."
@@ -485,29 +416,14 @@ const Friends = () => {
               className={styles.filterButton}
               onClick={() => setShowFilterMenu(!showFilterMenu)}
             >
-              <Filter size={20} />
+              <FontAwesomeIcon icon={faFilter} style={{ fontSize: 20 }} />
               <span>Filter</span>
             </button>
             {showFilterMenu && (
               <div className={styles.filterMenu}>
-                <button 
-                  onClick={() => { setFilterStatus('all'); setShowFilterMenu(false); }} 
-                  className={styles.filterOption}
-                >
-                  All Friends
-                </button>
-                <button 
-                  onClick={() => { setFilterStatus('online'); setShowFilterMenu(false); }} 
-                  className={styles.filterOption}
-                >
-                  Online Only
-                </button>
-                <button 
-                  onClick={() => { setFilterStatus('offline'); setShowFilterMenu(false); }} 
-                  className={styles.filterOption}
-                >
-                  Offline
-                </button>
+                <button onClick={() => { setFilterStatus('all'); setShowFilterMenu(false); }} className={styles.filterOption}>All Friends</button>
+                <button onClick={() => { setFilterStatus('online'); setShowFilterMenu(false); }} className={styles.filterOption}>Online Only</button>
+                <button onClick={() => { setFilterStatus('offline'); setShowFilterMenu(false); }} className={styles.filterOption}>Offline</button>
               </div>
             )}
           </div>
@@ -532,7 +448,7 @@ const Friends = () => {
               </div>
             ) : (
               <div className={styles.emptyState}>
-                <Users size={64} />
+                <FontAwesomeIcon icon={faUsers} style={{ fontSize: 64, opacity: 0.5 }} />
                 <h3>No friends found</h3>
                 <p>Try adjusting your search or filters</p>
               </div>
@@ -555,7 +471,7 @@ const Friends = () => {
               </div>
             ) : (
               <div className={styles.emptyState}>
-                <UserPlus size={64} />
+                <FontAwesomeIcon icon={faUserPlus} style={{ fontSize: 64, opacity: 0.5 }} />
                 <h3>No friend requests</h3>
                 <p>You're all caught up!</p>
               </div>
@@ -577,7 +493,7 @@ const Friends = () => {
               </div>
             ) : (
               <div className={styles.emptyState}>
-                <UserCheck size={64} />
+                <FontAwesomeIcon icon={faUserCheck} style={{ fontSize: 64, opacity: 0.5 }} />
                 <h3>No suggestions</h3>
                 <p>We'll suggest friends based on your interests</p>
               </div>
@@ -603,6 +519,18 @@ const Friends = () => {
             setShowChatModal(false);
             setSelectedChatFriend(null);
           }}
+        />
+      )}
+
+      {showProfileModal && selectedProfileFriend && (
+        <FriendProfileModal
+          friend={selectedProfileFriend}
+          onClose={() => {
+            setShowProfileModal(false);
+            setSelectedProfileFriend(null);
+          }}
+          onMessage={handleSendMessage}
+          onRemove={handleRemoveFriend}
         />
       )}
     </div>

@@ -1,7 +1,10 @@
 // src/components/Dashboard/UserDashboard/Friends/RequestCard.jsx
 import React from 'react';
-import { UserCheck, UserX, Music } from 'lucide-react';
 import styles from './Friends.module.css';
+
+// Font Awesome
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUserCheck, faUserXmark, faMusic } from '@fortawesome/free-solid-svg-icons';
 
 const RequestCard = ({ request, onAccept, onReject }) => {
   const getInitials = (name) => {
@@ -40,7 +43,7 @@ const RequestCard = ({ request, onAccept, onReject }) => {
 
         {request.favoriteGenres && request.favoriteGenres.length > 0 && (
           <div className={styles.musicTags}>
-            <Music size={14} />
+            <FontAwesomeIcon icon={faMusic} style={{ fontSize: 14 }} />
             {request.favoriteGenres.map((genre, index) => (
               <span key={index} className={styles.genreTag}>{genre}</span>
             ))}
@@ -53,14 +56,14 @@ const RequestCard = ({ request, onAccept, onReject }) => {
           className={styles.acceptButton}
           onClick={() => onAccept(request.id)}
         >
-          <UserCheck size={18} />
+          <FontAwesomeIcon icon={faUserCheck} style={{ fontSize: 18 }} />
           Accept
         </button>
         <button 
           className={styles.rejectButton}
           onClick={() => onReject(request.id)}
         >
-          <UserX size={18} />
+          <FontAwesomeIcon icon={faUserXmark} style={{ fontSize: 18 }} />
           Decline
         </button>
       </div>

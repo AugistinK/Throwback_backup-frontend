@@ -125,7 +125,7 @@ const friendsAPI = {
       return response.data;
       
     } catch (error) {
-      console.error('❌ Error accepting friend request:', error);
+      console.error(' Error accepting friend request:', error);
       
       // Ne plus simuler de réponse - retourner l'erreur réelle
       return { 
@@ -156,7 +156,7 @@ const friendsAPI = {
       return response.data;
       
     } catch (error) {
-      console.error('❌ Error rejecting friend request:', error);
+      console.error(' Error rejecting friend request:', error);
       
       return { 
         success: false, 

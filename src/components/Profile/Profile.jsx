@@ -130,15 +130,14 @@ export default function Profile() {
       <div className={styles.main}>
         <div className={styles.content}>
           <div className={styles.topButtons} style={{ justifyContent: 'center', marginBottom: 32 }}>
-            {/* ✅ CORRECTION: Ajouter onClick={handleFriendlyClick} */}
+           
             <button 
               className={`${styles.friendlyBtn} ${activeBtn === 'friendly' ? styles.active : ''}`} 
               onClick={handleFriendlyClick}
             >
-              + Friendly
+              Friendly
             </button>
             
-            {/* ✅ CORRECTION: Ajouter onClick={handleMessageClick} */}
             <button 
               className={`${styles.messageBtn} ${activeBtn === 'message' ? styles.active : ''}`} 
               onClick={handleMessageClick}

@@ -5,7 +5,7 @@ import playlistAPI from './playlistAPI';
 import searchAPI from './searchAPI';
 import socialAPI from './socialAPI';
 import { adminAPI } from './adminAPI';
-import friendsAPI from './friendsAPI'; //  Import corrigé
+import friendsAPI from './friendsAPI'; 
 
 //  Configuration de base (espace en trop supprimé à la fin de l'URL)
 const BASE_URL = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
@@ -38,7 +38,7 @@ api.interceptors.request.use(
       config.url.includes('/memories') || 
       config.url.includes('/like') || 
       config.url.includes('/profile') ||
-      config.url.includes('/friends') //  Ajout pour debug amis
+      config.url.includes('/friends') 
     ) {
       console.log(` API Request: ${config.method?.toUpperCase()} ${config.url}`);
       if (config.data && typeof config.data !== 'object') {

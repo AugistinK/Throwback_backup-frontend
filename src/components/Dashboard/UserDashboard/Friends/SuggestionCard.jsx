@@ -1,7 +1,10 @@
 // src/components/Dashboard/UserDashboard/Friends/SuggestionCard.jsx
 import React from 'react';
-import { UserPlus, Music, Sparkles } from 'lucide-react';
 import styles from './Friends.module.css';
+
+// Font Awesome
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUserPlus, faMusic, faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons';
 
 const SuggestionCard = ({ suggestion, onAdd }) => {
   const getInitials = (name) => {
@@ -11,7 +14,7 @@ const SuggestionCard = ({ suggestion, onAdd }) => {
   return (
     <div className={styles.card}>
       <div className={styles.suggestionBadge}>
-        <Sparkles size={14} />
+        <FontAwesomeIcon icon={faWandMagicSparkles} style={{ fontSize: 14 }} />
         Suggested
       </div>
 
@@ -44,7 +47,7 @@ const SuggestionCard = ({ suggestion, onAdd }) => {
 
         {suggestion.favoriteGenres && suggestion.favoriteGenres.length > 0 && (
           <div className={styles.musicTags}>
-            <Music size={14} />
+            <FontAwesomeIcon icon={faMusic} style={{ fontSize: 14 }} />
             {suggestion.favoriteGenres.map((genre, index) => (
               <span key={index} className={styles.genreTag}>{genre}</span>
             ))}
@@ -57,7 +60,7 @@ const SuggestionCard = ({ suggestion, onAdd }) => {
           className={styles.addButton}
           onClick={() => onAdd(suggestion.id)}
         >
-          <UserPlus size={18} />
+          <FontAwesomeIcon icon={faUserPlus} style={{ fontSize: 18 }} />
           Add Friend
         </button>
       </div>

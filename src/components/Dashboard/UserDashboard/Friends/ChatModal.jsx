@@ -1,9 +1,21 @@
 // src/components/Dashboard/UserDashboard/Friends/ChatModal.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Music, Image, Smile, MoreVertical, Phone, Video } from 'lucide-react';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { friendsAPI } from '../../../../utils/api';
 import styles from './Friends.module.css';
+
+// Font Awesome
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faXmark,
+  faPaperPlane,
+  faMusic,
+  faImage,
+  faSmile,
+  faEllipsisVertical,
+  faPhone,
+  faVideo
+} from '@fortawesome/free-solid-svg-icons';
 
 const ChatModal = ({ friend, onClose }) => {
   const { socket, sendMessage: socketSendMessage, joinConversation, startTyping, stopTyping, isConnected } = useSocket();
@@ -59,7 +71,6 @@ const ChatModal = ({ friend, onClose }) => {
 
     // Message envoyé confirmé
     const handleMessageSent = (data) => {
-      // Mettre à jour le message temporaire avec le vrai ID
       setMessages(prev => prev.map(msg => 
         msg.tempId === data.tempId 
           ? { ...msg, id: data.message._id, timestamp: formatTime(data.message.created_date) }
@@ -70,7 +81,6 @@ const ChatModal = ({ friend, onClose }) => {
     // Erreur d'envoi de message
     const handleMessageError = (data) => {
       console.error('Message error:', data.error);
-      // Supprimer le message temporaire
       setMessages(prev => prev.filter(msg => msg.tempId !== data.tempId));
       alert(`Error sending message: ${data.error}`);
     };
@@ -98,7 +108,7 @@ const ChatModal = ({ friend, onClose }) => {
   const loadMessages = async () => {
     try {
       setLoading(true);
-      const response = await friendsAPI.getMessages(friend.id, page, 50); // Modifié ici
+      const response = await friendsAPI.getMessages(friend.id, page, 50);
       
       if (response.success) {
         const formattedMessages = response.data.messages.map(msg => ({
@@ -113,13 +123,11 @@ const ChatModal = ({ friend, onClose }) => {
         setMessages(prev => [...formattedMessages, ...prev]);
         setHasMore(response.data.pagination.page < response.data.pagination.totalPages);
       } else {
-        // Gestion d'erreur améliorée pour les réponses négatives
         console.error('Failed to load messages:', response.message);
       }
     } catch (err) {
       console.error('Error loading messages:', err);
-      // Traitement plus robuste des erreurs
-      setMessages(prev => prev); // Garder les messages existants
+      setMessages(prev => prev);
     } finally {
       setLoading(false);
     }
@@ -151,24 +159,18 @@ const ChatModal = ({ friend, onClose }) => {
       type: 'text'
     };
 
-    // Ajouter le message de manière optimiste
     setMessages(prev => [...prev, optimisticMessage]);
     setMessage('');
 
     try {
-      // Envoyer via Socket.IO
       await socketSendMessage(friend.id, message, 'text', tempId);
-      
-      // Fallback: si Socket échoue, utiliser l'API REST
       try {
-        await friendsAPI.sendMessage(friend.id, message, 'text'); // Modifié ici
+        await friendsAPI.sendMessage(friend.id, message, 'text'); 
       } catch (apiError) {
         console.log('Fallback API also failed:', apiError);
-        // Le message reste affiché en UI même si les deux méthodes échouent
       }
     } catch (err) {
       console.error('Error sending message:', err);
-      // On garde le message en UI même si l'envoi échoue
     }
   };
 
@@ -182,11 +184,9 @@ const ChatModal = ({ friend, onClose }) => {
   const handleInputChange = (e) => {
     setMessage(e.target.value);
 
-    // Indicateur de saisie
     if (isConnected && friend.id) {
       startTyping(friend.id);
 
-      // Arrêter l'indicateur après 2 secondes d'inactivité
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
@@ -231,16 +231,16 @@ const ChatModal = ({ friend, onClose }) => {
           
           <div className={styles.chatHeaderActions}>
             <button className={styles.chatActionButton} title="Voice call">
-              <Phone size={20} />
+              <FontAwesomeIcon icon={faPhone} style={{ fontSize: 20 }} />
             </button>
             <button className={styles.chatActionButton} title="Video call">
-              <Video size={20} />
+              <FontAwesomeIcon icon={faVideo} style={{ fontSize: 20 }} />
             </button>
             <button className={styles.chatActionButton} title="More options">
-              <MoreVertical size={20} />
+              <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 20 }} />
             </button>
             <button className={styles.closeButton} onClick={onClose}>
-              <X size={24} />
+              <FontAwesomeIcon icon={faXmark} style={{ fontSize: 24 }} />
             </button>
           </div>
         </div>
@@ -316,13 +316,13 @@ const ChatModal = ({ friend, onClose }) => {
         <form className={styles.chatInput} onSubmit={handleSendMessage}>
           <div className={styles.chatInputActions}>
             <button type="button" className={styles.chatInputButton} title="Add music">
-              <Music size={20} />
+              <FontAwesomeIcon icon={faMusic} style={{ fontSize: 20 }} />
             </button>
             <button type="button" className={styles.chatInputButton} title="Add image">
-              <Image size={20} />
+              <FontAwesomeIcon icon={faImage} style={{ fontSize: 20 }} />
             </button>
             <button type="button" className={styles.chatInputButton} title="Add emoji">
-              <Smile size={20} />
+              <FontAwesomeIcon icon={faSmile} style={{ fontSize: 20 }} />
             </button>
           </div>
           
@@ -342,7 +342,7 @@ const ChatModal = ({ friend, onClose }) => {
             className={styles.sendButton}
             disabled={!message.trim() || !isConnected}
           >
-            <Send size={20} />
+            <FontAwesomeIcon icon={faPaperPlane} style={{ fontSize: 20 }} />
           </button>
         </form>
 
