@@ -36,6 +36,7 @@ import PlaylistPlayer from './components/Dashboard/UserDashboard/Playlists/Playl
 import Search from './components/Dashboard/UserDashboard/Search/Search';
 import HelpAndSupport from './components/Profile/HelpAndSupport';
 import Friends from './components/Dashboard/UserDashboard/Friends';
+import Chat from './components/Dashboard/UserDashboard/Chat/Chat';
 
 // Admin Dashboard
 import AdminDashboard from './components/Dashboard/AdminDashboard';
@@ -128,7 +129,7 @@ function App() {
               <Route path="search" element={<Search />} />
               <Route path="help-support" element={<HelpAndSupport />} />
               <Route path="live" element={<LiveThrowback />} />
-              <Route path="chat" element={<UserTempPage title="ThrowBack Chat" />} />
+              <Route path="/dashboard/chat" element={<Chat />} />
               <Route path="discover" element={<UserTempPage title="Discover" />} />
               <Route path="favorites" element={<UserTempPage title="Your Favorites" />} />
               <Route path="notifications" element={<UserTempPage title="Notifications" />} />
