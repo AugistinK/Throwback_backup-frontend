@@ -18,6 +18,19 @@ const Chat = () => {
   const [activeTab, setActiveTab] = useState('all'); // all, unread, favorites, groups
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // ✅ FONCTION POUR CONVERTIR LES CHEMINS RELATIFS EN URLs ABSOLUES
+  const getImageUrl = (path) => {
+    if (!path) return 'https://via.placeholder.com/150';
+    if (path.startsWith('http')) return path;
+    
+    // Assurez-vous que le chemin commence par un slash
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    
+    // Utiliser l'URL complète du backend
+    const backendUrl = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
+    return `${backendUrl}${normalizedPath}`;
+  };
+
   // Charger les conversations
   useEffect(() => {
     loadConversations();
@@ -90,10 +103,19 @@ const Chat = () => {
       const response = await friendsAPI.getConversations();
       
       if (response.success) {
-        setConversations(response.data);
+        // ✅ TRANSFORMER LES URLs DES AVATARS
+        const conversationsWithImages = response.data.map(conv => ({
+          ...conv,
+          participant: {
+            ...conv.participant,
+            photo_profil: getImageUrl(conv.participant.photo_profil)
+          }
+        }));
+        
+        setConversations(conversationsWithImages);
         
         // Calculer le nombre total de messages non lus
-        const total = response.data.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+        const total = conversationsWithImages.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
         setUnreadCount(total);
       }
     } catch (err) {
