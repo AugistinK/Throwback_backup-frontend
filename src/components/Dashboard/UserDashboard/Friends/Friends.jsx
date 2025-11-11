@@ -45,6 +45,19 @@ const Friends = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [friendGroups, setFriendGroups] = useState([]);
 
+  // ✅ FONCTION POUR CONVERTIR LES CHEMINS RELATIFS EN URLs ABSOLUES
+  const getImageUrl = (path) => {
+    if (!path) return 'https://via.placeholder.com/150';
+    if (path.startsWith('http')) return path;
+    
+    // Assurez-vous que le chemin commence par un slash
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    
+    // Utiliser l'URL complète du backend
+    const backendUrl = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
+    return `${backendUrl}${normalizedPath}`;
+  };
+
   useEffect(() => { loadAllData(); }, []);
 
   const loadAllData = async () => {
@@ -73,7 +86,7 @@ const Friends = () => {
           id: friend._id,
           name: `${friend.prenom} ${friend.nom}`,
           username: `@${friend.email.split('@')[0]}`,
-          avatar: friend.photo_profil || '',
+          avatar: getImageUrl(friend.photo_profil), // ✅ CONVERTI EN URL COMPLÈTE
           status: isUserOnline(friend._id) ? 'online' : 'offline',
           mutualFriends: 0,
           location: friend.ville || 'Unknown',
@@ -98,7 +111,7 @@ const Friends = () => {
           id: req._id || req.friendshipId,
           name: req.nom ? `${req.prenom} ${req.nom}` : req.name,
           username: req.email ? `@${req.email.split('@')[0]}` : req.username,
-          avatar: req.photo_profil || req.avatar || '',
+          avatar: getImageUrl(req.photo_profil || req.avatar), // ✅ CONVERTI EN URL COMPLÈTE
           mutualFriends: 0,
           location: req.ville || 'Unknown',
           date: formatDate(req.requestDate || req.created_date),
@@ -121,7 +134,7 @@ const Friends = () => {
           id: sug._id,
           name: `${sug.prenom} ${sug.nom}`,
           username: `@${sug.email.split('@')[0]}`,
-          avatar: sug.photo_profil || '',
+          avatar: getImageUrl(sug.photo_profil), // ✅ CONVERTI EN URL COMPLÈTE
           mutualFriends: 0,
           location: sug.ville || 'Unknown',
           reason: sug.reason || 'Suggested for you',
@@ -255,7 +268,7 @@ const Friends = () => {
             id: res.data._id,
             name: `${res.data.prenom} ${res.data.nom}`,
             username: `@${res.data.email?.split('@')[0]}`,
-            avatar: res.data.photo_profil || '',
+            avatar: getImageUrl(res.data.photo_profil), // ✅ CONVERTI EN URL COMPLÈTE
             status: isUserOnline(res.data._id) ? 'online' : 'offline',
             mutualFriends: 0,
             location: res.data.ville || 'Unknown',

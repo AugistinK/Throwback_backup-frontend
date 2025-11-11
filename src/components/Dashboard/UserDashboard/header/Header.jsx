@@ -70,7 +70,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     
     // Utiliser l'URL complète du backend
-    const backendUrl = process.env.REACT_APP_API_URL || 'https://throwback-backend.onrender.com ';
+    const backendUrl = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com ';
     return `${backendUrl}${normalizedPath}`;
   };
 
