@@ -7,10 +7,10 @@
  */
 export const parseLinks = (text) => {
   if (!text) return '';
-  
+
   // Regex pour détecter les URLs
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  
+
   return text.replace(urlRegex, (url) => {
     return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="content-link">${url}</a>`;
   });
@@ -23,10 +23,10 @@ export const parseLinks = (text) => {
  */
 export const parseHashtags = (text) => {
   if (!text) return '';
-  
+
   // Regex pour détecter les hashtags (lettres, chiffres, accents)
   const hashtagRegex = /#([\w\u00C0-\u017F]+)/g;
-  
+
   return text.replace(hashtagRegex, (match, tag) => {
     return `<a href="/dashboard/wall?hashtag=${encodeURIComponent(tag)}" class="content-hashtag">${match}</a>`;
   });
@@ -39,10 +39,10 @@ export const parseHashtags = (text) => {
  */
 export const parseMentions = (text) => {
   if (!text) return '';
-  
+
   // Regex pour détecter les mentions
   const mentionRegex = /@([\w\u00C0-\u017F]+)/g;
-  
+
   return text.replace(mentionRegex, (match, username) => {
     return `<a href="/dashboard/profile/${username}" class="content-mention">${match}</a>`;
   });
@@ -50,21 +50,35 @@ export const parseMentions = (text) => {
 
 /**
  * Parse le contenu complet : liens, hashtags et mentions
- * @param {string} text - Texte à analyser
- * @param {object} options - Options de parsing
- * @returns {string} - Texte formaté avec tous les éléments cliquables
+ * ATTENTION : On évite le conflit de noms entre options et fonctions.
+ * On supporte à la fois l'ancien schéma (parseUrls/parseHashtags/parseMentions)
+ * et le nouveau (enableUrls/enableHashtags/enableMentions) pour rétro-compatibilité.
+ * @param {string} text
+ * @param {object} options
+ * @returns {string}
  */
 export const parseContent = (text, options = {}) => {
   if (!text) return '';
-  
+
   const {
+    // ancien schéma
     parseUrls = true,
-    parseHashtags = true,
-    parseMentions = false
+    parseHashtags: optHashtags = true,
+    parseMentions: optMentions = false,
+    // nouveau schéma
+    enableUrls,
+    enableHashtags,
+    enableMentions,
   } = options;
-  
-  let parsedText = text;
-  
+
+  const useUrls = typeof enableUrls === 'boolean' ? enableUrls : parseUrls;
+  const useHashtags =
+    typeof enableHashtags === 'boolean' ? enableHashtags : optHashtags;
+  const useMentions =
+    typeof enableMentions === 'boolean' ? enableMentions : optMentions;
+
+  let parsedText = String(text);
+
   // Échapper les caractères HTML dangereux d'abord
   parsedText = parsedText
     .replace(/&/g, '&amp;')
@@ -72,25 +86,25 @@ export const parseContent = (text, options = {}) => {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-  
+
   // Convertir les retours à la ligne en <br>
   parsedText = parsedText.replace(/\n/g, '<br>');
-  
+
   // Parser les URLs
-  if (parseUrls) {
+  if (useUrls) {
     parsedText = parseLinks(parsedText);
   }
-  
+
   // Parser les hashtags
-  if (parseHashtags) {
+  if (useHashtags) {
     parsedText = parseHashtags(parsedText);
   }
-  
+
   // Parser les mentions
-  if (parseMentions) {
+  if (useMentions) {
     parsedText = parseMentions(parsedText);
   }
-  
+
   return parsedText;
 };
 
@@ -101,11 +115,11 @@ export const parseContent = (text, options = {}) => {
  */
 export const extractHashtags = (text) => {
   if (!text) return [];
-  
+
   const hashtagRegex = /#([\w\u00C0-\u017F]+)/g;
   const matches = text.match(hashtagRegex) || [];
-  
-  return matches.map(tag => tag.substring(1)); // Enlever le #
+
+  return matches.map((tag) => tag.substring(1)); // Enlever le #
 };
 
 /**
@@ -115,7 +129,7 @@ export const extractHashtags = (text) => {
  */
 export const extractLinks = (text) => {
   if (!text) return [];
-  
+
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   return text.match(urlRegex) || [];
 };
@@ -126,5 +140,5 @@ export default {
   parseMentions,
   parseContent,
   extractHashtags,
-  extractLinks
+  extractLinks,
 };

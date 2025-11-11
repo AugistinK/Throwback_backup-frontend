@@ -183,11 +183,11 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const renderContent = (content) => {
     if (!content) return null;
     
-    // Utiliser le parser de contenu qui gère les liens et hashtags
+    // On garde les clés historiques (rétro-compatibles avec le nouveau parser)
     const parsedContent = parseContent(content, {
       parseUrls: true,
       parseHashtags: true,
-      parseMentions: false
+      parseMentions: false,
     });
     
     return <div dangerouslySetInnerHTML={{ __html: parsedContent }} />;
