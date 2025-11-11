@@ -3,40 +3,42 @@ import React, { useState, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faImage, 
-  faVideo, 
-  faMusic, 
-  faGlobe, 
-  faUserFriends, 
-  faLock, 
   faPaperPlane,
   faTimes
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
 import AvatarInitials from '../../../Common/AvatarInitials';
+import { getUserAvatarUrl } from '../../../../utils/imageHelper';
+import { extractHashtags } from '../../../../utils/contentParser';
 import styles from './CreatePostForm.module.css';
 
 const CreatePostForm = ({ onPostCreated }) => {
   const [content, setContent] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
-  const [visibility, setVisibility] = useState('PUBLIC');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const { user } = useAuth();
 
-  // Limites de taille pour les fichiers uniquement
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; 
+  // Limite de taille pour les fichiers - 10MB pour les images
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; 
 
-  // Gestion de l'upload de média
+  // Gestion de l'upload d'image uniquement
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Taille max 50MB
+    // Vérifier que c'est une image
+    if (!file.type.startsWith('image/')) {
+      setError('Only image files are allowed');
+      return;
+    }
+    
+    // Taille max 10MB
     if (file.size > MAX_FILE_SIZE) {
-      setError('The file is too large. Max size: 50MB');
+      setError('The file is too large. Max size: 10MB');
       return;
     }
     
@@ -54,7 +56,7 @@ const CreatePostForm = ({ onPostCreated }) => {
     }
   };
 
-  // Gestion du changement de contenu sans limite de caractères
+  // Gestion du changement de contenu
   const handleContentChange = (e) => {
     const newContent = e.target.value;
     setContent(newContent);
@@ -65,7 +67,7 @@ const CreatePostForm = ({ onPostCreated }) => {
     e.preventDefault();
     
     if (!content.trim() && !mediaFile) {
-      setError('Please add text or media to your post');
+      setError('Please add text or an image to your post');
       return;
     }
     
@@ -75,17 +77,18 @@ const CreatePostForm = ({ onPostCreated }) => {
       
       const formData = new FormData();
       formData.append('contenu', content);
-      formData.append('visibilite', visibility);
+      // Tous les posts sont PUBLIC par défaut
+      formData.append('visibilite', 'PUBLIC');
       
       if (mediaFile) {
         formData.append('media', mediaFile);
       }
       
       // Extraire les hashtags
-      const hashtags = content.match(/#[\w\u00C0-\u017F]+/g) || [];
+      const hashtags = extractHashtags(content);
       if (hashtags.length > 0) {
         hashtags.forEach((tag, index) => {
-          formData.append(`hashtags[${index}]`, tag.substring(1));
+          formData.append(`hashtags[${index}]`, tag);
         });
       }
       
@@ -93,23 +96,22 @@ const CreatePostForm = ({ onPostCreated }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      // Reset
+      // Reset du formulaire
       setContent('');
       setMediaFile(null);
       setMediaPreview(null);
-      setVisibility('PUBLIC');
       
       if (onPostCreated) {
-        onPostCreated(response.data?.data);
+        onPostCreated(response.data?.data || response.data);
       }
     } catch (err) {
-      console.error('Erreur lors de la création du post:', err);
+      console.error('Error creating post:', err);
       
       // Gestion détaillée des erreurs
       if (err.response?.status === 400) {
         setError(err.response?.data?.message || 'Invalid data. Please check your post.');
       } else if (err.response?.status === 413) {
-        setError('The file or content is too large');
+        setError('The file is too large');
       } else {
         setError(err.response?.data?.message || 'An error occurred while publishing');
       }
@@ -118,55 +120,31 @@ const CreatePostForm = ({ onPostCreated }) => {
     }
   };
 
-  const renderVisibilityIcon = () => {
-    switch (visibility) {
-      case 'PUBLIC':
-        return <FontAwesomeIcon icon={faGlobe} />;
-      case 'FRIENDS':
-        return <FontAwesomeIcon icon={faUserFriends} />;
-      case 'PRIVATE':
-        return <FontAwesomeIcon icon={faLock} />;
-      default:
-        return <FontAwesomeIcon icon={faGlobe} />;
-    }
-  };
-
-  const toggleVisibility = () => {
-    const visibilities = ['PUBLIC', 'FRIENDS', 'PRIVATE'];
-    const currentIndex = visibilities.indexOf(visibility);
-    const nextIndex = (currentIndex + 1) % visibilities.length;
-    setVisibility(visibilities[nextIndex]);
-  };
+  // Obtenir l'URL de l'avatar de l'utilisateur
+  const avatarUrl = getUserAvatarUrl(user);
 
   return (
     <div className={styles.createPostContainer}>
       <form onSubmit={handleSubmit} className={styles.createPostForm}>
         <div className={styles.userInfo}>
-          {user?.photo_profil ? (
+          {avatarUrl ? (
             <img 
-              src={user.photo_profil} 
-              alt={`${user.prenom} ${user.nom}`} 
+              src={avatarUrl} 
+              alt={`${user?.prenom} ${user?.nom}`} 
               className={styles.userAvatar}
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.nextElementSibling.style.display = 'flex';
               }}
             />
-          ) : (
-            <AvatarInitials 
-              user={user} 
-              className={styles.userAvatar} 
-            />
-          )}
+          ) : null}
+          <AvatarInitials 
+            user={user} 
+            className={styles.userAvatar}
+            style={{ display: avatarUrl ? 'none' : 'flex' }}
+          />
           <div className={styles.userName}>
             {user?.prenom} {user?.nom}
-          </div>
-          <div className={styles.visibilitySelector} onClick={toggleVisibility}>
-            {renderVisibilityIcon()}
-            <span className={styles.visibilityText}>
-              {visibility === 'PUBLIC' ? 'Public' : 
-               visibility === 'FRIENDS' ? 'Friends' : 'Private'}
-            </span>
           </div>
         </div>
         
@@ -178,13 +156,12 @@ const CreatePostForm = ({ onPostCreated }) => {
             disabled={loading}
             rows={mediaPreview ? 2 : 4}
             className={styles.textarea}
-
           />
           
-          {/* Compteur de caractères simple, sans avertissement */}
+          {/* Compteur de caractères */}
           <div className={styles.characterCounter}>
             <span className={styles.charCount}>
-              {content.length} caractères
+              {content.length} characters
             </span>
           </div>
         </div>
@@ -195,17 +172,12 @@ const CreatePostForm = ({ onPostCreated }) => {
               type="button" 
               className={styles.removeMediaButton}
               onClick={removeMedia}
+              title="Remove image"
             >
               <FontAwesomeIcon icon={faTimes} />
             </button>
             
-            {mediaFile?.type?.startsWith('image/') ? (
-              <img src={mediaPreview} alt="Preview" className={styles.mediaPreview} />
-            ) : mediaFile?.type?.startsWith('video/') ? (
-              <video src={mediaPreview} controls className={styles.mediaPreview} />
-            ) : mediaFile?.type?.startsWith('audio/') ? (
-              <audio src={mediaPreview} controls className={styles.audioPreview} />
-            ) : null}
+            <img src={mediaPreview} alt="Preview" className={styles.mediaPreview} />
           </div>
         )}
         
@@ -224,33 +196,11 @@ const CreatePostForm = ({ onPostCreated }) => {
               <span>Photo</span>
             </button>
             
-            <button 
-              type="button" 
-              onClick={() => fileInputRef.current?.click()}
-              className={styles.mediaButton}
-              disabled={loading}
-              title="Add video"
-            >
-              <FontAwesomeIcon icon={faVideo} />
-              <span>Video</span>
-            </button>
-            
-            <button 
-              type="button" 
-              onClick={() => fileInputRef.current?.click()}
-              className={styles.mediaButton}
-              disabled={loading}
-              title="Add audio"
-            >
-              <FontAwesomeIcon icon={faMusic} />
-              <span>Audio</span>
-            </button>
-            
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept="image/*, video/*, audio/*"
+              accept="image/*"
               style={{ display: 'none' }}
               disabled={loading}
             />
@@ -260,7 +210,6 @@ const CreatePostForm = ({ onPostCreated }) => {
             type="submit" 
             className={styles.submitButton}
             disabled={loading || (!content.trim() && !mediaFile)}
-            // condition isAtLimit retirée
           >
             {loading ? 'Posting...' : (
               <>

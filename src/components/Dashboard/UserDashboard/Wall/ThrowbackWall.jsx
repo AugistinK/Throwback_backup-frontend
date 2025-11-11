@@ -16,97 +16,57 @@ const ThrowbackWall = () => {
   const [hasMore, setHasMore] = useState(true);
   const [currentFilter, setCurrentFilter] = useState('all'); 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const { user, isAuthenticated, token, loadUser } = useAuth();
+  const { user, isAuthenticated, token } = useAuth();
 
-  // Fonction pour extraire l'ID utilisateur de manière sécurisée
+  // Fonction simplifiée pour obtenir l'ID utilisateur
   const getUserId = useCallback(() => {
     if (!user) return null;
     
-    // Vérifier toutes les propriétés possibles où l'ID pourrait se trouver
-    if (typeof user === 'string') return user;
+    // Essayer d'abord les propriétés standards
+    const userId = user.id || user._id;
     
-    // Option 1: ID direct au premier niveau
-    if (user.id) return user.id;
-    if (user._id) return user._id;
-    
-    // Option 2: ID dans un sous-objet (userData)
-    if (user.userData && typeof user.userData === 'object') {
-      if (user.userData.id) return user.userData.id;
-      if (user.userData._id) return user.userData._id;
+    // Convertir en string si c'est un ObjectId
+    if (userId) {
+      return typeof userId === 'string' ? userId : userId.toString();
     }
-    
-    // Option 3: Extraction d'autres champs potentiels contenant l'ID
-    if (user.userId) return user.userId;
-    if (user.user_id) return user.user_id;
-    
-    // Option 4: Recherche dans toutes les clés de l'objet utilisateur
-    for (const key in user) {
-      if ((key.toLowerCase().includes('id') || key === '_id') && 
-          typeof user[key] === 'string' && 
-          user[key].length > 8) {
-        return user[key];
-      }
-    }
-    
-    // Journaliser l'objet utilisateur pour débogage
-    console.log("Structure de l'objet utilisateur:", JSON.stringify(user, null, 2));
     
     return null;
   }, [user]);
 
-  // Fonction améliorée pour récupérer les posts avec une meilleure gestion des erreurs
+  // Fonction pour récupérer les posts
   const fetchPosts = useCallback(async (page = 1, filter = 'all') => {
     try {
       setLoading(true);
       setError(null);
       
-      // Vérifier l'authentification pour le filtre personnel
-      if (filter === 'personal') {
-        if (!isAuthenticated || !token) {
-          console.log('Utilisateur non authentifié, basculement vers tous les posts');
-          setCurrentFilter('all');
-          filter = 'all'; // Forcer le filtre à 'all'
-        } else if (!user) {
-          // Essayer de recharger l'utilisateur
-          try {
-            await loadUser();
-          } catch (err) {
-            console.error("Impossible de charger les données utilisateur:", err);
-          }
-          
-          // Si toujours pas d'utilisateur, basculer vers 'all'
-          if (!user) {
-            console.log('Objet utilisateur non disponible, basculement vers tous les posts');
-            setCurrentFilter('all');
-            filter = 'all'; // Forcer le filtre à 'all'
-          }
-        }
-      }
+      console.log(`📥 Fetching posts - Page: ${page}, Filter: ${filter}`);
       
       // Construire les paramètres de requête
       let params = { page, limit: 10 };
       
-      // Extraction sécurisée de l'ID utilisateur pour le filtre personnel
+      // Pour le filtre personnel, ajouter l'ID de l'utilisateur
       if (filter === 'personal') {
         const userId = getUserId();
         
         if (!userId) {
-          console.warn('ID utilisateur introuvable', user);
-          throw new Error('Unable to identify your user account');
+          console.warn('⚠️ Cannot filter by user - ID not available');
+          setError('Unable to identify your user account. Please try logging in again.');
+          setCurrentFilter('all');
+          return;
         }
         
         params.auteur = userId;
-        console.log(`Filtrage des posts par utilisateur: ${userId}`);
+        console.log(`👤 Filtering by user ID: ${userId}`);
       }
       
-      console.log('Paramètres de requête:', params);
+      console.log('📤 Request params:', params);
       
-      // Utiliser socialAPI au lieu de api directement
+      // Récupérer les posts via l'API
       const response = await socialAPI.getAllPosts(params);
       
-      // Vérification des résultats
+      // Extraire les posts de la réponse
       const newPosts = response.data || (Array.isArray(response) ? response : []);
-      console.log(`Posts reçus: ${newPosts.length}`);
+      console.log(`✅ Received ${newPosts.length} posts`);
       
       const pagination = response.pagination || {
         page: page,
@@ -125,14 +85,17 @@ const ThrowbackWall = () => {
       // Vérifier s'il y a plus de pages à charger
       setHasMore(pagination.page < pagination.totalPages);
       setCurrentPage(pagination.page);
+      
+      console.log(`📊 Pagination: Page ${pagination.page}/${pagination.totalPages}, Total: ${pagination.total}`);
+      
     } catch (err) {
-      console.error('Erreur lors du chargement des posts:', err);
+      console.error('❌ Error loading posts:', err);
       
       // Message d'erreur spécifique selon le type d'erreur
       if (err.response?.status === 401) {
         setError('Your session has expired. Please sign in again.');
-      } else if (err.message.includes('identify your user account')) {
-        setError(err.message);
+      } else if (err.response?.status === 403) {
+        setError('You do not have permission to view these posts.');
       } else {
         setError('Unable to load posts. Please try again later.');
       }
@@ -145,57 +108,57 @@ const ThrowbackWall = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, token, user, loadUser, getUserId]);
+  }, [getUserId]);
 
-  // Recharger les posts lorsque le contexte d'authentification change
+  // Recharger les posts lorsque le filtre change
   useEffect(() => {
+    console.log(`🔄 Effect triggered - Filter: ${currentFilter}, Trigger: ${refreshTrigger}`);
     fetchPosts(1, currentFilter);
-  }, [currentFilter, refreshTrigger, isAuthenticated, fetchPosts]);
+  }, [currentFilter, refreshTrigger, fetchPosts]);
 
   // Fonction pour charger plus de posts
   const loadMore = () => {
     if (!loading && hasMore) {
+      console.log(`⏬ Loading more posts - Page ${currentPage + 1}`);
       fetchPosts(currentPage + 1, currentFilter);
     }
   };
 
   // Fonction pour rafraîchir les posts
   const refreshPosts = () => {
+    console.log('🔄 Refreshing posts');
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // Fonction pour changer le filtre avec vérification d'authentification
+  // Fonction pour changer le filtre
   const changeFilter = (filter) => {
+    console.log(`🔀 Changing filter from ${currentFilter} to ${filter}`);
+    
     // Si on essaie de passer au filtre personnel sans être authentifié
-    if (filter === 'personal' && (!isAuthenticated || !token)) {
-      console.log('Tentative de filtrage personnel sans authentification');
+    if (filter === 'personal' && !isAuthenticated) {
+      console.log('⚠️ Cannot switch to personal filter - Not authenticated');
       alert('Please sign in to view your personal posts');
       return;
     }
     
-    // Si on essaie de passer au filtre personnel sans pouvoir identifier l'utilisateur
+    // Si on essaie de passer au filtre personnel sans ID utilisateur
     if (filter === 'personal' && !getUserId()) {
-      console.log('Tentative de filtrage personnel sans ID utilisateur');
+      console.log('⚠️ Cannot switch to personal filter - User ID not available');
       alert('Your user profile is incomplete. Please sign in again.');
       return;
     }
     
     if (filter !== currentFilter) {
-      console.log(`Changement de filtre: ${currentFilter} -> ${filter}`);
       setCurrentFilter(filter);
       setCurrentPage(1);
       setPosts([]); // Vider les posts lors du changement de filtre
-      
-      // Forcer un petit délai pour éviter les problèmes de rendu
-      setTimeout(() => {
-        fetchPosts(1, filter);
-      }, 10);
     }
   };
 
   // Fonction pour ajouter un nouveau post à la liste
   const addPost = (newPost) => {
     if (newPost && (newPost._id || newPost.id)) {
+      console.log('➕ Adding new post:', newPost._id || newPost.id);
       setPosts(prevPosts => [newPost, ...prevPosts]);
     }
   };
@@ -203,11 +166,12 @@ const ThrowbackWall = () => {
   // Fonction pour mettre à jour un post
   const updatePost = (updatedPost) => {
     if (!updatedPost || (!updatedPost._id && !updatedPost.id)) {
-      console.error('Invalid post update received');
+      console.error('❌ Invalid post update received');
       return;
     }
     
     const postId = updatedPost._id || updatedPost.id;
+    console.log('✏️ Updating post:', postId);
     
     setPosts(prevPosts => 
       prevPosts.map(post => {
@@ -220,6 +184,8 @@ const ThrowbackWall = () => {
   // Fonction pour supprimer un post
   const deletePost = (postId) => {
     if (!postId) return;
+    
+    console.log('🗑️ Deleting post:', postId);
     
     setPosts(prevPosts => prevPosts.filter(post => {
       const currentId = post._id || post.id;
@@ -236,7 +202,7 @@ const ThrowbackWall = () => {
               <CreatePostForm onPostCreated={addPost} />
             </div>
             
-            {/* Barre de filtres améliorée avec état d'authentification */}
+            {/* Barre de filtres */}
             <div className={styles.filterBar}>
               <button 
                 className={`${styles.filterButton} ${currentFilter === 'all' ? styles.active : ''}`}
@@ -249,27 +215,21 @@ const ThrowbackWall = () => {
                 )}
               </button>
               
-              {isAuthenticated && token ? (
-                <button 
-                  className={`${styles.filterButton} ${currentFilter === 'personal' ? styles.active : ''}`}
-                  onClick={() => changeFilter('personal')}
-                  data-filter="personal"
-                  disabled={!getUserId()}
-                >
-                  My posts
-                  {posts.length > 0 && currentFilter === 'personal' && (
-                    <span className={styles.filterCount}>{posts.length}</span>
-                  )}
-                </button>
-              ) : (
-                <button 
-                  className={`${styles.filterButton} ${styles.disabled}`}
-                  onClick={() => alert('Please log in to view your posts')}
-                >
-                  My posts
+              <button 
+                className={`${styles.filterButton} ${currentFilter === 'personal' ? styles.active : ''} ${!isAuthenticated || !getUserId() ? styles.disabled : ''}`}
+                onClick={() => changeFilter('personal')}
+                data-filter="personal"
+                disabled={!isAuthenticated || !getUserId()}
+                title={!isAuthenticated ? 'Please sign in to view your posts' : ''}
+              >
+                My posts
+                {posts.length > 0 && currentFilter === 'personal' && (
+                  <span className={styles.filterCount}>{posts.length}</span>
+                )}
+                {(!isAuthenticated || !getUserId()) && (
                   <span className={styles.loginRequired}>(Login required)</span>
-                </button>
-              )}
+                )}
+              </button>
             </div>
                       
             {error && (

@@ -96,3 +96,66 @@
     font-size: 0.8rem;
   }
 }
+
+/* Global styles for parsed content (links, hashtags, mentions) */
+
+/* Links in post content */
+.contentText a.content-link {
+  color: #1da1f2;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+  word-break: break-all;
+}
+
+.contentText a.content-link:hover {
+  color: #0d8bd9;
+  text-decoration: underline;
+}
+
+/* Hashtags in post content */
+.contentText a.content-hashtag {
+  color: #b31217;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.contentText a.content-hashtag:hover {
+  color: #fff;
+  background-color: #b31217;
+}
+
+/* Mentions in post content */
+.contentText a.content-mention {
+  color: #8b5cf6;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.contentText a.content-mention:hover {
+  color: #fff;
+  background-color: #8b5cf6;
+}
+
+/* Ensure proper spacing and line breaks */
+.contentText {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .contentText a.content-link,
+  .contentText a.content-hashtag,
+  .contentText a.content-mention {
+    font-size: 0.95em;
+  }
+}

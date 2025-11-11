@@ -8,9 +8,7 @@ import {
   faEllipsisV,
   faEdit,
   faTrash,
-  faGlobe,
-  faUserFriends,
-  faLock
+  faGlobe
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
@@ -18,8 +16,9 @@ import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { fr } from 'date-fns/locale';
 import CommentList from './CommentList';
 import AvatarInitials from '../../../Common/AvatarInitials';
-// Importation du composant EditPostForm fonctionnel
 import EditPostForm from './EditPostForm';
+import { getUserAvatarUrl, getPostMediaUrl } from '../../../../utils/imageHelper';
+import { parseContent } from '../../../../utils/contentParser';
 import { errorMessages } from '../../../../utils/errorMessages';
 import styles from './PostItem.module.css';
 
@@ -40,17 +39,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   const currentUserId = getUserId();
   const postAuthorId = getPostAuthorId();
   
-  // LOGS DE DIAGNOSTIC (à retirer en production)
-  useEffect(() => {
-    console.group(` POST ITEM - ${post._id}`);
-    console.log(" User:", user);
-    console.log(" Post:", post);
-    console.log(" Current User ID:", currentUserId);
-    console.log(" Post Author ID:", postAuthorId);
-    console.log(" IDs Match:", currentUserId === postAuthorId);
-    console.groupEnd();
-  }, [user, post, currentUserId, postAuthorId]);
-  
   // Vérification stricte de l'auteur avec conversion en string
   const isAuthor = currentUserId && postAuthorId && 
                   currentUserId.toString() === postAuthorId.toString();
@@ -68,8 +56,6 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
   // Permissions claires
   const canEdit = isAuthor;
   const canDelete = isAuthor || isAdmin;
-  
-  console.log("🔐 Permissions:", { isAuthor, isAdmin, canEdit, canDelete });
   
   const [liked, setLiked] = useState(post.likes?.includes(currentUserId));
   const [likeCount, setLikeCount] = useState(post.likes?.length || 0);
@@ -116,8 +102,8 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
         onUpdatePost(updatedPost);
       }
     } catch (err) {
-      console.error('Erreur lors du like/unlike:', err);
-      setError(errorMessages.postLike?.error || "Erreur lors du like");
+      console.error('Error liking/unliking:', err);
+      setError(errorMessages.postLike?.error || "Error liking post");
     } finally {
       setLoading(false);
     }
@@ -145,8 +131,8 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
       
       alert('Link copied to clipboard!');
     } catch (err) {
-      console.error('Erreur lors du partage:', err);
-      setError(errorMessages.postShare?.error || "Erreur lors du partage");
+      console.error('Error sharing post:', err);
+      setError(errorMessages.postShare?.error || "Error sharing post");
     } finally {
       setLoading(false);
     }
@@ -162,7 +148,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
 
   // FONCTION INTÉGRÉE: Suppression du post
   const handleDeletePost = async () => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce post ?')) {
+    if (!window.confirm('Are you sure you want to delete this post?')) {
       return;
     }
     
@@ -177,27 +163,13 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
         onDeletePost(post._id);
       }
     } catch (err) {
-      console.error('Erreur lors de la suppression du post:', err);
+      console.error('Error deleting post:', err);
       setError(err.response?.data?.message || 
               errorMessages.postDelete?.error || 
-              "Erreur lors de la suppression du post");
+              "Error deleting post");
     } finally {
       setLoading(false);
       setShowDropdown(false);
-    }
-  };
-
-  // Fonction pour afficher l'icône de visibilité
-  const renderVisibilityIcon = (visibility) => {
-    switch (visibility) {
-      case 'PUBLIC':
-        return <FontAwesomeIcon icon={faGlobe} />;
-      case 'FRIENDS':
-        return <FontAwesomeIcon icon={faUserFriends} />;
-      case 'PRIVATE':
-        return <FontAwesomeIcon icon={faLock} />;
-      default:
-        return <FontAwesomeIcon icon={faGlobe} />;
     }
   };
 
@@ -207,15 +179,23 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     locale: fr
   });
 
-  // Afficher le contenu avec les hashtags cliquables
+  // Afficher le contenu avec les liens et hashtags cliquables
   const renderContent = (content) => {
-    const contentWithHashtags = content.replace(
-      /#[\w\u00C0-\u017F]+/g, 
-      match => `<a href="/dashboard/wall?hashtag=${encodeURIComponent(match.substring(1))}" class="${styles.hashtag}">${match}</a>`
-    );
+    if (!content) return null;
     
-    return <div dangerouslySetInnerHTML={{ __html: contentWithHashtags }} />;
+    // Utiliser le parser de contenu qui gère les liens et hashtags
+    const parsedContent = parseContent(content, {
+      parseUrls: true,
+      parseHashtags: true,
+      parseMentions: false
+    });
+    
+    return <div dangerouslySetInnerHTML={{ __html: parsedContent }} />;
   };
+
+  // Obtenir les URLs correctes pour les avatars et médias
+  const authorAvatarUrl = getUserAvatarUrl(post.auteur);
+  const postMediaUrl = post.media ? getPostMediaUrl(post.media) : null;
 
   // Si le mode édition est actif, utiliser le composant EditPostForm
   if (isEditing) {
@@ -234,22 +214,22 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     <div className={styles.postItem}>
       <div className={styles.postHeader}>
         <div className={styles.userInfo}>
-          {post.auteur?.photo_profil ? (
+          {authorAvatarUrl ? (
             <img 
-              src={post.auteur.photo_profil} 
-              alt={`${post.auteur.prenom} ${post.auteur.nom}`} 
+              src={authorAvatarUrl} 
+              alt={`${post.auteur?.prenom} ${post.auteur?.nom}`} 
               className={styles.userAvatar}
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.nextElementSibling.style.display = 'flex';
               }}
             />
-          ) : (
-            <AvatarInitials 
-              user={post.auteur} 
-              className={styles.userAvatar} 
-            />
-          )}
+          ) : null}
+          <AvatarInitials 
+            user={post.auteur} 
+            className={styles.userAvatar}
+            style={{ display: authorAvatarUrl ? 'none' : 'flex' }}
+          />
           <div className={styles.userDetails}>
             <div className={styles.userName}>
               {post.auteur?.prenom} {post.auteur?.nom}
@@ -257,7 +237,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
             <div className={styles.postMetadata}>
               <span className={styles.postDate}>{formattedDate}</span>
               <span className={styles.postVisibility}>
-                {renderVisibilityIcon(post.visibilite)}
+                <FontAwesomeIcon icon={faGlobe} />
               </span>
             </div>
           </div>
@@ -282,7 +262,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                     setShowDropdown(false);
                   }}>
                     <FontAwesomeIcon icon={faEdit} />
-                    <span>Modifier</span>
+                    <span>Edit</span>
                   </button>
                 )}
                 
@@ -290,7 +270,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
                 {canDelete && (
                   <button onClick={handleDeletePost}>
                     <FontAwesomeIcon icon={faTrash} />
-                    <span>Supprimer</span>
+                    <span>Delete</span>
                   </button>
                 )}
               </div>
@@ -304,28 +284,18 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           {renderContent(post.contenu)}
         </div>
         
-        {post.media && (
+        {postMediaUrl && post.type_media === 'IMAGE' && (
           <div className={styles.mediaContainer}>
-            {post.type_media === 'IMAGE' ? (
-              <img 
-                src={`${process.env.REACT_APP_API_URL || ''}${post.media}`} 
-                alt="Media" 
-                className={styles.postImage}
-                loading="lazy"
-              />
-            ) : post.type_media === 'VIDEO' ? (
-              <video 
-                src={`${process.env.REACT_APP_API_URL || ''}${post.media}`}
-                controls
-                className={styles.postVideo}
-              />
-            ) : post.type_media === 'AUDIO' ? (
-              <audio 
-                src={`${process.env.REACT_APP_API_URL || ''}${post.media}`}
-                controls
-                className={styles.postAudio}
-              />
-            ) : null}
+            <img 
+              src={postMediaUrl} 
+              alt="Post media" 
+              className={styles.postImage}
+              loading="lazy"
+              onError={(e) => {
+                console.error('Failed to load image:', postMediaUrl);
+                e.target.style.display = 'none';
+              }}
+            />
           </div>
         )}
       </div>

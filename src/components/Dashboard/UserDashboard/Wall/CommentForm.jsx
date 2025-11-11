@@ -5,6 +5,7 @@ import { faPaperPlane, faSpinner, faTimes } from '@fortawesome/free-solid-svg-ic
 import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../utils/api';
 import AvatarInitials from '../../../Common/AvatarInitials';
+import { getUserAvatarUrl } from '../../../../utils/imageHelper';
 import styles from './CommentForm.module.css';
 
 const CommentForm = ({ postId, parentId, onCommentAdded, onCancel, onError }) => {
@@ -66,25 +67,28 @@ const CommentForm = ({ postId, parentId, onCommentAdded, onCancel, onError }) =>
     }
   };
 
+  // Obtenir l'URL de l'avatar de l'utilisateur
+  const avatarUrl = getUserAvatarUrl(user);
+
   return (
     <form onSubmit={handleSubmit} className={styles.commentForm}>
       <div className={styles.formContent}>
-        {user?.photo_profil ? (
+        {avatarUrl ? (
           <img 
-            src={user.photo_profil} 
-            alt={`${user.prenom} ${user.nom}`} 
+            src={avatarUrl} 
+            alt={`${user?.prenom} ${user?.nom}`} 
             className={styles.userAvatar}
             onError={(e) => {
               e.target.style.display = 'none';
               e.target.nextElementSibling.style.display = 'flex';
             }}
           />
-        ) : (
-          <AvatarInitials 
-            user={user} 
-            className={styles.userAvatar} 
-          />
-        )}
+        ) : null}
+        <AvatarInitials 
+          user={user} 
+          className={styles.userAvatar}
+          style={{ display: avatarUrl ? 'none' : 'flex' }}
+        />
         
         <textarea
           placeholder="Write a comment..."
