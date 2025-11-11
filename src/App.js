@@ -1,4 +1,4 @@
-// src/App.js - VERSION AVEC SOCKET.IO
+// src/App.js - VERSION CORRIGÉE
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -89,11 +89,11 @@ function NotFoundRedirect() {
 function App() {
   return (
     <Router>
-      {/* ✅ IMPORTANT: AuthProvider doit envelopper SocketProvider */}
       <AuthProvider>
         <SocketProvider>
           <Routes>
             {/* Routes publiques */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -105,7 +105,7 @@ function App() {
 
             {/* Dashboard Protected + Nested Routes */}
             <Route
-              path="/dashboard/"
+              path="/dashboard"
               element={
                 <PrivateRoute allowedRoles={['user']}>
                   <DashboardLayout />
@@ -129,8 +129,11 @@ function App() {
               <Route path="search" element={<Search />} />
               <Route path="help-support" element={<HelpAndSupport />} />
               <Route path="live" element={<LiveThrowback />} />
-              <Route path="/messages" element={<Chat />} />
-              <Route path="/dashboard/chat" element={<Chat />} />
+              
+              {/* ✅ CORRECTION ICI - Chemins relatifs */}
+              <Route path="messages" element={<Chat />} />
+              <Route path="chat" element={<Chat />} />
+              
               <Route path="discover" element={<UserTempPage title="Discover" />} />
               <Route path="favorites" element={<UserTempPage title="Your Favorites" />} />
               <Route path="notifications" element={<UserTempPage title="Notifications" />} />
@@ -170,7 +173,6 @@ function App() {
               <Route path="posts/:postId" element={<PostDetails />} />
               <Route path="posts/moderation" element={<PostModeration />} />
               <Route path="likes" element={<AdminLikes />} />
-              {/* <Route path="messages" element={<TempPage title="Gestion des Messages" />} /> */}
               <Route path="friends" element={<TempPage title="Gestion des Amis" />} />
               <Route path="logs" element={<TempPage title="Logs Système" />} />
               <Route path="profile" element={<MyProfile />} />
@@ -178,7 +180,6 @@ function App() {
             </Route>
 
             {/* Fallbacks */}
-            <Route path="/" element={<LandingPage />} />
             <Route path="/index.html" element={<NotFoundRedirect />} />
             <Route path="*" element={<NotFoundRedirect />} />
           </Routes>
