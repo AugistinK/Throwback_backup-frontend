@@ -288,6 +288,216 @@ const videoAPI = {
 };
 
 // ============================================
+// CONVERSATIONS API (NOUVEAU)
+// ============================================
+
+const conversationsAPI = {
+  /**
+   * Récupérer toutes les conversations de l'utilisateur
+   */
+  getConversations: async () => {
+    try {
+      const response = await api.get('/api/conversations');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load conversations',
+        data: []
+      };
+    }
+  },
+
+  /**
+   * Récupérer ou créer une conversation directe
+   */
+  getOrCreateDirectConversation: async (friendId) => {
+    try {
+      const response = await api.post('/api/conversations/direct', { friendId });
+      return response.data;
+    } catch (error) {
+      console.error('Error getting/creating conversation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to create conversation'
+      };
+    }
+  },
+
+  /**
+   * Créer un groupe
+   */
+  createGroup: async (name, participants, description = '') => {
+    try {
+      const response = await api.post('/api/conversations/groups', {
+        name,
+        participants,
+        description
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating group:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to create group'
+      };
+    }
+  },
+
+  /**
+   * Mettre à jour un groupe
+   */
+  updateGroup: async (groupId, data) => {
+    try {
+      const response = await api.put(`/api/conversations/groups/${groupId}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating group:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update group'
+      };
+    }
+  },
+
+  /**
+   * Ajouter un participant à un groupe
+   */
+  addParticipantToGroup: async (groupId, participantId) => {
+    try {
+      const response = await api.post(
+        `/api/conversations/groups/${groupId}/participants`,
+        { participantId }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error adding participant:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to add participant'
+      };
+    }
+  },
+
+  /**
+   * Retirer un participant d'un groupe
+   */
+  removeParticipantFromGroup: async (groupId, participantId) => {
+    try {
+      const response = await api.delete(
+        `/api/conversations/groups/${groupId}/participants/${participantId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error removing participant:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to remove participant'
+      };
+    }
+  },
+
+  /**
+   * Archiver une conversation
+   */
+  archiveConversation: async (conversationId) => {
+    try {
+      const response = await api.put(`/api/conversations/${conversationId}/archive`);
+      return response.data;
+    } catch (error) {
+      console.error('Error archiving conversation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to archive conversation'
+      };
+    }
+  },
+
+  /**
+   * Désarchiver une conversation
+   */
+  unarchiveConversation: async (conversationId) => {
+    try {
+      const response = await api.put(`/api/conversations/${conversationId}/unarchive`);
+      return response.data;
+    } catch (error) {
+      console.error('Error unarchiving conversation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to unarchive conversation'
+      };
+    }
+  },
+
+  /**
+   * Épingler une conversation
+   */
+  pinConversation: async (conversationId) => {
+    try {
+      const response = await api.put(`/api/conversations/${conversationId}/pin`);
+      return response.data;
+    } catch (error) {
+      console.error('Error pinning conversation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to pin conversation'
+      };
+    }
+  },
+
+  /**
+   * Désépingler une conversation
+   */
+  unpinConversation: async (conversationId) => {
+    try {
+      const response = await api.put(`/api/conversations/${conversationId}/unpin`);
+      return response.data;
+    } catch (error) {
+      console.error('Error unpinning conversation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to unpin conversation'
+      };
+    }
+  },
+
+  /**
+   * Désactiver les notifications pour une conversation
+   */
+  muteConversation: async (conversationId, duration = null) => {
+    try {
+      const response = await api.put(`/api/conversations/${conversationId}/mute`, {
+        duration
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error muting conversation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to mute conversation'
+      };
+    }
+  },
+
+  /**
+   * Réactiver les notifications pour une conversation
+   */
+  unmuteConversation: async (conversationId) => {
+    try {
+      const response = await api.put(`/api/conversations/${conversationId}/unmute`);
+      return response.data;
+    } catch (error) {
+      console.error('Error unmuting conversation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to unmute conversation'
+      };
+    }
+  }
+};
+
+// ============================================
 // EXPORTS
 // ============================================
 
@@ -298,7 +508,8 @@ export { playlistAPI };
 export { searchAPI };
 export { socialAPI };
 export { adminAPI };
-export { friendsAPI }; //  Export corrigé
+export { friendsAPI }; 
+export { conversationsAPI };
 
 // Export par défaut de l'instance axios
 export default api;

@@ -129,6 +129,7 @@ function App() {
               <Route path="search" element={<Search />} />
               <Route path="help-support" element={<HelpAndSupport />} />
               <Route path="live" element={<LiveThrowback />} />
+              <Route path="/messages" element={<Chat />} />
               <Route path="/dashboard/chat" element={<Chat />} />
               <Route path="discover" element={<UserTempPage title="Discover" />} />
               <Route path="favorites" element={<UserTempPage title="Your Favorites" />} />
@@ -169,7 +170,7 @@ function App() {
               <Route path="posts/:postId" element={<PostDetails />} />
               <Route path="posts/moderation" element={<PostModeration />} />
               <Route path="likes" element={<AdminLikes />} />
-              <Route path="messages" element={<TempPage title="Gestion des Messages" />} />
+              {/* <Route path="messages" element={<TempPage title="Gestion des Messages" />} /> */}
               <Route path="friends" element={<TempPage title="Gestion des Amis" />} />
               <Route path="logs" element={<TempPage title="Logs Système" />} />
               <Route path="profile" element={<MyProfile />} />
