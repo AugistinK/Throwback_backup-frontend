@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import styles from './Podcasts.module.css';
+import { getApiEndpoint } from './imageUtils';
 
 const DeleteConfirmModal = ({ isOpen, onClose, podcastId, podcastTitle, onPodcastDeleted }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // Use API base URL
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
+  const API_BASE = getApiEndpoint();
 
   if (!isOpen) return null;
 
@@ -14,18 +13,13 @@ const DeleteConfirmModal = ({ isOpen, onClose, podcastId, podcastTitle, onPodcas
     try {
       setLoading(true);
       setError('');
-      
+
       const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error("You are not authenticated. Please log in again.");
-      }
-      
-      const response = await fetch(`${API_BASE_URL}/api/podcasts/${podcastId}`, {
+      if (!token) throw new Error('You are not authenticated. Please log in again.');
+
+      const response = await fetch(`${API_BASE}/podcasts/${podcastId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
 
       if (!response.ok) {
@@ -33,7 +27,6 @@ const DeleteConfirmModal = ({ isOpen, onClose, podcastId, podcastTitle, onPodcas
         throw new Error(errorData.message || 'Failed to delete podcast');
       }
 
-      // Call parent callback
       onPodcastDeleted(podcastId);
     } catch (err) {
       setError(err.message);
@@ -52,50 +45,32 @@ const DeleteConfirmModal = ({ isOpen, onClose, podcastId, podcastTitle, onPodcas
             <i className="fas fa-times"></i>
           </button>
         </div>
-        
+
         <div className={styles.modalBody}>
           <div className={styles.deleteWarning}>
             <i className="fas fa-exclamation-triangle"></i>
             <p>Are you sure you want to delete this podcast?</p>
           </div>
-          
+
           <p className={styles.deleteInfo}>
             You are about to delete: <strong>{podcastTitle}</strong>
           </p>
-          
-          <p className={styles.deletePermanent}>
-            This action cannot be undone.
-          </p>
-          
+
+          <p className={styles.deletePermanent}>This action cannot be undone.</p>
+
           {error && (
             <div className={styles.errorMessage}>
               <i className="fas fa-exclamation-circle"></i> {error}
             </div>
           )}
         </div>
-        
+
         <div className={styles.modalFooter}>
-          <button 
-            className={styles.cancelButton} 
-            onClick={onClose}
-            disabled={loading}
-          >
+          <button className={styles.cancelButton} onClick={onClose} disabled={loading}>
             Cancel
           </button>
-          <button 
-            className={styles.deleteButton} 
-            onClick={handleDelete}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <i className="fas fa-spinner fa-spin"></i> Deleting...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-trash"></i> Delete
-              </>
-            )}
+          <button className={styles.deleteButton} onClick={handleDelete} disabled={loading}>
+            {loading ? (<><i className="fas fa-spinner fa-spin"></i> Deleting...</>) : (<><i className="fas fa-trash"></i> Delete</>)}
           </button>
         </div>
       </div>

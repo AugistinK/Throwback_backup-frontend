@@ -1,14 +1,9 @@
-// file_create: /home/claude/AddPodcastModal.jsx
 import React, { useState, useEffect } from 'react';
 import styles from './Podcasts.module.css';
+import { getApiEndpoint } from './imageUtils';
 
 // Liste des plateformes supportées
-const PLATFORMS = [
-  'YouTube',
-  'Vimeo',
-  'Dailymotion',
-  'Autre'
-];
+const PLATFORMS = ['YouTube', 'Vimeo', 'Dailymotion', 'Autre'];
 
 // Liste des catégories disponibles
 const CATEGORIES = [
@@ -21,8 +16,8 @@ const CATEGORIES = [
 ];
 
 const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
-  
+  const API_BASE = getApiEndpoint();
+
   const [formData, setFormData] = useState({
     title: '',
     episode: '',
@@ -38,7 +33,7 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
     category: 'PERSONAL BRANDING',
     isPublished: true
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
@@ -47,7 +42,6 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
   const [videoIdPreview, setVideoIdPreview] = useState(null);
 
   useEffect(() => {
-    // Nettoyage lors de la fermeture du modal
     if (!isOpen) {
       setSelectedFile(null);
       setPreviewUrl('');
@@ -58,49 +52,29 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
 
   if (!isOpen) return null;
 
-  // Fonctions pour détecter la plateforme vidéo
   const detectVideoSource = (url) => {
     try {
       if (!url) return { platform: '', videoId: null };
-      
       const videoUrl = new URL(url);
       const hostname = videoUrl.hostname.toLowerCase();
-      
-      // YouTube
       if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
         let videoId;
-        if (hostname.includes('youtu.be')) {
-          videoId = videoUrl.pathname.substring(1);
-        } else if (videoUrl.pathname.includes('/embed/')) {
-          videoId = videoUrl.pathname.split('/embed/')[1];
-        } else if (videoUrl.pathname.includes('/shorts/')) {
-          videoId = videoUrl.pathname.split('/shorts/')[1];
-        } else {
-          videoId = videoUrl.searchParams.get('v');
-        }
+        if (hostname.includes('youtu.be')) videoId = videoUrl.pathname.substring(1);
+        else if (videoUrl.pathname.includes('/embed/')) videoId = videoUrl.pathname.split('/embed/')[1];
+        else if (videoUrl.pathname.includes('/shorts/')) videoId = videoUrl.pathname.split('/shorts/')[1];
+        else videoId = videoUrl.searchParams.get('v');
         return { platform: 'YouTube', videoId };
-      }
-      
-      // Vimeo
-      else if (hostname.includes('vimeo.com')) {
+      } else if (hostname.includes('vimeo.com')) {
         const pathParts = videoUrl.pathname.split('/').filter(Boolean);
         return { platform: 'Vimeo', videoId: pathParts[0] };
-      }
-      
-      // Dailymotion
-      else if (hostname.includes('dailymotion.com')) {
+      } else if (hostname.includes('dailymotion.com')) {
         const pathParts = videoUrl.pathname.split('/').filter(Boolean);
         let videoId = pathParts[pathParts.length - 1];
-        if (videoId.includes('video/')) {
-          videoId = videoId.split('video/')[1];
-        }
+        if (videoId.includes('video/')) videoId = videoId.split('video/')[1];
         return { platform: 'Dailymotion', videoId };
       }
-      
-      // Autre
       return { platform: 'Autre', videoId: null };
-    } catch (error) {
-      console.error('Error detecting video platform:', error);
+    } catch {
       return { platform: '', videoId: null };
     }
   };
@@ -110,7 +84,6 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
       case 'YouTube':
         return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
       case 'Vimeo':
-        // Pour Vimeo, idéalement utiliser l'API
         return '/images/vimeo-placeholder.jpg';
       case 'Dailymotion':
         return `https://www.dailymotion.com/thumbnail/video/${videoId}`;
@@ -121,22 +94,13 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
 
     if (name === 'videoUrl') {
       const { platform, videoId } = detectVideoSource(value);
       setDetectedPlatform(platform);
       setVideoIdPreview(videoId);
-      
-      if (videoId) {
-        const thumbnailUrl = getVideoThumbnailUrl(platform, videoId);
-        setPreviewUrl(thumbnailUrl);
-      } else {
-        setPreviewUrl('');
-      }
+      setPreviewUrl(videoId ? getVideoThumbnailUrl(platform, videoId) : '');
     }
 
     if (error) setError('');
@@ -154,53 +118,31 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
   };
 
   const validateForm = () => {
-    if (!formData.title.trim()) {
-      setError('Title is required');
-      return false;
-    }
-    if (!formData.episode.trim()) {
-      setError('Episode number is required');
-      return false;
-    }
-    if (!formData.videoUrl.trim()) {
-      setError('Video URL is required');
-      return false;
-    }
-    if (!formData.duration.trim()) {
-      setError('Duration is required');
-      return false;
-    }
-    
-    const { platform, videoId } = detectVideoSource(formData.videoUrl);
-    if (!platform) {
-      setError('Please enter a valid video URL');
-      return false;
-    }
-
+    if (!formData.title.trim()) return setError('Title is required'), false;
+    if (!formData.episode.trim()) return setError('Episode number is required'), false;
+    if (!formData.videoUrl.trim()) return setError('Video URL is required'), false;
+    if (!formData.duration.trim()) return setError('Duration is required'), false;
+    const { platform } = detectVideoSource(formData.videoUrl);
+    if (!platform) return setError('Please enter a valid video URL'), false;
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
+
     setLoading(true);
     setError('');
-    
+
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error("You are not authenticated. Please log in again.");
-      }
-      
+      if (!token) throw new Error('You are not authenticated. Please log in again.');
+
       const topicsArray = formData.topics
-        ? formData.topics.split(',').map(topic => topic.trim())
+        ? formData.topics.split(',').map(t => t.trim())
         : [];
-      
-      // Créer un FormData pour l'envoi de fichiers
+
       const formDataToSend = new FormData();
-      
-      // Ajouter les champs du formulaire
       formDataToSend.append('title', formData.title);
       formDataToSend.append('episode', formData.episode);
       formDataToSend.append('season', formData.season);
@@ -212,31 +154,22 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
       formDataToSend.append('publishDate', formData.publishDate);
       formDataToSend.append('category', formData.category);
       formDataToSend.append('isPublished', formData.isPublished);
-      
-      // Ajouter les topics en tant que JSON
       formDataToSend.append('topics', JSON.stringify(topicsArray));
-      
-      // Si un fichier a été sélectionné, l'ajouter
-      if (selectedFile) {
-        formDataToSend.append('coverImage', selectedFile);
-      }
-      
-      const response = await fetch(`${API_BASE_URL}/api/podcasts`, {
+      if (selectedFile) formDataToSend.append('coverImage', selectedFile);
+
+      const response = await fetch(`${API_BASE}/podcasts`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formDataToSend
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Server error' }));
         throw new Error(errorData.message || 'Failed to create podcast');
       }
-      
+
       const data = await response.json();
-      
-      // Réinitialiser le formulaire
+
       setFormData({
         title: '',
         episode: '',
@@ -256,9 +189,8 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
       setPreviewUrl('');
       setDetectedPlatform('');
       setVideoIdPreview(null);
-      
+
       onPodcastCreated(data.data);
-      
     } catch (err) {
       setError(err.message);
       console.error('Error creating podcast:', err);
@@ -268,29 +200,28 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
   };
 
   const handleClose = () => {
-    if (!loading) {
-      setFormData({
-        title: '',
-        episode: '',
-        season: '1',
-        videoUrl: '',
-        duration: '',
-        coverImage: null,
-        description: '',
-        guestName: '',
-        hostName: 'Mike Levis',
-        publishDate: new Date().toISOString().split('T')[0],
-        topics: '',
-        category: 'PERSONAL BRANDING',
-        isPublished: true
-      });
-      setSelectedFile(null);
-      setPreviewUrl('');
-      setDetectedPlatform('');
-      setVideoIdPreview(null);
-      setError('');
-      onClose();
-    }
+    if (loading) return;
+    setFormData({
+      title: '',
+      episode: '',
+      season: '1',
+      videoUrl: '',
+      duration: '',
+      coverImage: null,
+      description: '',
+      guestName: '',
+      hostName: 'Mike Levis',
+      publishDate: new Date().toISOString().split('T')[0],
+      topics: '',
+      category: 'PERSONAL BRANDING',
+      isPublished: true
+    });
+    setSelectedFile(null);
+    setPreviewUrl('');
+    setDetectedPlatform('');
+    setVideoIdPreview(null);
+    setError('');
+    onClose();
   };
 
   return (
@@ -302,7 +233,7 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
             <i className="fas fa-times"></i>
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className={styles.modalForm}>
           {error && (
             <div className={styles.errorMessage}>
@@ -312,70 +243,30 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
           )}
 
           <div className={styles.formGroup}>
-            <label htmlFor="title">
-              Title <span className={styles.required}>*</span>
-            </label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="Enter podcast title"
-              disabled={loading}
-              required
-            />
+            <label htmlFor="title">Title <span className={styles.required}>*</span></label>
+            <input type="text" id="title" name="title" value={formData.title}
+              onChange={handleChange} placeholder="Enter podcast title" disabled={loading} required />
           </div>
 
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
-              <label htmlFor="episode">
-                Episode Number <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="number"
-                id="episode"
-                name="episode"
-                value={formData.episode}
-                onChange={handleChange}
-                placeholder="1"
-                min="1"
-                disabled={loading}
-                required
-              />
+              <label htmlFor="episode">Episode Number <span className={styles.required}>*</span></label>
+              <input type="number" id="episode" name="episode" value={formData.episode}
+                onChange={handleChange} placeholder="1" min="1" disabled={loading} required />
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="season">
-                Season
-              </label>
-              <input
-                type="number"
-                id="season"
-                name="season"
-                value={formData.season}
-                onChange={handleChange}
-                placeholder="1"
-                min="1"
-                disabled={loading}
-              />
+              <label htmlFor="season">Season</label>
+              <input type="number" id="season" name="season" value={formData.season}
+                onChange={handleChange} placeholder="1" min="1" disabled={loading} />
             </div>
           </div>
 
           <div className={styles.formGroup}>
-            <label htmlFor="videoUrl">
-              Video URL <span className={styles.required}>*</span>
-            </label>
-            <input
-              type="url"
-              id="videoUrl"
-              name="videoUrl"
-              value={formData.videoUrl}
-              onChange={handleChange}
-              placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
-              disabled={loading}
-              required
-            />
+            <label htmlFor="videoUrl">Video URL <span className={styles.required}>*</span></label>
+            <input type="url" id="videoUrl" name="videoUrl" value={formData.videoUrl}
+              onChange={handleChange} placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+              disabled={loading} required />
             <small className={styles.formHelp}>
               {formData.videoUrl ? (
                 detectedPlatform ? (
@@ -387,26 +278,15 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
                     <i className="fas fa-exclamation-triangle"></i> Invalid video URL
                   </span>
                 )
-              ) : (
-                'Enter YouTube, Vimeo or Dailymotion URL'
-              )}
+              ) : ('Enter YouTube, Vimeo or Dailymotion URL')}
             </small>
           </div>
 
           <div className={styles.formGroup}>
-            <label htmlFor="coverImage">
-              Cover Image (Optional)
-            </label>
+            <label htmlFor="coverImage">Cover Image (Optional)</label>
             <div className={styles.fileUploadContainer}>
-              <input
-                type="file"
-                id="coverImage"
-                name="coverImage"
-                onChange={handleFileChange}
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                disabled={loading}
-                className={styles.fileInput}
-              />
+              <input type="file" id="coverImage" name="coverImage" onChange={handleFileChange}
+                accept="image/jpeg,image/png,image/webp,image/gif" disabled={loading} className={styles.fileInput}/>
               <label htmlFor="coverImage" className={styles.fileUploadButton}>
                 <i className="fas fa-upload"></i> {selectedFile ? 'Change Image' : 'Select Image'}
               </label>
@@ -435,157 +315,62 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
 
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
-              <label htmlFor="category">
-                Category
-              </label>
-              <select
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                disabled={loading}
-              >
-                {CATEGORIES.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
+              <label htmlFor="category">Category</label>
+              <select id="category" name="category" value={formData.category}
+                onChange={handleChange} disabled={loading}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="duration">
-                Duration (minutes) <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="number"
-                id="duration"
-                name="duration"
-                value={formData.duration}
-                onChange={handleChange}
-                placeholder="45"
-                min="1"
-                disabled={loading}
-                required
-              />
+              <label htmlFor="duration">Duration (minutes) <span className={styles.required}>*</span></label>
+              <input type="number" id="duration" name="duration" value={formData.duration}
+                onChange={handleChange} placeholder="45" min="1" disabled={loading} required />
             </div>
           </div>
 
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
-              <label htmlFor="guestName">
-                Guest Name
-              </label>
-              <input
-                type="text"
-                id="guestName"
-                name="guestName"
-                value={formData.guestName}
-                onChange={handleChange}
-                placeholder="Guest name (optional)"
-                disabled={loading}
-              />
+              <label htmlFor="guestName">Guest Name</label>
+              <input type="text" id="guestName" name="guestName" value={formData.guestName}
+                onChange={handleChange} placeholder="Guest name (optional)" disabled={loading} />
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="hostName">
-                Host Name
-              </label>
-              <input
-                type="text"
-                id="hostName"
-                name="hostName"
-                value={formData.hostName}
-                onChange={handleChange}
-                placeholder="Mike Levis"
-                disabled={loading}
-              />
+              <label htmlFor="hostName">Host Name</label>
+              <input type="text" id="hostName" name="hostName" value={formData.hostName}
+                onChange={handleChange} placeholder="Mike Levis" disabled={loading} />
             </div>
           </div>
 
           <div className={styles.formGroup}>
-            <label htmlFor="publishDate">
-              Publish Date
-            </label>
-            <input
-              type="date"
-              id="publishDate"
-              name="publishDate"
-              value={formData.publishDate}
-              onChange={handleChange}
-              disabled={loading}
-            />
+            <label htmlFor="publishDate">Publish Date</label>
+            <input type="date" id="publishDate" name="publishDate" value={formData.publishDate}
+              onChange={handleChange} disabled={loading} />
           </div>
 
           <div className={styles.formGroup}>
-            <label htmlFor="topics">
-              Topics (separated by commas)
-            </label>
-            <input
-              type="text"
-              id="topics"
-              name="topics"
-              value={formData.topics}
-              onChange={handleChange}
-              placeholder="music, history, career"
-              disabled={loading}
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="description">
-              Description
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Podcast description"
-              disabled={loading}
-              rows={4}
-            />
+            <label htmlFor="topics">Topics (separated by commas)</label>
+            <input type="text" id="topics" name="topics" value={formData.topics}
+              onChange={handleChange} placeholder="music, history, career" disabled={loading} />
           </div>
 
           <div className={styles.formGroup}>
             <label className={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                name="isPublished"
-                checked={formData.isPublished}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  isPublished: e.target.checked
-                }))}
-                disabled={loading}
-              />
+              <input type="checkbox" name="isPublished" checked={formData.isPublished}
+                onChange={(e) => setFormData(prev => ({ ...prev, isPublished: e.target.checked }))}
+                disabled={loading} />
               Publish immediately
             </label>
           </div>
         </form>
-        
+
         <div className={styles.modalFooter}>
-          <button 
-            type="button"
-            className={styles.cancelButton}
-            onClick={handleClose}
-            disabled={loading}
-          >
+          <button type="button" className={styles.cancelButton} onClick={handleClose} disabled={loading}>
             <i className="fas fa-times"></i> Cancel
           </button>
-          <button 
-            type="submit"
-            className={styles.submitButton}
-            onClick={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <i className="fas fa-spinner fa-spin"></i> Creating...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-plus"></i> Add Podcast
-              </>
-            )}
+          <button type="submit" className={styles.submitButton} onClick={handleSubmit} disabled={loading}>
+            {loading ? (<><i className="fas fa-spinner fa-spin"></i> Creating...</>) : (<><i className="fas fa-plus"></i> Add Podcast</>)}
           </button>
         </div>
       </div>
