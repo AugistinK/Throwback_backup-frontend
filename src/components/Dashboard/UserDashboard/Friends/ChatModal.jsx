@@ -1,10 +1,12 @@
-// src/components/Dashboard/UserDashboard/Friends/ChatModal.jsx
+// src/components/Dashboard/UserDashboard/Friends/ChatModal.jsx - VERSION COMPLÈTE
 import React, { useState, useRef, useEffect } from 'react';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { friendsAPI } from '../../../../utils/api';
-import styles from './Friends.module.css';
+import MessageContextMenu from './MessageContextMenu';
 import EmojiPicker from './EmojiPicker';
 import ConfirmModal from './ConfirmModal';
+import ForwardMessageModal from './ForwardMessageModal';
+import styles from './Friends.module.css';
 
 // Font Awesome
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -13,22 +15,32 @@ import {
   faPaperPlane,
   faSmile,
   faEllipsisVertical,
+  faArchive,
   faTrash,
-  faUserMinus,
   faFlag,
-  faArchive
+  faUserMinus
 } from '@fortawesome/free-solid-svg-icons';
 
 const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
-  const { socket, sendMessage: socketSendMessage, joinConversation, startTyping, stopTyping, isConnected } = useSocket();
+  const { 
+    socket, 
+    isConnected, 
+    sendMessage, 
+    joinConversation, 
+    startTyping, 
+    stopTyping, 
+    markMessagesAsRead 
+  } = useSocket();
+  
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
-  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [forwardModal, setForwardModal] = useState({ isOpen: false, message: null });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', data: null });
   
   const messagesEndRef = useRef(null);
@@ -47,93 +59,89 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     inputRef.current?.focus();
   }, []);
 
-  // Charger les messages initiaux
+  // Charger les messages
   useEffect(() => {
     loadMessages();
-    
-    if (isConnected && friend.id) {
+    if (isConnected) {
       joinConversation(friend.id);
     }
   }, [friend.id, isConnected]);
 
-  // Écouter les événements Socket.IO
+  // Écouter les nouveaux messages
   useEffect(() => {
     if (!socket) return;
 
     const handleNewMessage = (data) => {
-      if (data.message.sender._id === friend.id || data.message.receiver._id === friend.id) {
-        setMessages(prev => [...prev, {
-          id: data.message._id,
-          sender: data.message.sender._id === friend.id ? 'them' : 'me',
-          text: data.message.content,
-          timestamp: formatTime(data.message.created_date),
-          read: data.message.read,
-          type: data.message.type
-        }]);
+      if (data.message.sender._id === friend.id || data.message.sender === friend.id) {
+        setMessages(prev => [...prev, formatMessage(data.message)]);
+        markMessagesAsRead(friend.id);
       }
     };
 
-    const handleMessageSent = (data) => {
-      setMessages(prev => prev.map(msg => 
-        msg.tempId === data.tempId 
-          ? { ...msg, id: data.message._id, timestamp: formatTime(data.message.created_date) }
+    const handleMessageEdited = (data) => {
+      setMessages(prev => prev.map(msg =>
+        msg.id === data.messageId
+          ? { ...msg, text: data.content, edited: true, editedAt: data.editedAt }
           : msg
       ));
     };
 
-    const handleMessageError = (data) => {
-      console.error('Message error:', data.error);
-      setMessages(prev => prev.filter(msg => msg.tempId !== data.tempId));
-      setConfirmModal({
-        isOpen: true,
-        type: 'error',
-        data: {
-          title: 'Message Error',
-          message: `Failed to send message: ${data.error}`,
-          showCancel: false,
-          confirmText: 'OK'
-        }
-      });
+    const handleMessageDeleted = (data) => {
+      if (data.deletedForEveryone) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === data.messageId
+            ? { ...msg, deleted: true, text: 'This message was deleted' }
+            : msg
+        ));
+      } else {
+        setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
+      }
     };
 
     const handleUserTyping = (data) => {
       if (data.userId === friend.id) {
-        setIsOtherUserTyping(data.isTyping);
+        setTyping(data.isTyping);
+        if (data.isTyping) {
+          setTimeout(() => setTyping(false), 3000);
+        }
       }
     };
 
     socket.on('new-message', handleNewMessage);
-    socket.on('message-sent', handleMessageSent);
-    socket.on('message-error', handleMessageError);
+    socket.on('message-edited', handleMessageEdited);
+    socket.on('message-deleted', handleMessageDeleted);
     socket.on('user-typing', handleUserTyping);
 
     return () => {
       socket.off('new-message', handleNewMessage);
-      socket.off('message-sent', handleMessageSent);
-      socket.off('message-error', handleMessageError);
+      socket.off('message-edited', handleMessageEdited);
+      socket.off('message-deleted', handleMessageDeleted);
       socket.off('user-typing', handleUserTyping);
     };
   }, [socket, friend.id]);
 
+  const formatMessage = (msg) => ({
+    id: msg._id,
+    sender: msg.sender._id || msg.sender,
+    senderName: msg.sender.nom ? `${msg.sender.prenom} ${msg.sender.nom}` : 'Unknown',
+    text: msg.content,
+    timestamp: formatTime(msg.created_date),
+    type: msg.type,
+    edited: msg.edited || false,
+    editedAt: msg.editedAt,
+    deleted: msg.deleted || false,
+    forwarded: msg.forwarded || false,
+    replyTo: msg.replyTo
+  });
+
   const loadMessages = async () => {
     try {
       setLoading(true);
-      const response = await friendsAPI.getMessages(friend.id, page, 50);
-      
+      const response = await friendsAPI.getMessages(friend.id);
       if (response.success) {
-        const formattedMessages = response.data.messages.map(msg => ({
-          id: msg._id,
-          sender: msg.sender._id === friend.id ? 'them' : 'me',
-          text: msg.content,
-          timestamp: formatTime(msg.created_date),
-          read: msg.read,
-          type: msg.type
-        }));
-        
-        setMessages(prev => [...formattedMessages, ...prev]);
-        setHasMore(response.data.pagination.page < response.data.pagination.totalPages);
-      } else {
-        console.error('Failed to load messages:', response.message);
+        const formattedMessages = response.data.messages.map(formatMessage);
+        setMessages(formattedMessages);
+        markMessagesAsRead(friend.id);
       }
     } catch (err) {
       console.error('Error loading messages:', err);
@@ -149,35 +157,27 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     });
   };
 
-  const getInitials = (name) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!message.trim() || !isConnected) return;
 
-    const tempId = Date.now();
-    const optimisticMessage = {
-      id: null,
-      tempId,
-      sender: 'me',
-      text: message,
-      timestamp: formatTime(new Date()),
-      read: false,
-      type: 'text'
-    };
-
-    setMessages(prev => [...prev, optimisticMessage]);
+    const content = message.trim();
     setMessage('');
     setShowEmojiPicker(false);
+    stopTyping(friend.id);
 
     try {
-      await socketSendMessage(friend.id, message, 'text', tempId);
-      try {
-        await friendsAPI.sendMessage(friend.id, message, 'text'); 
-      } catch (apiError) {
-        console.log('Fallback API also failed:', apiError);
+      if (editingMessage) {
+        // Éditer le message
+        await friendsAPI.editMessage(editingMessage.id, content);
+        setEditingMessage(null);
+      } else if (replyingTo) {
+        // Répondre au message
+        await friendsAPI.replyToMessage(replyingTo.id, content);
+        setReplyingTo(null);
+      } else {
+        // Nouveau message
+        await sendMessage(friend.id, content, 'text');
       }
     } catch (err) {
       console.error('Error sending message:', err);
@@ -203,17 +203,22 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
 
   const handleInputChange = (e) => {
     setMessage(e.target.value);
-
-    if (isConnected && friend.id) {
+    
+    // Gestion du "typing indicator"
+    if (!typing && e.target.value) {
       startTyping(friend.id);
-
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      typingTimeoutRef.current = setTimeout(() => {
-        stopTyping(friend.id);
-      }, 2000);
+      setTyping(true);
     }
+    
+    // Reset timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    typingTimeoutRef.current = setTimeout(() => {
+      stopTyping(friend.id);
+      setTyping(false);
+    }, 1000);
   };
 
   const handleEmojiSelect = (emoji) => {
@@ -221,19 +226,122 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     inputRef.current?.focus();
   };
 
-  const handleClearChat = () => {
+  // Actions sur les messages
+  const handleReply = (msg) => {
+    setReplyingTo(msg);
+    setEditingMessage(null);
+    inputRef.current?.focus();
+  };
+
+  const handleEdit = (msg) => {
+    setEditingMessage(msg);
+    setMessage(msg.text);
+    setReplyingTo(null);
+    inputRef.current?.focus();
+  };
+
+  const handleCopy = async (msg) => {
+    try {
+      await navigator.clipboard.writeText(msg.text);
+      // Toast notification
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        data: {
+          title: 'Copied!',
+          message: 'Message copied to clipboard',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+    } catch (err) {
+      console.error('Error copying message:', err);
+    }
+  };
+
+  const handleForward = (msg) => {
+    setForwardModal({ isOpen: true, message: msg });
+  };
+
+  const handleDelete = (msg, isOwnMessage) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'warning',
+      data: {
+        title: 'Delete Message',
+        message: isOwnMessage 
+          ? 'Delete this message for everyone? This cannot be undone.'
+          : 'Delete this message for you?',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+          try {
+            await friendsAPI.deleteMessage(msg.id, isOwnMessage);
+            if (isOwnMessage) {
+              setMessages(prev => prev.map(m =>
+                m.id === msg.id
+                  ? { ...m, deleted: true, text: 'This message was deleted' }
+                  : m
+              ));
+            } else {
+              setMessages(prev => prev.filter(m => m.id !== msg.id));
+            }
+          } catch (err) {
+            console.error('Error deleting message:', err);
+          }
+        }
+      }
+    });
+  };
+
+  // Actions de chat
+  const handleArchiveChat = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'info',
+      data: {
+        title: 'Archive Chat',
+        message: 'Archive this conversation? You can find it in archived chats.',
+        confirmText: 'Archive',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+          try {
+            await friendsAPI.archiveChat(friend.id);
+            onClose();
+          } catch (err) {
+            console.error('Error archiving chat:', err);
+          }
+        }
+      }
+    });
+  };
+
+  const handleClearHistory = () => {
     setConfirmModal({
       isOpen: true,
       type: 'warning',
       data: {
         title: 'Clear Chat History',
-        message: 'Are you sure you want to clear all messages with this user? This action cannot be undone.',
+        message: 'Delete all messages in this conversation? This cannot be undone.',
         confirmText: 'Clear',
         cancelText: 'Cancel',
-        onConfirm: () => {
-          setMessages([]);
-          setConfirmModal({ isOpen: false, type: '', data: null });
-          setShowOptionsMenu(false);
+        onConfirm: async () => {
+          try {
+            await friendsAPI.clearChatHistory(friend.id);
+            setMessages([]);
+            setConfirmModal({
+              isOpen: true,
+              type: 'success',
+              data: {
+                title: 'Chat Cleared',
+                message: 'Chat history has been cleared.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          } catch (err) {
+            console.error('Error clearing history:', err);
+          }
         }
       }
     });
@@ -245,67 +353,41 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
       type: 'warning',
       data: {
         title: 'Report User',
-        message: `Are you sure you want to report ${friend.name}? Our moderation team will review this report.`,
+        message: 'Report this user for inappropriate behavior?',
         confirmText: 'Report',
         cancelText: 'Cancel',
-        onConfirm: () => {
-          // Logique de signalement ici
-          setConfirmModal({
-            isOpen: true,
-            type: 'success',
-            data: {
-              title: 'Report Submitted',
-              message: 'Thank you for your report. Our team will review it shortly.',
-              showCancel: false,
-              confirmText: 'OK'
-            }
-          });
-          setShowOptionsMenu(false);
+        onConfirm: async () => {
+          try {
+            await friendsAPI.reportUser(friend.id, 'inappropriate_content', 'Reported from chat');
+            setConfirmModal({
+              isOpen: true,
+              type: 'success',
+              data: {
+                title: 'Report Sent',
+                message: 'Thank you for your report. We will review it shortly.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          } catch (err) {
+            console.error('Error reporting user:', err);
+          }
         }
       }
     });
   };
 
-  const handleArchiveChat = () => {
-    setConfirmModal({
-      isOpen: true,
-      type: 'info',
-      data: {
-        title: 'Archive Conversation',
-        message: `Archive conversation with ${friend.name}? You can unarchive it later.`,
-        confirmText: 'Archive',
-        cancelText: 'Cancel',
-        onConfirm: () => {
-          // Logique d'archivage ici
-          setConfirmModal({
-            isOpen: true,
-            type: 'success',
-            data: {
-              title: 'Conversation Archived',
-              message: 'The conversation has been archived successfully.',
-              showCancel: false,
-              confirmText: 'OK'
-            }
-          });
-          setShowOptionsMenu(false);
-        }
-      }
-    });
-  };
-
-  const handleUnfriend = () => {
+  const handleRemoveFriend = () => {
     setConfirmModal({
       isOpen: true,
       type: 'error',
       data: {
         title: 'Remove Friend',
-        message: `Are you sure you want to remove ${friend.name} from your friends? You will no longer be able to chat with them.`,
+        message: `Remove ${friend.name} from your friends? This will also archive your conversation.`,
         confirmText: 'Remove',
         cancelText: 'Cancel',
         onConfirm: () => {
-          if (onRemoveFriend) {
-            onRemoveFriend(friend.id);
-          }
+          onRemoveFriend(friend.id);
           onClose();
         }
       }
@@ -315,7 +397,7 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.chatModal} onClick={(e) => e.stopPropagation()}>
-        {/* Chat Header */}
+        {/* Header */}
         <div className={styles.chatHeader}>
           <div className={styles.chatHeaderLeft}>
             <div className={styles.chatAvatar}>
@@ -323,24 +405,20 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                 <img src={friend.avatar} alt={friend.name} />
               ) : (
                 <div className={styles.chatAvatarPlaceholder}>
-                  {getInitials(friend.name)}
+                  {friend.name.charAt(0)}
                 </div>
               )}
               <span 
-                className={styles.chatStatusDot}
-                style={{
-                  backgroundColor: friend.status === 'online' ? '#10b981' : '#9ca3af'
+                className={styles.statusDot}
+                style={{ 
+                  backgroundColor: friend.status === 'online' ? '#10b981' : '#9ca3af' 
                 }}
               />
             </div>
             <div className={styles.chatHeaderInfo}>
               <h3 className={styles.chatName}>{friend.name}</h3>
               <p className={styles.chatStatus}>
-                {isOtherUserTyping ? (
-                  <span className={styles.typingText}>typing...</span>
-                ) : (
-                  friend.status === 'online' ? 'Active now' : friend.lastActive
-                )}
+                {typing ? 'typing...' : friend.status === 'online' ? 'Active now' : friend.lastActive}
               </p>
             </div>
           </div>
@@ -371,22 +449,22 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                     </button>
                     <button 
                       className={styles.chatOptionItem}
-                      onClick={handleClearChat}
+                      onClick={handleClearHistory}
                     >
                       <FontAwesomeIcon icon={faTrash} style={{ fontSize: 16 }} />
                       Clear Chat History
                     </button>
+                    <div className={styles.dropdownDivider} />
                     <button 
-                      className={styles.chatOptionItem}
+                      className={`${styles.chatOptionItem} ${styles.dangerItem}`}
                       onClick={handleReportUser}
                     >
                       <FontAwesomeIcon icon={faFlag} style={{ fontSize: 16 }} />
                       Report User
                     </button>
-                    <div className={styles.dropdownDivider} />
                     <button 
                       className={`${styles.chatOptionItem} ${styles.dangerItem}`}
-                      onClick={handleUnfriend}
+                      onClick={handleRemoveFriend}
                     >
                       <FontAwesomeIcon icon={faUserMinus} style={{ fontSize: 16 }} />
                       Remove Friend
@@ -404,67 +482,78 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
 
         {/* Messages Area */}
         <div className={styles.chatMessages}>
-          {loading && page === 1 && (
+          {loading && (
             <div className={styles.loadingMessages}>
               <div className={styles.spinner}></div>
             </div>
           )}
-          
-          {hasMore && !loading && (
-            <button 
-              className={styles.loadMoreButton}
-              onClick={() => setPage(p => p + 1)}
-            >
-              Load more messages
-            </button>
+
+          {/* Reply indicator */}
+          {replyingTo && (
+            <div className={styles.replyIndicator}>
+              <span>Replying to: {replyingTo.text.substring(0, 50)}...</span>
+              <button onClick={() => setReplyingTo(null)}>×</button>
+            </div>
           )}
 
-          {messages.map((msg, index) => (
-            <div 
-              key={msg.id || msg.tempId || index}
-              className={`${styles.messageWrapper} ${
-                msg.sender === 'me' ? styles.messageRight : styles.messageLeft
-              }`}
-            >
-              {msg.sender === 'them' && (
-                <div className={styles.messageAvatar}>
-                  {friend.avatar ? (
-                    <img src={friend.avatar} alt={friend.name} />
-                  ) : (
-                    <div className={styles.miniAvatarPlaceholder}>
-                      {getInitials(friend.name)}
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className={`${styles.messageBubble} ${msg.tempId ? styles.messageSending : ''}`}>
-                <p className={styles.messageText}>{msg.text}</p>
-                <span className={styles.messageTime}>
-                  {msg.timestamp}
-                  {msg.sender === 'me' && msg.read && ' ✓✓'}
-                </span>
-              </div>
-            </div>
-          ))}
-          
-          {isOtherUserTyping && (
-            <div className={`${styles.messageWrapper} ${styles.messageLeft}`}>
-              <div className={styles.messageAvatar}>
-                {friend.avatar ? (
-                  <img src={friend.avatar} alt={friend.name} />
-                ) : (
-                  <div className={styles.miniAvatarPlaceholder}>
-                    {getInitials(friend.name)}
-                  </div>
-                )}
-              </div>
-              <div className={styles.typingIndicator}>
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
+          {/* Edit indicator */}
+          {editingMessage && (
+            <div className={styles.editIndicator}>
+              <span>Editing message</span>
+              <button onClick={() => {
+                setEditingMessage(null);
+                setMessage('');
+              }}>×</button>
             </div>
           )}
+
+          {messages.map((msg, index) => {
+            const isOwnMessage = msg.sender !== friend.id;
+            
+            return (
+              <div 
+                key={msg.id || index}
+                className={`${styles.messageWrapper} ${
+                  isOwnMessage ? styles.messageRight : styles.messageLeft
+                }`}
+              >
+                <div className={styles.messageBubble}>
+                  {msg.replyTo && (
+                    <div className={styles.messageReply}>
+                      <small>Reply to previous message</small>
+                    </div>
+                  )}
+                  
+                  {msg.deleted ? (
+                    <p className={styles.messageDeleted}>
+                      <em>{msg.text}</em>
+                    </p>
+                  ) : (
+                    <>
+                      <p className={styles.messageText}>{msg.text}</p>
+                      <div className={styles.messageFooter}>
+                        <span className={styles.messageTime}>
+                          {msg.timestamp}
+                          {msg.edited && <em className={styles.editedLabel}> (edited)</em>}
+                        </span>
+                        {!msg.deleted && (
+                          <MessageContextMenu
+                            message={msg}
+                            isOwnMessage={isOwnMessage}
+                            onReply={handleReply}
+                            onEdit={handleEdit}
+                            onCopy={handleCopy}
+                            onForward={handleForward}
+                            onDelete={handleDelete}
+                          />
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
           
           <div ref={messagesEndRef} />
         </div>
@@ -488,7 +577,15 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
             value={message}
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
-            placeholder={isConnected ? "Type a message..." : "Connecting..."}
+            placeholder={
+              isConnected 
+                ? editingMessage 
+                  ? "Edit your message..." 
+                  : replyingTo
+                    ? "Type your reply..."
+                    : "Type a message..." 
+                : "Connecting..."
+            }
             className={styles.chatInputField}
             disabled={!isConnected}
           />
@@ -516,6 +613,14 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
           </div>
         )}
       </div>
+
+      {/* Forward Modal */}
+      {forwardModal.isOpen && (
+        <ForwardMessageModal
+          message={forwardModal.message}
+          onClose={() => setForwardModal({ isOpen: false, message: null })}
+        />
+      )}
 
       {/* Confirm Modal */}
       <ConfirmModal

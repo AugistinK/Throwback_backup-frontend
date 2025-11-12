@@ -1919,3 +1919,350 @@
     padding: 6px;
   }
 }
+
+
+
+/* Friends.module.css - STYLES ADDITIONNELS POUR LES NOUVELLES FONCTIONNALITÉS */
+
+/* ========== MESSAGE CONTEXT MENU ========== */
+.messageActions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.messageWrapper:hover .messageActions {
+  opacity: 1;
+}
+
+.messageActionButton {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.messageActionButton:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #4b5563;
+}
+
+.messageContextMenu {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 160px;
+  z-index: 10000;
+}
+
+.contextMenuItem {
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.contextMenuItem:hover {
+  background: #f3f4f6;
+}
+
+.contextMenuItem.dangerItem {
+  color: #dc2626;
+}
+
+.contextMenuItem.dangerItem:hover {
+  background: #fee2e2;
+}
+
+.contextMenuDivider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 4px 0;
+}
+
+/* ========== MESSAGE INDICATORS ========== */
+.replyIndicator,
+.editIndicator {
+  background: #dbeafe;
+  border-left: 3px solid #3b82f6;
+  padding: 8px 12px;
+  margin: 8px 12px 0 12px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #1e40af;
+}
+
+.replyIndicator button,
+.editIndicator button {
+  background: transparent;
+  border: none;
+  color: #1e40af;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.2s;
+}
+
+.replyIndicator button:hover,
+.editIndicator button:hover {
+  color: #1e3a8a;
+}
+
+.messageReply {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 6px 8px;
+  border-left: 3px solid #3b82f6;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+.messageReply small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.messageDeleted {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.editedLabel {
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* ========== CHAT OPTIONS MENU ========== */
+.chatOptionsMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 200px;
+  z-index: 1000;
+  margin-top: 5px;
+}
+
+.chatOptionItem {
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chatOptionItem:hover {
+  background: #f3f4f6;
+}
+
+.chatOptionItem.dangerItem {
+  color: #dc2626;
+}
+
+.chatOptionItem.dangerItem:hover {
+  background: #fee2e2;
+}
+
+/* ========== FORWARD MESSAGE MODAL ========== */
+.forwardMessagePreview {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.forwardPreviewLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.forwardPreviewContent {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.forwardLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.forwardFriendsList {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.forwardFriendItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.forwardFriendItem:hover {
+  background: #f3f4f6;
+}
+
+.forwardFriendItem input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* ========== GROUP CHAT SPECIFIC ========== */
+.chatAvatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #b31217;
+}
+
+.chatAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chatAvatarPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+  background: #b31217;
+}
+
+/* ========== LOADING SPINNER ========== */
+.loadingSpinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f4f6;
+  border-top-color: #b31217;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingMessages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+/* ========== CONNECTION WARNING ========== */
+.connectionWarning {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fef3c7;
+  color: #92400e;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+/* ========== MESSAGE FOOTER ========== */
+.messageFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  gap: 8px;
+}
+
+.messageTime {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.messageLeft .messageTime {
+  color: #9ca3af;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+  .messageContextMenu {
+    min-width: 140px;
+  }
+
+  .contextMenuItem {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .chatOptionsMenu {
+    min-width: 180px;
+  }
+
+  .chatOptionItem {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .forwardFriendsList {
+    max-height: 250px;
+  }
+}

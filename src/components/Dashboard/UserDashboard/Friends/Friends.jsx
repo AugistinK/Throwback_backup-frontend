@@ -1,4 +1,4 @@
-// src/components/Dashboard/UserDashboard/Friends/Friends.jsx
+// src/components/Dashboard/UserDashboard/Friends/Friends.jsx - VERSION COMPLÈTE CORRIGÉE
 import React, { useState, useEffect } from 'react';
 import FriendCard from './FriendCard';
 import RequestCard from './RequestCard';
@@ -6,6 +6,7 @@ import SuggestionCard from './SuggestionCard';
 import FriendGroupsModal from './FriendGroupsModal';
 import ChatModal from './ChatModal';
 import FriendProfileModal from './FriendProfileModal';
+import GroupChatModal from './GroupChatModal'; // ✅ AJOUT
 import UserSearchModal from './UserSearchModal';
 import ConfirmModal from './ConfirmModal';
 import { friendsAPI } from '../../../../utils/api';
@@ -38,6 +39,10 @@ const Friends = () => {
   const [selectedProfileFriend, setSelectedProfileFriend] = useState(null);
   const [showUserSearchModal, setShowUserSearchModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', data: null });
+  
+  // ✅ AJOUT: States pour GroupChatModal
+  const [showGroupChatModal, setShowGroupChatModal] = useState(false);
+  const [selectedGroupChat, setSelectedGroupChat] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -155,13 +160,28 @@ const Friends = () => {
           id: group._id,
           name: group.name,
           members: group.members.map(m => m._id || m),
-          color: group.color || '#b31217'
+          color: group.color || '#b31217',
+          isCreator: group.owner === user?.id || group.owner === user?._id
         }));
         setFriendGroups(mappedGroups);
       }
     } catch (err) {
       console.error('Error loading friend groups:', err);
     }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return 'Recently';
+    const d = new Date(date);
+    const now = new Date();
+    const diffTime = Math.abs(now - d);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return `${Math.floor(diffDays / 30)} months ago`;
   };
 
   // Actions avec modals de confirmation
@@ -233,7 +253,16 @@ const Friends = () => {
             });
           } catch (err) {
             console.error('Error rejecting request:', err);
-            setRequests(prev => prev.filter(r => r.id !== friendshipId));
+            setConfirmModal({
+              isOpen: true,
+              type: 'error',
+              data: {
+                title: 'Error',
+                message: 'Failed to decline request. Please try again.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
           }
         }
       }
@@ -241,85 +270,73 @@ const Friends = () => {
   };
 
   const handleAddFriend = async (userId) => {
-    try {
-      const response = await friendsAPI.sendFriendRequest(userId);
-      if (response.success) {
-        setSuggestions(prev => prev.filter(s => s.id !== userId));
-        try { notifyFriendRequest(userId); } catch {}
-        setConfirmModal({
-          isOpen: true,
-          type: 'success',
-          data: {
-            title: 'Friend Request Sent',
-            message: 'Your friend request has been sent successfully!',
-            showCancel: false,
-            confirmText: 'OK'
-          }
-        });
-      } else {
-        setConfirmModal({
-          isOpen: true,
-          type: 'error',
-          data: {
-            title: 'Error',
-            message: response.message || 'Failed to send friend request',
-            showCancel: false,
-            confirmText: 'OK'
-          }
-        });
-      }
-    } catch (err) {
-      console.error('Error sending friend request:', err);
-      setConfirmModal({
-        isOpen: true,
-        type: 'error',
-        data: {
-          title: 'Error',
-          message: 'Failed to send friend request. Please try again.',
-          showCancel: false,
-          confirmText: 'OK'
-        }
-      });
-    }
-  };
-
-  const handleRemoveFriend = async (friendId) => {
-    const friendToRemove = friends.find(f => f.id === friendId);
     setConfirmModal({
       isOpen: true,
-      type: 'error',
+      type: 'info',
       data: {
-        title: 'Remove Friend',
-        message: `Are you sure you want to remove ${friendToRemove?.name || 'this user'} from your friends?`,
-        confirmText: 'Remove',
+        title: 'Send Friend Request',
+        message: 'Send a friend request to this user?',
+        confirmText: 'Send Request',
         cancelText: 'Cancel',
         onConfirm: async () => {
           try {
-            const response = await friendsAPI.removeFriend(friendId);
+            const response = await friendsAPI.sendFriendRequest(userId);
             if (response.success) {
-              setFriends(prev => prev.filter(f => f.id !== friendId));
+              setSuggestions(prev => prev.filter(s => s.id !== userId));
+              try { notifyFriendRequest(userId, `${user?.prenom} ${user?.nom}`); } catch {}
               setConfirmModal({
                 isOpen: true,
                 type: 'success',
                 data: {
-                  title: 'Friend Removed',
-                  message: 'Friend has been removed successfully.',
-                  showCancel: false,
-                  confirmText: 'OK'
-                }
-              });
-            } else {
-              setConfirmModal({
-                isOpen: true,
-                type: 'error',
-                data: {
-                  title: 'Error',
-                  message: response.message || 'Failed to remove friend',
+                  title: 'Request Sent',
+                  message: 'Friend request sent successfully!',
                   showCancel: false,
                   confirmText: 'OK'
                 }
               });
             }
+          } catch (err) {
+            console.error('Error sending friend request:', err);
+            setConfirmModal({
+              isOpen: true,
+              type: 'error',
+              data: {
+                title: 'Error',
+                message: 'Failed to send friend request. Please try again.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          }
+        }
+      }
+    });
+  };
+
+  const handleRemoveFriend = async (friendId) => {
+    const friend = friends.find(f => f.id === friendId);
+    setConfirmModal({
+      isOpen: true,
+      type: 'warning',
+      data: {
+        title: 'Remove Friend',
+        message: `Are you sure you want to remove ${friend?.name || 'this user'} from your friends?`,
+        confirmText: 'Remove',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+          try {
+            await friendsAPI.removeFriend(friendId);
+            setFriends(prev => prev.filter(f => f.id !== friendId));
+            setConfirmModal({
+              isOpen: true,
+              type: 'success',
+              data: {
+                title: 'Friend Removed',
+                message: 'Friend has been removed from your list.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
           } catch (err) {
             console.error('Error removing friend:', err);
             setConfirmModal({
@@ -351,59 +368,44 @@ const Friends = () => {
     }
   };
 
-  const handleSaveGroups = async (groups) => {
-    try {
-      setFriendGroups(groups);
-      setConfirmModal({
-        isOpen: true,
-        type: 'success',
-        data: {
-          title: 'Groups Saved',
-          message: 'Your friend groups have been saved successfully!',
-          showCancel: false,
-          confirmText: 'OK'
-        }
-      });
-    } catch (err) {
-      console.error('Error saving groups:', err);
-      setConfirmModal({
-        isOpen: true,
-        type: 'error',
-        data: {
-          title: 'Error',
-          message: 'Failed to save friend groups. Please try again.',
-          showCancel: false,
-          confirmText: 'OK'
-        }
-      });
-    }
+  const handleSaveGroups = async (updatedGroups) => {
+    // Les groupes sont déjà sauvegardés via l'API dans FriendGroupsModal
+    // On recharge simplement pour avoir les données à jour
+    await loadFriendGroups();
   };
 
-  const formatDate = (date) => {
-    if (!date) return 'Recently';
-    const now = new Date();
-    const requestDate = new Date(date);
-    const diffTime = Math.abs(now - requestDate);
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return `${Math.floor(diffDays / 30)} months ago`;
+  // ✅ AJOUT: Fonction pour ouvrir le chat de groupe
+  const handleOpenGroupChat = (group) => {
+    console.log('Opening group chat:', group);
+    setSelectedGroupChat(group);
+    setShowGroupChatModal(true);
+    setShowGroupsModal(false); // Fermer le modal de groupes
   };
 
+  // ✅ AJOUT: Fonction pour fermer le chat de groupe
+  const handleCloseGroupChat = () => {
+    setShowGroupChatModal(false);
+    setSelectedGroupChat(null);
+  };
+
+  // ✅ AJOUT: Fonction pour mettre à jour le groupe après modifications
+  const handleGroupUpdated = async () => {
+    await loadFriendGroups();
+  };
+
+  // Filtrer les amis selon le terme de recherche et le filtre de statut
   const filteredFriends = friends.filter(friend => {
     const matchesSearch = friend.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          friend.username.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || friend.status === filterStatus;
-    return matchesSearch && matchesFilter;
+    const matchesStatus = filterStatus === 'all' || friend.status === filterStatus;
+    return matchesSearch && matchesStatus;
   });
 
+  // Tabs configuration
   const tabs = [
-    { id: 'friends', label: 'My Friends', count: friends.length, icon: faUsers },
-    { id: 'requests', label: 'Requests', count: requests.length, icon: faUserPlus },
-    { id: 'suggestions', label: 'Suggestions', count: suggestions.length, icon: faUserCheck }
+    { id: 'friends', label: 'My Friends', icon: faUsers, count: friends.length },
+    { id: 'requests', label: 'Requests', icon: faUserPlus, count: requests.length },
+    { id: 'suggestions', label: 'Suggestions', icon: faUserCheck, count: suggestions.length }
   ];
 
   if (loading) {
@@ -593,6 +595,16 @@ const Friends = () => {
           friends={friends}
           onClose={() => setShowGroupsModal(false)}
           onSave={handleSaveGroups}
+          onOpenGroupChat={handleOpenGroupChat} // ✅ AJOUT
+        />
+      )}
+
+      {/* ✅ AJOUT: GroupChatModal */}
+      {showGroupChatModal && selectedGroupChat && (
+        <GroupChatModal
+          group={selectedGroupChat}
+          onClose={handleCloseGroupChat}
+          onUpdateGroup={handleGroupUpdated}
         />
       )}
 
