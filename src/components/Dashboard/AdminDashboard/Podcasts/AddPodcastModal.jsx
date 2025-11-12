@@ -354,6 +354,12 @@ const AddPodcastModal = ({ isOpen, onClose, onPodcastCreated }) => {
           </div>
 
           <div className={styles.formGroup}>
+                <label htmlFor="description">Description</label>
+                <textarea id="description" name="description" value={formData.description}
+                  onChange={handleChange} placeholder="Podcast description" disabled={loading} rows={4} />
+          </div>
+
+          <div className={styles.formGroup}>
             <label className={styles.checkboxLabel}>
               <input type="checkbox" name="isPublished" checked={formData.isPublished}
                 onChange={(e) => setFormData(prev => ({ ...prev, isPublished: e.target.checked }))}
