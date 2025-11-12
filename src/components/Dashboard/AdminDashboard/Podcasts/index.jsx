@@ -4,7 +4,7 @@ import AddPodcastModal from './AddPodcastModal';
 import EditPodcastModal from './EditPodcastModal';
 import PodcastDetailModal from './PodcastDetailModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
-import { getPodcastThumbnail } from './imageUtils'; // Import de la fonction utilitaire
+import { getPodcastThumbnail } from './imageUtils.js'; // Import de la fonction utilitaire
 import styles from './Podcasts.module.css';
 
 // Available podcast categories

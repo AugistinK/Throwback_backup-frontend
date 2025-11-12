@@ -1,6 +1,6 @@
 // PodcastDetailModal.jsx - VERSION CORRIGÉE
 import React from 'react';
-import { getImageUrl, getPodcastThumbnail } from './imageUtils'; // Import des fonctions utilitaires
+import { getImageUrl, getPodcastThumbnail } from './imageUtils.js'; // Import des fonctions utilitaires
 import styles from './Podcasts.module.css';
 
 const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
