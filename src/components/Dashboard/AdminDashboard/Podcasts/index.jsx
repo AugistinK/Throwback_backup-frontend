@@ -1,9 +1,10 @@
-// index.jsx
+// index.jsx - VERSION CORRIGÉE
 import React, { useState, useEffect } from 'react';
 import AddPodcastModal from './AddPodcastModal';
 import EditPodcastModal from './EditPodcastModal';
 import PodcastDetailModal from './PodcastDetailModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
+import { getPodcastThumbnail } from './imageUtils'; // Import de la fonction utilitaire
 import styles from './Podcasts.module.css';
 
 // Available podcast categories
@@ -18,7 +19,7 @@ const CATEGORIES = [
 
 const Podcasts = () => {
   // API base URL
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'api.throwback-connect.com';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com/api';
   
   // Podcasts & loading state
   const [podcasts, setPodcasts] = useState([]);
@@ -87,7 +88,7 @@ const Podcasts = () => {
       params.append('page', currentPage);
       params.append('limit', 12);
       
-      const response = await fetch(`${API_BASE_URL}/api/podcasts/admin/all?${params.toString()}`, {
+      const response = await fetch(`${API_BASE_URL}/podcasts/admin/all?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -125,7 +126,7 @@ const Podcasts = () => {
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/api/podcasts/admin/stats`, {
+      const response = await fetch(`${API_BASE_URL}/podcasts/admin/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -220,128 +221,12 @@ const Podcasts = () => {
     setEditModalOpen(true);
   };
 
-  // Fonction pour détecter la plateforme vidéo à partir d'une URL
-  const detectVideoSource = (url) => {
-    try {
-      if (!url) return { platform: '', videoId: null };
-      
-      const videoUrl = new URL(url);
-      const hostname = videoUrl.hostname.toLowerCase();
-      
-      // YouTube
-      if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
-        let videoId;
-        if (hostname.includes('youtu.be')) {
-          videoId = videoUrl.pathname.substring(1);
-        } else if (videoUrl.pathname.includes('/embed/')) {
-          videoId = videoUrl.pathname.split('/embed/')[1];
-        } else if (videoUrl.pathname.includes('/shorts/')) {
-          videoId = videoUrl.pathname.split('/shorts/')[1];
-        } else {
-          videoId = videoUrl.searchParams.get('v');
-        }
-        return { platform: 'YOUTUBE', videoId };
-      }
-      
-      // Vimeo
-      else if (hostname.includes('vimeo.com')) {
-        const pathParts = videoUrl.pathname.split('/').filter(Boolean);
-        return { platform: 'VIMEO', videoId: pathParts[0] };
-      }
-      
-      // Dailymotion
-      else if (hostname.includes('dailymotion.com')) {
-        const pathParts = videoUrl.pathname.split('/').filter(Boolean);
-        let videoId = pathParts[pathParts.length - 1];
-        if (videoId.includes('video/')) {
-          videoId = videoId.split('video/')[1];
-        }
-        return { platform: 'DAILYMOTION', videoId };
-      }
-      
-      // Autre
-      return { platform: 'OTHER', videoId: null };
-    } catch (error) {
-      console.error('Error detecting video platform:', error);
-      return { platform: '', videoId: null };
-    }
-  };
-
-  // Extract Vimeo ID from URL (pour rétrocompatibilité)
-  const getVimeoId = (url) => {
-    try {
-      if (!url) return null;
-      
-      const vimeoUrl = new URL(url);
-      
-      if (vimeoUrl.hostname.includes('vimeo.com')) {
-        const segments = vimeoUrl.pathname.split('/').filter(Boolean);
-        return segments[0];
-      } else if (vimeoUrl.hostname.includes('player.vimeo.com')) {
-        const segments = vimeoUrl.pathname.split('/').filter(Boolean);
-        if (segments[0] === 'video') {
-          return segments[1];
-        }
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error extracting Vimeo ID:', error);
-      return null;
-    }
-  };
-
-  // Get video thumbnail (remplace getVimeoThumbnail)
-  const getVideoThumbnail = (podcast) => {
-    // 1. Si une image de couverture personnalisée existe et n'est pas l'image par défaut
-    if (podcast.coverImage && !podcast.coverImage.includes('podcast-default.jpg')) {
-      return podcast.coverImage;
-    }
-    
-    // 2. Si une URL de thumbnail a été récupérée du backend
-    if (podcast.thumbnailUrl) {
-      return podcast.thumbnailUrl;
-    }
-    
-    // 3. Si la plateforme et l'ID vidéo sont disponibles, générer l'URL de la thumbnail
-    if (podcast.platform && podcast.videoId) {
-      switch(podcast.platform) {
-        case 'YOUTUBE':
-          return `https://img.youtube.com/vi/${podcast.videoId}/maxresdefault.jpg`;
-        case 'VIMEO':
-          // Pour Vimeo, il faudrait idéalement l'API, on utilise un placeholder
-          return `/images/vimeo-placeholder.jpg`;
-        case 'DAILYMOTION':
-          return `https://www.dailymotion.com/thumbnail/video/${podcast.videoId}`;
-      }
-    }
-    
-    // 4. Si c'est l'ancien format avec vimeoUrl
-    if (podcast.vimeoUrl) {
-      const vimeoId = getVimeoId(podcast.vimeoUrl);
-      if (vimeoId) {
-        return `/images/vimeo-placeholder.jpg`;
-      }
-    }
-    
-    // 5. Pour les vidéos YouTube, essayons d'extraire directement
-    if (podcast.videoUrl) {
-      const { platform, videoId } = detectVideoSource(podcast.videoUrl);
-      if (platform === 'YOUTUBE' && videoId) {
-        return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-      }
-    }
-    
-    // 6. Fallback sur l'image par défaut
-    return '/images/podcast-default.jpg';
-  };
-
   // Format episode (EP.01)
   const formatEpisode = (episode) => {
     return `EP.${episode.toString().padStart(2, '0')}`;
   };
 
-  // Grid item
+  // Grid item - UTILISÉ getPodcastThumbnail au lieu de getVideoThumbnail
   const renderPodcastGridItem = (podcast) => (
     <div key={podcast._id} className={styles.podcastCard}>
       <div className={styles.podcastCategory}>{podcast.category}</div>
@@ -350,7 +235,7 @@ const Podcasts = () => {
         onClick={() => handleViewDetails(podcast)}
       >
         <img 
-          src={getVideoThumbnail(podcast)}
+          src={getPodcastThumbnail(podcast)}
           alt={podcast.title}
           onError={(e) => {
             e.target.onerror = null;
@@ -413,12 +298,12 @@ const Podcasts = () => {
     </div>
   );
 
-  // Table row
+  // Table row - UTILISÉ getPodcastThumbnail au lieu de getVideoThumbnail
   const renderPodcastTableRow = (podcast) => (
     <tr key={podcast._id} className={styles.podcastTableRow}>
       <td className={styles.thumbnailCell}>
         <img 
-          src={getVideoThumbnail(podcast)}
+          src={getPodcastThumbnail(podcast)}
           alt={podcast.title}
           className={styles.tableThumbnail}
           onError={(e) => {
@@ -472,101 +357,118 @@ const Podcasts = () => {
   );
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <div>
-          <h1>Podcast Management</h1>
-          <br/>
-          <p>Welcome to the podcast management panel</p>
-        </div>
-  
-        <div className={styles.headerActions}>
-          {!isMobile && (
-            <button 
-              className={styles.viewToggleButton}
-              onClick={toggleViewMode}
-              title={viewMode === 'grid' ? "Switch to table view" : "Switch to grid view"}
-            >
-              <i className={`fas fa-${viewMode === 'grid' ? 'list' : 'th'}`}></i>
-            </button>
-          )}
-          <button 
-            className={styles.addButton}
-            onClick={() => setAddModalOpen(true)}
-          >
-            <i className="fas fa-plus"></i> 
-            <span>{isMobile ? 'Add' : 'Add Podcast'}</span>
-          </button>
-        </div>
-      </div>
-      
+    <div className={styles.podcastsContainer}>
       {/* Stats cards */}
-      <div className={styles.statsRow}>
+      <div className={styles.statsCards}>
         <div className={styles.statCard}>
           <div className={styles.statIcon}>
             <i className="fas fa-podcast"></i>
           </div>
-          <div className={styles.statContent}>
+          <div className={styles.statInfo}>
             <div className={styles.statValue}>{stats.total || 0}</div>
             <div className={styles.statLabel}>Total Podcasts</div>
           </div>
         </div>
         
-        {stats.byCategory && stats.byCategory.slice(0, 2).map((cat, index) => (
-          <div className={styles.statCard} key={`cat-${index}`}>
-            <div className={styles.statIcon} style={{backgroundColor: getCategoryColor(cat._id)}}>
-              <i className="fas fa-tag"></i>
-            </div>
-            <div className={styles.statContent}>
-              <div className={styles.statValue}>{cat.count}</div>
-              <div className={styles.statLabel}>{cat._id}</div>
-            </div>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon}>
+            <i className="fas fa-layer-group"></i>
           </div>
-        ))}
+          <div className={styles.statInfo}>
+            <div className={styles.statValue}>{stats.bySeason?.length || 0}</div>
+            <div className={styles.statLabel}>Seasons</div>
+          </div>
+        </div>
         
-        {stats.bySeason && stats.bySeason.slice(0, 1).map((season, index) => (
-          <div className={styles.statCard} key={`season-${index}`}>
-            <div className={styles.statIcon} style={{backgroundColor: '#fab005'}}>
-              <i className="fas fa-bookmark"></i>
-            </div>
-            <div className={styles.statContent}>
-              <div className={styles.statValue}>{season.count}</div>
-              <div className={styles.statLabel}>Season {season._id}</div>
-            </div>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon}>
+            <i className="fas fa-tags"></i>
           </div>
-        ))}
+          <div className={styles.statInfo}>
+            <div className={styles.statValue}>{stats.byCategory?.length || 0}</div>
+            <div className={styles.statLabel}>Categories</div>
+          </div>
+        </div>
+        
+        <div className={styles.statCard}>
+          <div className={styles.statIcon}>
+            <i className="fas fa-clock"></i>
+          </div>
+          <div className={styles.statInfo}>
+            <div className={styles.statValue}>
+              {podcasts.length > 0 
+                ? Math.round(podcasts.reduce((sum, p) => sum + (p.duration || 0), 0) / podcasts.length) 
+                : 0} min
+            </div>
+            <div className={styles.statLabel}>Avg Duration</div>
+          </div>
+        </div>
       </div>
 
-      {/* Search & filters */}
+      {/* Header actions */}
+      <div className={styles.headerActions}>
+        <button 
+          onClick={() => setAddModalOpen(true)} 
+          className={styles.addButton}
+        >
+          <i className="fas fa-plus"></i> {!isMobile && 'Add Podcast'}
+        </button>
+        
+        <div className={styles.viewToggle}>
+          <button 
+            className={`${styles.viewButton} ${viewMode === 'grid' ? styles.active : ''}`}
+            onClick={toggleViewMode}
+            disabled={isMobile}
+            title="Grid view"
+          >
+            <i className="fas fa-th"></i>
+          </button>
+          <button 
+            className={`${styles.viewButton} ${viewMode === 'table' ? styles.active : ''}`}
+            onClick={toggleViewMode}
+            disabled={isMobile}
+            title="Table view"
+          >
+            <i className="fas fa-list"></i>
+          </button>
+        </div>
+      </div>
+
+      {/* Filters & search */}
       <div className={styles.filtersContainer}>
-        <div className={styles.filtersTop}>
-          <form onSubmit={handleSearch} className={styles.searchForm}>
+        <form className={styles.searchForm} onSubmit={handleSearch}>
+          <div className={styles.searchGroup}>
+            <i className="fas fa-search"></i>
             <input
               type="text"
-              placeholder={isMobile ? "Search..." : "Search a podcast..."}
+              placeholder={isMobile ? "Search..." : "Search by title, guest..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={styles.searchInput}
             />
-            <button type="submit" className={styles.searchButton}>
-              <i className="fas fa-search"></i>
-            </button>
-          </form>
-          
-          <div className={styles.filterButtons}>
-            {(searchQuery || seasonFilter || categoryFilter || publishFilter) && (
+            {searchQuery && (
               <button 
-                onClick={handleReset} 
-                className={styles.resetButton}
+                type="button"
+                className={styles.clearSearch}
+                onClick={() => setSearchQuery('')}
               >
-                <i className="fas fa-times"></i> 
-                <span>{isMobile ? 'Clear' : 'Clear filters'}</span>
+                <i className="fas fa-times"></i>
               </button>
             )}
           </div>
-        </div>
-        
-        <div className={styles.filtersBottom}>
+          <button type="submit" className={styles.searchButton}>
+            {isMobile ? <i className="fas fa-search"></i> : 'Search'}
+          </button>
+          <button 
+            type="button" 
+            className={styles.resetButton}
+            onClick={handleReset}
+          >
+            {isMobile ? <i className="fas fa-undo"></i> : 'Reset'}
+          </button>
+        </form>
+
+        <div className={styles.filtersRow}>
           <div className={styles.filterGroup}>
             <label htmlFor="seasonFilter" className={styles.filterLabel}>Season:</label>
             <select
@@ -798,20 +700,6 @@ const Podcasts = () => {
       )}
     </div>
   );
-};
-
-// Utility to get a color for a category
-const getCategoryColor = (category) => {
-  const categoryColors = {
-    'PERSONAL BRANDING': '#4c6ef5',
-    'MUSIC BUSINESS': '#40c057',
-    'ARTIST INTERVIEW': '#fa5252',
-    'INDUSTRY INSIGHTS': '#be4bdb',
-    'THROWBACK HISTORY': '#fd7e14',
-    'OTHER': '#868e96'
-  };
-  
-  return categoryColors[category] || '#868e96';
 };
 
 export default Podcasts;

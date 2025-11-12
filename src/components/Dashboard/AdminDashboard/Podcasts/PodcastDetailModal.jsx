@@ -1,5 +1,6 @@
-// Podcast/PodcastDetailModal.jsx
+// PodcastDetailModal.jsx - VERSION CORRIGÉE
 import React from 'react';
+import { getImageUrl, getPodcastThumbnail } from './imageUtils'; // Import des fonctions utilitaires
 import styles from './Podcasts.module.css';
 
 const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
@@ -137,6 +138,10 @@ const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
   const displayUrl = podcast.videoUrl.length > 50 
     ? podcast.videoUrl.substring(0, 47) + '...' 
     : podcast.videoUrl;
+
+  // CORRECTION: Utiliser getImageUrl pour les URLs d'images
+  const coverImageUrl = podcast.coverImage ? getImageUrl(podcast.coverImage) : null;
+  const thumbnailUrlFull = podcast.thumbnailUrl ? getImageUrl(podcast.thumbnailUrl) : null;
 
   return (
     <div className={styles.modalOverlay}>
@@ -346,35 +351,61 @@ const PodcastDetailModal = ({ isOpen, onClose, podcast }) => {
                 </p>
               </div>
               
-              {podcast.thumbnailUrl && (
+              {/* CORRECTION: Utiliser l'URL complète pour thumbnailUrl */}
+              {thumbnailUrlFull && (
                 <div className={styles.detailItem}>
                   <h4>Thumbnail URL</h4>
                   <p className={styles.thumbnailUrl}>
                     <a 
-                      href={podcast.thumbnailUrl} 
+                      href={thumbnailUrlFull} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      title={podcast.thumbnailUrl}
+                      title={thumbnailUrlFull}
                     >
-                      {podcast.thumbnailUrl.substring(0, 30)}... <i className="fas fa-external-link-alt"></i>
+                      {thumbnailUrlFull.substring(0, 30)}... <i className="fas fa-external-link-alt"></i>
                     </a>
                   </p>
+                  <div className={styles.thumbnailPreview}>
+                    <img 
+                      src={thumbnailUrlFull} 
+                      alt="Thumbnail preview"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
                 </div>
               )}
               
-              {podcast.coverImage && (
+              {/* CORRECTION: Utiliser l'URL complète pour coverImage */}
+              {coverImageUrl && (
                 <div className={styles.detailItem}>
                   <h4>Cover Image</h4>
                   <p className={styles.coverImage}>
                     <a 
-                      href={podcast.coverImage} 
+                      href={coverImageUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      title={podcast.coverImage}
+                      title={coverImageUrl}
                     >
-                      {podcast.coverImage.includes('podcast-default.jpg') ? 'Default Image' : podcast.coverImage.substring(0, 30) + '...'} <i className="fas fa-image"></i>
+                      {coverImageUrl.includes('podcast-default.jpg') 
+                        ? 'Default Image' 
+                        : coverImageUrl.substring(0, 30) + '...'
+                      } <i className="fas fa-image"></i>
                     </a>
                   </p>
+                  {/* Afficher un aperçu de l'image de couverture */}
+                  {!coverImageUrl.includes('podcast-default.jpg') && (
+                    <div className={styles.thumbnailPreview}>
+                      <img 
+                        src={coverImageUrl} 
+                        alt="Cover preview"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
