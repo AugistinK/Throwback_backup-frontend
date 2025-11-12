@@ -9,6 +9,22 @@ import {
 import podcastAPI from '../../../../utils/podcastAPI';
 import styles from './MemoryList.module.css';
 
+// Helpers URL images
+const getApiBaseUrl = () => {
+  let api = (process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com').trim();
+  if (!/^https?:\/\//i.test(api)) api = `https://${api}`;
+  api = api.replace(/\/api\/?$/i, '').replace(/\/$/, '');
+  return api;
+};
+const resolveImageUrl = (path) => {
+  if (!path) return '/images/default-avatar.jpg';
+  if (/^https?:\/\//i.test(path)) return path;
+  if (path.startsWith('/images/') || path.startsWith('/assets/')) return path;
+  if (path.startsWith('/uploads/')) return `${getApiBaseUrl()}${path}`;
+  if (path.startsWith('/')) return `${getApiBaseUrl()}${path}`;
+  return `${getApiBaseUrl()}/uploads/${path}`;
+};
+
 const MemoryList = ({ podcastId }) => {
   const [memories, setMemories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,70 +33,43 @@ const MemoryList = ({ podcastId }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
 
-  // Check if user is authenticated
   useEffect(() => {
     const token = localStorage.getItem('token') || localStorage.getItem('authToken');
     setIsAuthenticated(!!token);
   }, []);
 
-  // Load memories
   useEffect(() => {
     const fetchMemories = async () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('Fetching memories for podcast:', podcastId);
         const data = await podcastAPI.getPodcastMemories(podcastId);
-        console.log('Received memories:', data);
         setMemories(data || []);
       } catch (err) {
-        console.error('Error fetching memories:', err);
         setError('Error loading memories');
       } finally {
         setLoading(false);
       }
     };
-
-    if (podcastId) {
-      fetchMemories();
-    }
+    if (podcastId) fetchMemories();
   }, [podcastId]);
 
-  // Add a new memory
   const handleAddMemory = async (e) => {
     e.preventDefault();
-    
-    if (!isAuthenticated) {
-      alert('Please log in to share a memory');
-      return;
-    }
-    
-    if (!memoryText.trim()) {
-      return;
-    }
-    
-    if (isSubmitting) {
-      return;
-    }
-    
+    if (!isAuthenticated) { alert('Please log in to share a memory'); return; }
+    if (!memoryText.trim() || isSubmitting) return;
+
     try {
       setIsSubmitting(true);
-      console.log('Adding memory to podcast:', podcastId, 'Content:', memoryText);
       const response = await podcastAPI.addMemory(podcastId, memoryText);
-      
       if (response && response.success) {
-        console.log('Memory added successfully:', response.data);
-        // Add the new memory to the top of the list
         setMemories(prev => [response.data, ...prev]);
         setMemoryText('');
       } else {
-        console.error('Failed to add memory:', response);
         setError(response?.message || 'Error adding memory');
       }
     } catch (err) {
-      console.error('Error adding memory:', err);
       setError('Error adding memory');
-      
       if (err.response?.status === 401) {
         alert('Please log in to share a memory');
         setIsAuthenticated(false);
@@ -90,47 +79,24 @@ const MemoryList = ({ podcastId }) => {
     }
   };
 
-  // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
   };
-  
-  // Get image URL with CORS handling
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return '/images/default-avatar.jpg';
-    
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    
-    const backendUrl = process.env.REACT_APP_API_URL || 'api.throwback-connect.com ';
-    return `${backendUrl}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
-  };
 
-  // Component to display a memory
   const MemoryCard = ({ memory }) => (
     <div className={styles.memoryCard}>
       <div className={styles.memoryHeader}>
         <div className={styles.userInfo}>
-          {memory.imageUrl && (
-            <img 
-              src={getImageUrl(memory.imageUrl)} 
-              alt={memory.username} 
-              className={styles.userAvatar} 
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '/images/default-avatar.jpg';
-              }}
-              crossOrigin="anonymous"
-            />
-          )}
+          <img 
+            src={resolveImageUrl(memory.imageUrl)}
+            alt={memory.username}
+            className={styles.userAvatar}
+            onError={(e) => { e.target.onerror = null; e.target.src = '/images/default-avatar.jpg'; }}
+            crossOrigin="anonymous"
+          />
           <span className={styles.username}>{memory.username}</span>
         </div>
         <span className={styles.memoryType}>
@@ -144,26 +110,19 @@ const MemoryList = ({ podcastId }) => {
           <span className={styles.podcastTitle}> - {memory.videoTitle}</span>
           <span className={styles.podcastYear}> ({memory.videoYear})</span>
         </div>
-        
         <p className={styles.memoryText}>{memory.content}</p>
       </div>
       
       <div className={styles.memoryFooter}>
         <div className={styles.memoryActions}>
           <button className={styles.likeButton}>
-            <FontAwesomeIcon icon={faHeart} /> 
-            <span>{memory.likes}</span>
+            <FontAwesomeIcon icon={faHeart} /> <span>{memory.likes}</span>
           </button>
-          
           <button className={styles.commentButton}>
-            <FontAwesomeIcon icon={faComment} />
-            <span>{memory.comments}</span>
+            <FontAwesomeIcon icon={faComment} /> <span>{memory.comments}</span>
           </button>
         </div>
-        
-        <div className={styles.memoryDate}>
-          {formatDate(memory.date)}
-        </div>
+        <div className={styles.memoryDate}>{formatDate(memory.date)}</div>
       </div>
     </div>
   );
@@ -176,9 +135,7 @@ const MemoryList = ({ podcastId }) => {
         <form onSubmit={handleAddMemory}>
           <input
             type="text"
-            placeholder={isAuthenticated 
-              ? "Share a memory related to this podcast..." 
-              : "Log in to share a memory"}
+            placeholder={isAuthenticated ? "Share a memory related to this podcast..." : "Log in to share a memory"}
             className={styles.memoryInput}
             value={memoryText}
             onChange={(e) => setMemoryText(e.target.value)}
@@ -189,11 +146,7 @@ const MemoryList = ({ podcastId }) => {
             className={styles.submitButton}
             disabled={!memoryText.trim() || isSubmitting || !isAuthenticated}
           >
-            {isSubmitting ? (
-              <FontAwesomeIcon icon={faSpinner} spin />
-            ) : (
-              'Share'
-            )}
+            {isSubmitting ? <FontAwesomeIcon icon={faSpinner} spin /> : 'Share'}
           </button>
         </form>
       </div>
