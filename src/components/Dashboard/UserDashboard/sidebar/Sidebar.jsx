@@ -51,8 +51,7 @@ const navItems = [
   { 
     label: 'ThrowBack Chat', 
     to: '/dashboard/chat', 
-    icon: faComments,
-    inDevelopment: true
+    icon: faComments
   },
   { 
     label: 'Profile', 
