@@ -3,21 +3,23 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { friendsAPI } from '../../../../utils/api';
 import styles from './Friends.module.css';
+import EmojiPicker from './EmojiPicker';
+import ConfirmModal from './ConfirmModal';
 
 // Font Awesome
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faXmark,
   faPaperPlane,
-  faMusic,
-  faImage,
   faSmile,
   faEllipsisVertical,
-  faPhone,
-  faVideo
+  faTrash,
+  faUserMinus,
+  faFlag,
+  faArchive
 } from '@fortawesome/free-solid-svg-icons';
 
-const ChatModal = ({ friend, onClose }) => {
+const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
   const { socket, sendMessage: socketSendMessage, joinConversation, startTyping, stopTyping, isConnected } = useSocket();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
@@ -25,6 +27,10 @@ const ChatModal = ({ friend, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', data: null });
+  
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -45,7 +51,6 @@ const ChatModal = ({ friend, onClose }) => {
   useEffect(() => {
     loadMessages();
     
-    // Rejoindre la conversation via Socket.IO
     if (isConnected && friend.id) {
       joinConversation(friend.id);
     }
@@ -55,7 +60,6 @@ const ChatModal = ({ friend, onClose }) => {
   useEffect(() => {
     if (!socket) return;
 
-    // Nouveau message reçu
     const handleNewMessage = (data) => {
       if (data.message.sender._id === friend.id || data.message.receiver._id === friend.id) {
         setMessages(prev => [...prev, {
@@ -69,7 +73,6 @@ const ChatModal = ({ friend, onClose }) => {
       }
     };
 
-    // Message envoyé confirmé
     const handleMessageSent = (data) => {
       setMessages(prev => prev.map(msg => 
         msg.tempId === data.tempId 
@@ -78,14 +81,21 @@ const ChatModal = ({ friend, onClose }) => {
       ));
     };
 
-    // Erreur d'envoi de message
     const handleMessageError = (data) => {
       console.error('Message error:', data.error);
       setMessages(prev => prev.filter(msg => msg.tempId !== data.tempId));
-      alert(`Error sending message: ${data.error}`);
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Message Error',
+          message: `Failed to send message: ${data.error}`,
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
     };
 
-    // Indicateur de saisie
     const handleUserTyping = (data) => {
       if (data.userId === friend.id) {
         setIsOtherUserTyping(data.isTyping);
@@ -127,7 +137,6 @@ const ChatModal = ({ friend, onClose }) => {
       }
     } catch (err) {
       console.error('Error loading messages:', err);
-      setMessages(prev => prev);
     } finally {
       setLoading(false);
     }
@@ -161,6 +170,7 @@ const ChatModal = ({ friend, onClose }) => {
 
     setMessages(prev => [...prev, optimisticMessage]);
     setMessage('');
+    setShowEmojiPicker(false);
 
     try {
       await socketSendMessage(friend.id, message, 'text', tempId);
@@ -171,6 +181,16 @@ const ChatModal = ({ friend, onClose }) => {
       }
     } catch (err) {
       console.error('Error sending message:', err);
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Send Error',
+          message: 'Failed to send your message. Please try again.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
     }
   };
 
@@ -194,6 +214,102 @@ const ChatModal = ({ friend, onClose }) => {
         stopTyping(friend.id);
       }, 2000);
     }
+  };
+
+  const handleEmojiSelect = (emoji) => {
+    setMessage(prev => prev + emoji);
+    inputRef.current?.focus();
+  };
+
+  const handleClearChat = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'warning',
+      data: {
+        title: 'Clear Chat History',
+        message: 'Are you sure you want to clear all messages with this user? This action cannot be undone.',
+        confirmText: 'Clear',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          setMessages([]);
+          setConfirmModal({ isOpen: false, type: '', data: null });
+          setShowOptionsMenu(false);
+        }
+      }
+    });
+  };
+
+  const handleReportUser = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'warning',
+      data: {
+        title: 'Report User',
+        message: `Are you sure you want to report ${friend.name}? Our moderation team will review this report.`,
+        confirmText: 'Report',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          // Logique de signalement ici
+          setConfirmModal({
+            isOpen: true,
+            type: 'success',
+            data: {
+              title: 'Report Submitted',
+              message: 'Thank you for your report. Our team will review it shortly.',
+              showCancel: false,
+              confirmText: 'OK'
+            }
+          });
+          setShowOptionsMenu(false);
+        }
+      }
+    });
+  };
+
+  const handleArchiveChat = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'info',
+      data: {
+        title: 'Archive Conversation',
+        message: `Archive conversation with ${friend.name}? You can unarchive it later.`,
+        confirmText: 'Archive',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          // Logique d'archivage ici
+          setConfirmModal({
+            isOpen: true,
+            type: 'success',
+            data: {
+              title: 'Conversation Archived',
+              message: 'The conversation has been archived successfully.',
+              showCancel: false,
+              confirmText: 'OK'
+            }
+          });
+          setShowOptionsMenu(false);
+        }
+      }
+    });
+  };
+
+  const handleUnfriend = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'error',
+      data: {
+        title: 'Remove Friend',
+        message: `Are you sure you want to remove ${friend.name} from your friends? You will no longer be able to chat with them.`,
+        confirmText: 'Remove',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          if (onRemoveFriend) {
+            onRemoveFriend(friend.id);
+          }
+          onClose();
+        }
+      }
+    });
   };
 
   return (
@@ -230,15 +346,56 @@ const ChatModal = ({ friend, onClose }) => {
           </div>
           
           <div className={styles.chatHeaderActions}>
-            <button className={styles.chatActionButton} title="Voice call">
-              <FontAwesomeIcon icon={faPhone} style={{ fontSize: 20 }} />
-            </button>
-            <button className={styles.chatActionButton} title="Video call">
-              <FontAwesomeIcon icon={faVideo} style={{ fontSize: 20 }} />
-            </button>
-            <button className={styles.chatActionButton} title="More options">
-              <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 20 }} />
-            </button>
+            <div className={styles.optionsMenuWrapper}>
+              <button 
+                className={styles.chatActionButton} 
+                title="More options"
+                onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+              >
+                <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 20 }} />
+              </button>
+              
+              {showOptionsMenu && (
+                <>
+                  <div 
+                    className={styles.menuOverlay} 
+                    onClick={() => setShowOptionsMenu(false)}
+                  />
+                  <div className={styles.chatOptionsMenu}>
+                    <button 
+                      className={styles.chatOptionItem}
+                      onClick={handleArchiveChat}
+                    >
+                      <FontAwesomeIcon icon={faArchive} style={{ fontSize: 16 }} />
+                      Archive Chat
+                    </button>
+                    <button 
+                      className={styles.chatOptionItem}
+                      onClick={handleClearChat}
+                    >
+                      <FontAwesomeIcon icon={faTrash} style={{ fontSize: 16 }} />
+                      Clear Chat History
+                    </button>
+                    <button 
+                      className={styles.chatOptionItem}
+                      onClick={handleReportUser}
+                    >
+                      <FontAwesomeIcon icon={faFlag} style={{ fontSize: 16 }} />
+                      Report User
+                    </button>
+                    <div className={styles.dropdownDivider} />
+                    <button 
+                      className={`${styles.chatOptionItem} ${styles.dangerItem}`}
+                      onClick={handleUnfriend}
+                    >
+                      <FontAwesomeIcon icon={faUserMinus} style={{ fontSize: 16 }} />
+                      Remove Friend
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            
             <button className={styles.closeButton} onClick={onClose}>
               <FontAwesomeIcon icon={faXmark} style={{ fontSize: 24 }} />
             </button>
@@ -315,13 +472,12 @@ const ChatModal = ({ friend, onClose }) => {
         {/* Input Area */}
         <form className={styles.chatInput} onSubmit={handleSendMessage}>
           <div className={styles.chatInputActions}>
-            <button type="button" className={styles.chatInputButton} title="Add music">
-              <FontAwesomeIcon icon={faMusic} style={{ fontSize: 20 }} />
-            </button>
-            <button type="button" className={styles.chatInputButton} title="Add image">
-              <FontAwesomeIcon icon={faImage} style={{ fontSize: 20 }} />
-            </button>
-            <button type="button" className={styles.chatInputButton} title="Add emoji">
+            <button 
+              type="button" 
+              className={styles.chatInputButton} 
+              title="Add emoji"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            >
               <FontAwesomeIcon icon={faSmile} style={{ fontSize: 20 }} />
             </button>
           </div>
@@ -346,12 +502,33 @@ const ChatModal = ({ friend, onClose }) => {
           </button>
         </form>
 
+        {/* Emoji Picker */}
+        {showEmojiPicker && (
+          <EmojiPicker
+            onEmojiSelect={handleEmojiSelect}
+            onClose={() => setShowEmojiPicker(false)}
+          />
+        )}
+
         {!isConnected && (
           <div className={styles.connectionWarning}>
             ⚠️ Connecting to chat server...
           </div>
         )}
       </div>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, type: '', data: null })}
+        onConfirm={confirmModal.data?.onConfirm}
+        title={confirmModal.data?.title || ''}
+        message={confirmModal.data?.message || ''}
+        type={confirmModal.type}
+        confirmText={confirmModal.data?.confirmText || 'Confirm'}
+        cancelText={confirmModal.data?.cancelText || 'Cancel'}
+        showCancel={confirmModal.data?.showCancel !== false}
+      />
     </div>
   );
 };

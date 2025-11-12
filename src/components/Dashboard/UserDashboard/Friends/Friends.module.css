@@ -1434,3 +1434,488 @@
     max-height: 200px;
   }
 }
+
+
+/* Additional CSS for new Friends module components */
+
+/* ============================================ */
+/* CONFIRM MODAL */
+/* ============================================ */
+
+.confirmModal {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  position: relative;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.confirmModalContent {
+  padding: 40px 30px 30px;
+  text-align: center;
+}
+
+.confirmModalIcon {
+  margin-bottom: 20px;
+}
+
+.confirmModalTitle {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 12px 0;
+}
+
+.confirmModalMessage {
+  font-size: 15px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0 0 30px 0;
+}
+
+.confirmModalActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.confirmModalButtonCancel,
+.confirmModalButtonConfirm {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 100px;
+}
+
+.confirmModalButtonCancel {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.confirmModalButtonCancel:hover {
+  background: #e5e7eb;
+}
+
+.confirmModalButtonConfirm {
+  background: #b31217;
+  color: white;
+}
+
+.confirmModalButtonConfirm:hover {
+  background: #8b0d11;
+  transform: translateY(-2px);
+}
+
+/* ============================================ */
+/* EMOJI PICKER */
+/* ============================================ */
+
+.emojiPickerOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+}
+
+.emojiPicker {
+  position: absolute;
+  bottom: 80px;
+  left: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: 350px;
+  max-height: 450px;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  animation: emojiPickerSlideUp 0.2s ease-out;
+}
+
+@keyframes emojiPickerSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.emojiPickerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.emojiPickerTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.emojiPickerClose {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 5px 10px;
+  transition: color 0.2s;
+}
+
+.emojiPickerClose:hover {
+  color: #6b7280;
+}
+
+.emojiCategories {
+  display: flex;
+  gap: 5px;
+  padding: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+}
+
+.emojiCategoryBtn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s;
+  min-width: 40px;
+}
+
+.emojiCategoryBtn:hover {
+  background: #f3f4f6;
+}
+
+.emojiCategoryBtn.active {
+  background: #fef2f2;
+}
+
+.emojiGrid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  padding: 10px;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.emojiButton {
+  background: none;
+  border: none;
+  font-size: 24px;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.emojiButton:hover {
+  background: #fef2f2;
+  transform: scale(1.2);
+}
+
+/* ============================================ */
+/* USER SEARCH MODAL */
+/* ============================================ */
+
+.searchInputWrapper {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.searchInputWrapper svg {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.modalSearchInput {
+  width: 100%;
+  padding: 12px 15px 12px 45px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.modalSearchInput:focus {
+  outline: none;
+  border-color: #b31217;
+  box-shadow: 0 0 0 3px rgba(179, 18, 23, 0.1);
+}
+
+.searchResults {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.searchLoading,
+.searchError,
+.searchEmpty,
+.searchHint {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+}
+
+.userSearchList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.userSearchItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f9fafb;
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.userSearchItem:hover {
+  background: #f3f4f6;
+  transform: translateX(5px);
+}
+
+.userSearchInfo {
+  display: flex;
+  gap: 15px;
+  flex: 1;
+}
+
+.userSearchDetails {
+  flex: 1;
+}
+
+.userSearchName {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 4px 0;
+}
+
+.userSearchUsername {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 6px 0;
+}
+
+.userSearchLocation {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.userSearchBio {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.addFriendButton,
+.requestSentButton,
+.alreadyFriendButton {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.addFriendButton {
+  background: #b31217;
+  color: white;
+}
+
+.addFriendButton:hover {
+  background: #8b0d11;
+  transform: translateY(-2px);
+}
+
+.requestSentButton {
+  background: #d1d5db;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.alreadyFriendButton {
+  background: #10b981;
+  color: white;
+  cursor: not-allowed;
+}
+
+.searchUsersButton {
+  width: 100%;
+  padding: 15px;
+  background: white;
+  border: 2px dashed #e5e7eb;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.searchUsersButton:hover {
+  border-color: #b31217;
+  color: #b31217;
+  background: #fef2f2;
+}
+
+/* ============================================ */
+/* CHAT MODAL ENHANCEMENTS */
+/* ============================================ */
+
+.optionsMenuWrapper {
+  position: relative;
+}
+
+.chatOptionsMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  min-width: 220px;
+  z-index: 1001;
+  padding: 8px 0;
+  animation: menuSlideDown 0.2s ease-out;
+}
+
+@keyframes menuSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chatOptionItem {
+  width: 100%;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 15px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chatOptionItem:hover {
+  background: #f9fafb;
+}
+
+.chatOptionItem.dangerItem {
+  color: #ef4444;
+}
+
+.chatOptionItem.dangerItem:hover {
+  background: #fef2f2;
+}
+
+.menuOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+}
+
+/* ============================================ */
+/* RESPONSIVE DESIGN */
+/* ============================================ */
+
+@media (max-width: 768px) {
+  .emojiPicker {
+    width: calc(100% - 40px);
+    left: 20px;
+    right: 20px;
+    max-width: none;
+  }
+
+  .emojiGrid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .confirmModal {
+    width: 95%;
+  }
+
+  .userSearchItem {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .userSearchAction {
+    margin-top: 12px;
+  }
+
+  .addFriendButton,
+  .requestSentButton,
+  .alreadyFriendButton {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .emojiGrid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .emojiButton {
+    font-size: 20px;
+    padding: 6px;
+  }
+}

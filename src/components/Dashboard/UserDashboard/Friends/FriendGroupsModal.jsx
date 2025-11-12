@@ -10,10 +10,11 @@ import {
   faPen,
   faTrash,
   faUsers,
-  faCheck
+  faCheck,
+  faMessage
 } from '@fortawesome/free-solid-svg-icons';
 
-const FriendGroupsModal = ({ groups, friends, onClose, onSave }) => {
+const FriendGroupsModal = ({ groups, friends, onClose, onSave, onOpenGroupChat }) => {
   const [localGroups, setLocalGroups] = useState(groups);
   const [editingGroup, setEditingGroup] = useState(null);
   const [newGroupName, setNewGroupName] = useState('');
@@ -36,7 +37,8 @@ const FriendGroupsModal = ({ groups, friends, onClose, onSave }) => {
         id: Date.now(),
         name: newGroupName,
         members: selectedMembers,
-        color: selectedColor
+        color: selectedColor,
+        isCreator: true // L'utilisateur courant est le créateur
       };
       setLocalGroups([...localGroups, newGroup]);
       resetForm();
@@ -94,6 +96,12 @@ const FriendGroupsModal = ({ groups, friends, onClose, onSave }) => {
       .map(id => friends.find(f => f.id === id)?.name)
       .filter(Boolean)
       .join(', ');
+  };
+
+  const handleOpenChat = (group) => {
+    if (onOpenGroupChat) {
+      onOpenGroupChat(group);
+    }
   };
 
   return (
@@ -200,6 +208,13 @@ const FriendGroupsModal = ({ groups, friends, onClose, onSave }) => {
                       </p>
                     </div>
                     <div className={styles.groupActions}>
+                      <button 
+                        className={styles.iconButton}
+                        onClick={() => handleOpenChat(group)}
+                        title="Open group chat"
+                      >
+                        <FontAwesomeIcon icon={faMessage} style={{ fontSize: 18, color: '#10b981' }} />
+                      </button>
                       <button 
                         className={styles.iconButton}
                         onClick={() => handleEditGroup(group)}

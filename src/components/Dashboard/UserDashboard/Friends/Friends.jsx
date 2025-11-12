@@ -1,3 +1,4 @@
+// src/components/Dashboard/UserDashboard/Friends/Friends.jsx
 import React, { useState, useEffect } from 'react';
 import FriendCard from './FriendCard';
 import RequestCard from './RequestCard';
@@ -5,6 +6,8 @@ import SuggestionCard from './SuggestionCard';
 import FriendGroupsModal from './FriendGroupsModal';
 import ChatModal from './ChatModal';
 import FriendProfileModal from './FriendProfileModal';
+import UserSearchModal from './UserSearchModal';
+import ConfirmModal from './ConfirmModal';
 import { friendsAPI } from '../../../../utils/api';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { useAuth } from '../../../../contexts/AuthContext';
@@ -31,10 +34,10 @@ const Friends = () => {
   const [showGroupsModal, setShowGroupsModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedChatFriend, setSelectedChatFriend] = useState(null);
-
-  // NEW: profile modal states
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProfileFriend, setSelectedProfileFriend] = useState(null);
+  const [showUserSearchModal, setShowUserSearchModal] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', data: null });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,15 +48,10 @@ const Friends = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [friendGroups, setFriendGroups] = useState([]);
 
-  // ✅ FONCTION POUR CONVERTIR LES CHEMINS RELATIFS EN URLs ABSOLUES
   const getImageUrl = (path) => {
     if (!path) return 'https://via.placeholder.com/150';
     if (path.startsWith('http')) return path;
-    
-    // Assurez-vous que le chemin commence par un slash
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    
-    // Utiliser l'URL complète du backend
     const backendUrl = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
     return `${backendUrl}${normalizedPath}`;
   };
@@ -71,7 +69,7 @@ const Friends = () => {
         loadFriendGroups()
       ]);
     } catch (err) {
-      setError('Erreur lors du chargement des données');
+      setError('Error loading data');
       console.error(err);
     } finally {
       setLoading(false);
@@ -86,7 +84,7 @@ const Friends = () => {
           id: friend._id,
           name: `${friend.prenom} ${friend.nom}`,
           username: `@${friend.email.split('@')[0]}`,
-          avatar: getImageUrl(friend.photo_profil), // ✅ CONVERTI EN URL COMPLÈTE
+          avatar: getImageUrl(friend.photo_profil),
           status: isUserOnline(friend._id) ? 'online' : 'offline',
           mutualFriends: 0,
           location: friend.ville || 'Unknown',
@@ -95,8 +93,6 @@ const Friends = () => {
           bio: friend.bio || ''
         }));
         setFriends(enrichedFriends);
-      } else {
-        console.warn('Failed to load friends:', response.message);
       }
     } catch (err) {
       console.error('Error loading friends:', err);
@@ -111,15 +107,13 @@ const Friends = () => {
           id: req._id || req.friendshipId,
           name: req.nom ? `${req.prenom} ${req.nom}` : req.name,
           username: req.email ? `@${req.email.split('@')[0]}` : req.username,
-          avatar: getImageUrl(req.photo_profil || req.avatar), // ✅ CONVERTI EN URL COMPLÈTE
+          avatar: getImageUrl(req.photo_profil || req.avatar),
           mutualFriends: 0,
           location: req.ville || 'Unknown',
           date: formatDate(req.requestDate || req.created_date),
           favoriteGenres: []
         }));
         setRequests(enrichedRequests);
-      } else {
-        console.warn('Failed to load friend requests:', response.message);
       }
     } catch (err) {
       console.error('Error loading requests:', err);
@@ -130,19 +124,23 @@ const Friends = () => {
     try {
       const response = await friendsAPI.getFriendSuggestions();
       if (response.success) {
-        const enrichedSuggestions = response.data.map(sug => ({
+        // Filtrer pour exclure admin et superadmin
+        const filteredSuggestions = response.data.filter(sug => {
+          const userRole = sug.role || (sug.roles && sug.roles[0]?.libelle_role);
+          return userRole !== 'admin' && userRole !== 'superadmin';
+        });
+
+        const enrichedSuggestions = filteredSuggestions.map(sug => ({
           id: sug._id,
           name: `${sug.prenom} ${sug.nom}`,
           username: `@${sug.email.split('@')[0]}`,
-          avatar: getImageUrl(sug.photo_profil), // ✅ CONVERTI EN URL COMPLÈTE
+          avatar: getImageUrl(sug.photo_profil),
           mutualFriends: 0,
           location: sug.ville || 'Unknown',
           reason: sug.reason || 'Suggested for you',
           favoriteGenres: []
         }));
         setSuggestions(enrichedSuggestions);
-      } else {
-        console.warn('Failed to load suggestions:', response.message);
       }
     } catch (err) {
       console.error('Error loading suggestions:', err);
@@ -160,15 +158,13 @@ const Friends = () => {
           color: group.color || '#b31217'
         }));
         setFriendGroups(mappedGroups);
-      } else {
-        console.warn('Failed to load friend groups:', response.message);
       }
     } catch (err) {
       console.error('Error loading friend groups:', err);
     }
   };
 
-  // Actions
+  // Actions avec modals de confirmation
   const handleAcceptRequest = async (friendshipId) => {
     try {
       const response = await friendsAPI.acceptFriendRequest(friendshipId);
@@ -186,69 +182,160 @@ const Friends = () => {
         } else {
           loadFriends();
         }
-        alert('Friend request accepted!');
-      } else {
-        const failedRequest = requests.find(r => r.id === friendshipId);
-        if (failedRequest) {
-          setRequests(prev => prev.filter(r => r.id !== friendshipId));
-          setFriends(prev => [...prev, {
-            ...failedRequest, status: 'offline', lastActive: 'Recently'
-          }]);
-        }
-        alert('Friend request accepted! (Server sync may be pending)');
+        setConfirmModal({
+          isOpen: true,
+          type: 'success',
+          data: {
+            title: 'Friend Request Accepted',
+            message: 'You are now friends! You can start chatting.',
+            showCancel: false,
+            confirmText: 'OK'
+          }
+        });
       }
     } catch (err) {
       console.error('Error accepting request:', err);
-      const req = requests.find(r => r.id === friendshipId);
-      if (req) {
-        setRequests(prev => prev.filter(r => r.id !== friendshipId));
-        setFriends(prev => [...prev, { ...req, status: 'offline', lastActive: 'Recently' }]);
-        alert('Friend request accepted! (UI updated, server sync pending)');
-      } else {
-        alert('Error accepting friend request. Please try again.');
-      }
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'Failed to accept friend request. Please try again.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
     }
   };
 
   const handleRejectRequest = async (friendshipId) => {
-    try {
-      const response = await friendsAPI.rejectFriendRequest(friendshipId);
-      setRequests(prev => prev.filter(r => r.id !== friendshipId));
-      if (!response.success) {
-        console.warn('API reported failure but UI updated:', response.message);
+    setConfirmModal({
+      isOpen: true,
+      type: 'warning',
+      data: {
+        title: 'Reject Friend Request',
+        message: 'Are you sure you want to decline this friend request?',
+        confirmText: 'Decline',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+          try {
+            await friendsAPI.rejectFriendRequest(friendshipId);
+            setRequests(prev => prev.filter(r => r.id !== friendshipId));
+            setConfirmModal({
+              isOpen: true,
+              type: 'success',
+              data: {
+                title: 'Request Declined',
+                message: 'Friend request has been declined.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          } catch (err) {
+            console.error('Error rejecting request:', err);
+            setRequests(prev => prev.filter(r => r.id !== friendshipId));
+          }
+        }
       }
-    } catch (err) {
-      console.error('Error rejecting request:', err);
-      setRequests(prev => prev.filter(r => r.id !== friendshipId));
-    }
+    });
   };
 
   const handleAddFriend = async (userId) => {
     try {
       const response = await friendsAPI.sendFriendRequest(userId);
-      const suggestion = suggestions.find(s => s.id === userId);
-      setSuggestions(prev => prev.filter(s => s.id !== userId));
-      if (suggestion && user) {
-        try { notifyFriendRequest(userId, `${user.prenom} ${user.nom}`); } catch {}
+      if (response.success) {
+        setSuggestions(prev => prev.filter(s => s.id !== userId));
+        try { notifyFriendRequest(userId); } catch {}
+        setConfirmModal({
+          isOpen: true,
+          type: 'success',
+          data: {
+            title: 'Friend Request Sent',
+            message: 'Your friend request has been sent successfully!',
+            showCancel: false,
+            confirmText: 'OK'
+          }
+        });
+      } else {
+        setConfirmModal({
+          isOpen: true,
+          type: 'error',
+          data: {
+            title: 'Error',
+            message: response.message || 'Failed to send friend request',
+            showCancel: false,
+            confirmText: 'OK'
+          }
+        });
       }
-      if (!response.success) console.warn('API reported failure but UI updated:', response.message);
     } catch (err) {
       console.error('Error sending friend request:', err);
-      alert('Error sending friend request');
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'Failed to send friend request. Please try again.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
     }
   };
 
   const handleRemoveFriend = async (friendId) => {
-    if (window.confirm('Are you sure you want to unfriend this person?')) {
-      try {
-        const response = await friendsAPI.removeFriend(friendId);
-        setFriends(prev => prev.filter(f => f.id !== friendId));
-        if (!response.success) console.warn('API reported failure but UI updated:', response.message);
-      } catch (err) {
-        console.error('Error removing friend:', err);
-        setFriends(prev => prev.filter(f => f.id !== friendId));
+    const friendToRemove = friends.find(f => f.id === friendId);
+    setConfirmModal({
+      isOpen: true,
+      type: 'error',
+      data: {
+        title: 'Remove Friend',
+        message: `Are you sure you want to remove ${friendToRemove?.name || 'this user'} from your friends?`,
+        confirmText: 'Remove',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+          try {
+            const response = await friendsAPI.removeFriend(friendId);
+            if (response.success) {
+              setFriends(prev => prev.filter(f => f.id !== friendId));
+              setConfirmModal({
+                isOpen: true,
+                type: 'success',
+                data: {
+                  title: 'Friend Removed',
+                  message: 'Friend has been removed successfully.',
+                  showCancel: false,
+                  confirmText: 'OK'
+                }
+              });
+            } else {
+              setConfirmModal({
+                isOpen: true,
+                type: 'error',
+                data: {
+                  title: 'Error',
+                  message: response.message || 'Failed to remove friend',
+                  showCancel: false,
+                  confirmText: 'OK'
+                }
+              });
+            }
+          } catch (err) {
+            console.error('Error removing friend:', err);
+            setConfirmModal({
+              isOpen: true,
+              type: 'error',
+              data: {
+                title: 'Error',
+                message: 'Failed to remove friend. Please try again.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          }
+        }
       }
-    }
+    });
   };
 
   const handleSendMessage = (friend) => {
@@ -256,83 +343,54 @@ const Friends = () => {
     setShowChatModal(true);
   };
 
-  // NEW: open profile modal (with optional fetch if not in local list)
-  const handleViewProfile = async (friendId) => {
-    let f = friends.find(x => x.id === friendId);
-
-    if (!f && friendsAPI?.getFriendById) {
-      try {
-        const res = await friendsAPI.getFriendById(friendId);
-        if (res?.success && res?.data) {
-          f = {
-            id: res.data._id,
-            name: `${res.data.prenom} ${res.data.nom}`,
-            username: `@${res.data.email?.split('@')[0]}`,
-            avatar: getImageUrl(res.data.photo_profil), // ✅ CONVERTI EN URL COMPLÈTE
-            status: isUserOnline(res.data._id) ? 'online' : 'offline',
-            mutualFriends: 0,
-            location: res.data.ville || 'Unknown',
-            favoriteGenres: res.data.favoriteGenres || [],
-            lastActive: isUserOnline(res.data._id) ? 'Active now' : 'Recently',
-            bio: res.data.bio || ''
-          };
-        }
-      } catch (e) {
-        console.warn('getFriendById failed, using minimal profile');
-      }
+  const handleViewProfile = (friendId) => {
+    const friend = friends.find(f => f.id === friendId);
+    if (friend) {
+      setSelectedProfileFriend(friend);
+      setShowProfileModal(true);
     }
-
-    if (!f) f = { id: friendId, name: 'Friend', username: '@user', status: 'offline' };
-
-    setSelectedProfileFriend(f);
-    setShowProfileModal(true);
   };
 
-  const handleSaveGroups = async (updatedGroups) => {
+  const handleSaveGroups = async (groups) => {
     try {
-      let success = true;
-      const existingIds = friendGroups.map(g => g.id);
-      const newGroups = updatedGroups.filter(g => !existingIds.includes(g.id));
-      const deletedGroups = friendGroups.filter(g => !updatedGroups.find(ug => ug.id === g.id));
-      const modifiedGroups = updatedGroups.filter(g => 
-        existingIds.includes(g.id) && 
-        JSON.stringify(g) !== JSON.stringify(friendGroups.find(eg => eg.id === g.id))
-      );
-      
-      for (const newGroup of newGroups) {
-        try { await friendsAPI.createFriendGroup({ name: newGroup.name, members: newGroup.members, color: newGroup.color }); }
-        catch { success = false; }
-      }
-      for (const group of modifiedGroups) {
-        try { await friendsAPI.updateFriendGroup(group.id, { name: group.name, members: group.members, color: group.color }); }
-        catch { success = false; }
-      }
-      for (const group of deletedGroups) {
-        try { await friendsAPI.deleteFriendGroup(group.id); }
-        catch { success = false; }
-      }
-      setFriendGroups(updatedGroups);
-      if (!success) alert('Groups updated with some errors. UI updated, some server changes may be pending.');
-      else alert('Groups updated successfully!');
+      setFriendGroups(groups);
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        data: {
+          title: 'Groups Saved',
+          message: 'Your friend groups have been saved successfully!',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
     } catch (err) {
       console.error('Error saving groups:', err);
-      setFriendGroups(updatedGroups);
-      alert('Groups updated with errors. UI updated, server sync may be pending.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'Failed to save friend groups. Please try again.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
     }
   };
 
-  // Utils
   const formatDate = (date) => {
     if (!date) return 'Recently';
-    const d = new Date(date);
     const now = new Date();
-    const diff = now - d;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days} days ago`;
-    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-    return `${Math.floor(days / 30)} months ago`;
+    const requestDate = new Date(date);
+    const diffTime = Math.abs(now - requestDate);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return `${Math.floor(diffDays / 30)} months ago`;
   };
 
   const filteredFriends = friends.filter(friend => {
@@ -443,6 +501,19 @@ const Friends = () => {
         </div>
       )}
 
+      {/* Suggestions Search Bar */}
+      {activeTab === 'suggestions' && (
+        <div className={styles.searchBar}>
+          <button 
+            className={styles.searchUsersButton}
+            onClick={() => setShowUserSearchModal(true)}
+          >
+            <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: 20 }} />
+            Search Users to Add as Friends
+          </button>
+        </div>
+      )}
+
       {/* Content */}
       <div className={styles.content}>
         {activeTab === 'friends' && (
@@ -532,6 +603,7 @@ const Friends = () => {
             setShowChatModal(false);
             setSelectedChatFriend(null);
           }}
+          onRemoveFriend={handleRemoveFriend}
         />
       )}
 
@@ -546,6 +618,27 @@ const Friends = () => {
           onRemove={handleRemoveFriend}
         />
       )}
+
+      {showUserSearchModal && (
+        <UserSearchModal
+          onClose={() => setShowUserSearchModal(false)}
+          onSendRequest={handleAddFriend}
+          currentUser={user}
+        />
+      )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, type: '', data: null })}
+        onConfirm={confirmModal.data?.onConfirm}
+        title={confirmModal.data?.title || ''}
+        message={confirmModal.data?.message || ''}
+        type={confirmModal.type}
+        confirmText={confirmModal.data?.confirmText || 'Confirm'}
+        cancelText={confirmModal.data?.cancelText || 'Cancel'}
+        showCancel={confirmModal.data?.showCancel !== false}
+      />
     </div>
   );
 };
