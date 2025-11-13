@@ -1,4 +1,4 @@
-// src/components/Dashboard/UserDashboard/Friends/ChatModal.jsx - VERSION MISE À JOUR (ajouts: condition new-message & avatar des messages reçus)
+// src/components/Dashboard/UserDashboard/Friends/ChatModal.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { friendsAPI } from '../../../../utils/api';
@@ -72,10 +72,9 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     if (!socket) return;
 
     const handleNewMessage = (data) => {
-      // ✅ Ajout: on montre à la fois nos messages et ceux de l'autre
-      // Si le sender OU le receiver est cet ami, on ajoute dans le fil
-      const senderId = data.message.sender?._id || data.message.sender;
-      const receiverId = data.message.receiver?._id || data.message.receiver;
+      // Afficher nos messages ET ceux de l’ami
+      const senderId = data.message?.sender?._id || data.message?.sender;
+      const receiverId = data.message?.receiver?._id || data.message?.receiver;
       if (senderId === friend.id || receiverId === friend.id) {
         setMessages(prev => [...prev, formatMessage(data.message)]);
         markMessagesAsRead(friend.id);
@@ -126,10 +125,10 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
 
   const formatMessage = (msg) => ({
     id: msg._id,
-    sender: msg.sender._id || msg.sender,
-    senderName: msg.sender.nom ? `${msg.sender.prenom} ${msg.sender.nom}` : 'Unknown',
+    sender: msg.sender?._id || msg.sender,
+    senderName: msg.sender?.nom ? `${msg.sender?.prenom} ${msg.sender?.nom}` : 'Unknown',
     text: msg.content,
-    timestamp: formatTime(msg.created_date),
+    timestamp: formatTime(msg.created_date || msg.createdAt || Date.now()),
     type: msg.type,
     edited: msg.edited || false,
     editedAt: msg.editedAt,
@@ -142,8 +141,8 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     try {
       setLoading(true);
       const response = await friendsAPI.getMessages(friend.id);
-      if (response.success) {
-        const formattedMessages = response.data.messages.map(formatMessage);
+      if (response?.success) {
+        const formattedMessages = (response.data?.messages || []).map(formatMessage);
         setMessages(formattedMessages);
         markMessagesAsRead(friend.id);
       }
@@ -161,7 +160,7 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     });
   };
 
-  // Utilisé pour fallback d'avatar (initiales)
+  // Fallback d'avatar (initiales)
   const getInitials = (name) =>
     (name || '')
       .split(' ')
@@ -182,16 +181,29 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
 
     try {
       if (editingMessage) {
-        // Éditer le message
         await friendsAPI.editMessage(editingMessage.id, content);
         setEditingMessage(null);
       } else if (replyingTo) {
-        // Répondre au message
         await friendsAPI.replyToMessage(replyingTo.id, content);
         setReplyingTo(null);
       } else {
-        // Nouveau message
+        // Envoi serveur
         await sendMessage(friend.id, content, 'text');
+
+        // ✅ APPEND OPTIMISTE : on ajoute immédiatement notre message
+        const localMsg = {
+          id: `local-${Date.now()}`,
+          sender: 'self',               // différent de friend.id => classé côté droit
+          senderName: 'You',
+          text: content,
+          timestamp: formatTime(Date.now()),
+          type: 'text',
+          edited: false,
+          deleted: false,
+          forwarded: false,
+          replyTo: null
+        };
+        setMessages(prev => [...prev, localMsg]);
       }
     } catch (err) {
       console.error('Error sending message:', err);
@@ -218,17 +230,11 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
   const handleInputChange = (e) => {
     setMessage(e.target.value);
     
-    // Gestion du "typing indicator"
     if (!typing && e.target.value) {
       startTyping(friend.id);
       setTyping(true);
     }
-    
-    // Reset timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       stopTyping(friend.id);
       setTyping(false);
@@ -257,7 +263,6 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
   const handleCopy = async (msg) => {
     try {
       await navigator.clipboard.writeText(msg.text);
-      // Toast notification
       setConfirmModal({
         isOpen: true,
         type: 'success',
@@ -530,7 +535,7 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                   isOwnMessage ? styles.messageRight : styles.messageLeft
                 }`}
               >
-                {/* ✅ Ajout: avatar à côté des messages de l'autre */}
+                {/* Avatar à côté des messages de l'ami */}
                 {!isOwnMessage && (
                   <div className={styles.messageAvatar}>
                     {friend.avatar ? (
