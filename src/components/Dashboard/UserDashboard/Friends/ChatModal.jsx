@@ -1,4 +1,4 @@
-// src/components/Dashboard/UserDashboard/Friends/ChatModal.jsx - VERSION COMPLÈTE
+// src/components/Dashboard/UserDashboard/Friends/ChatModal.jsx - VERSION MISE À JOUR (ajouts: condition new-message & avatar des messages reçus)
 import React, { useState, useRef, useEffect } from 'react';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { friendsAPI } from '../../../../utils/api';
@@ -72,7 +72,11 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     if (!socket) return;
 
     const handleNewMessage = (data) => {
-      if (data.message.sender._id === friend.id || data.message.sender === friend.id) {
+      // ✅ Ajout: on montre à la fois nos messages et ceux de l'autre
+      // Si le sender OU le receiver est cet ami, on ajoute dans le fil
+      const senderId = data.message.sender?._id || data.message.sender;
+      const receiverId = data.message.receiver?._id || data.message.receiver;
+      if (senderId === friend.id || receiverId === friend.id) {
         setMessages(prev => [...prev, formatMessage(data.message)]);
         markMessagesAsRead(friend.id);
       }
@@ -156,6 +160,16 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
       minute: '2-digit' 
     });
   };
+
+  // Utilisé pour fallback d'avatar (initiales)
+  const getInitials = (name) =>
+    (name || '')
+      .split(' ')
+      .filter(Boolean)
+      .map(n => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -509,7 +523,6 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
 
           {messages.map((msg, index) => {
             const isOwnMessage = msg.sender !== friend.id;
-            
             return (
               <div 
                 key={msg.id || index}
@@ -517,6 +530,19 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                   isOwnMessage ? styles.messageRight : styles.messageLeft
                 }`}
               >
+                {/* ✅ Ajout: avatar à côté des messages de l'autre */}
+                {!isOwnMessage && (
+                  <div className={styles.messageAvatar}>
+                    {friend.avatar ? (
+                      <img src={friend.avatar} alt={friend.name} />
+                    ) : (
+                      <div className={styles.miniAvatarPlaceholder}>
+                        {getInitials(friend.name)}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className={styles.messageBubble}>
                   {msg.replyTo && (
                     <div className={styles.messageReply}>
