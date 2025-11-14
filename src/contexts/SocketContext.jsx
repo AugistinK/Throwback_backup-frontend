@@ -181,14 +181,21 @@ export const SocketProvider = ({ children }) => {
       const group = payload.group || {};
       const groupId = group._id || group.id;
       const groupName = group.groupName || group.name || 'Group chat';
+      const createdBy = payload.createdBy;
 
-      console.log('💬 New chat group created:', groupName);
+      const currentUserId = user?._id || user?.id;
+      const isCreator = currentUserId && createdBy && String(createdBy) === String(currentUserId);
+
+      console.log('💬 New chat group created:', groupName, 'creator:', createdBy);
+
       addNotification({
         type: 'chat-group',
-        title: 'New Group Chat',
-        message: `You were added to "${groupName}"`,
+        title: isCreator ? 'Group Chat Created' : 'New Group Chat',
+        message: isCreator
+          ? `You created the group "${groupName}"`
+          : `You were added to "${groupName}"`,
         groupId,
-        senderId: payload.createdBy,
+        senderId: createdBy,
         timestamp: group.created_date || Date.now()
       });
     });

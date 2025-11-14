@@ -1,5 +1,4 @@
 // src/utils/friendsAPI.js - VERSION COMPLÈTE FINALE POUR THROWBACK (fusionnée)
-// Inclut toutes les méthodes de friendsAPI.js + friendsAPI_UPDATED.js
 import api from './api';
 
 /**
@@ -15,7 +14,7 @@ import api from './api';
  * - Actions avancées sur messages (éditer, copier, transférer, répondre, suppression globale)
  * - Statistiques & utilitaires de diagnostic
  *
- * @version 2.1.1
+ * @version 2.1.2
  * @date Novembre 2025
  */
 
@@ -131,7 +130,6 @@ export const friendsAPI = {
       const res = await api.delete(`/api/friends/remove/${friendId}`);
       return res.data;
     } catch (error) {
-      // Fallback vers ancienne route si non trouvée
       if (error.response?.status === 404) {
         try {
           const res2 = await api.delete(`/api/chat/friend/${friendId}`);
@@ -328,7 +326,6 @@ export const friendsAPI = {
   // CONVERSATIONS (DIRECTES & GROUPES)
   // ============================================
 
-  /** Conversations list (ancienne API basée sur /api/messages/conversations) */
   getConversations: async () => {
     try {
       const res = await api.get('/api/messages/conversations');
@@ -343,14 +340,10 @@ export const friendsAPI = {
     }
   },
 
-  /**
-   * 🆕 Récupérer toutes les conversations (directes + groupes)
-   * basées sur le nouveau modèle Conversation via /api/conversations
-   */
   getAllConversations: async () => {
     try {
       const res = await api.get('/api/conversations');
-      return res.data; // { success, data: [conversationsWithUnread] }
+      return res.data;
     } catch (error) {
       console.error('Error fetching all conversations:', error);
       return {
@@ -361,7 +354,6 @@ export const friendsAPI = {
     }
   },
 
-  /** Créer/récupérer une conversation directe avec un ami */
   getOrCreateDirectConversation: async (friendId) => {
     try {
       const res = await api.post('/api/conversations/direct', { friendId });
@@ -378,9 +370,21 @@ export const friendsAPI = {
   /** Créer un groupe de conversation (chat) */
   createGroup: async (name, participants, description = null) => {
     try {
+      if (!name || !name.trim()) {
+        throw new Error('Group name is required');
+      }
+
+      let cleanedParticipants = Array.isArray(participants) ? participants : [];
+      cleanedParticipants = cleanedParticipants
+        .map((p) => (typeof p === 'string' || typeof p === 'number' ? p : p?._id || p?.id || null))
+        .filter(Boolean);
+
+      // remove doublons
+      cleanedParticipants = [...new Set(cleanedParticipants)];
+
       const res = await api.post('/api/conversations/groups', {
-        name,
-        participants,
+        name: name.trim(),
+        participants: cleanedParticipants,
         description
       });
       return res.data;
@@ -388,7 +392,7 @@ export const friendsAPI = {
       console.error('Error creating group conversation:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to create group'
+        message: error.response?.data?.message || error.message || 'Failed to create group'
       };
     }
   },
@@ -454,7 +458,6 @@ export const friendsAPI = {
   // MESSAGES (DIRECTS)
   // ============================================
 
-  /** Messages d’une conversation directe (friendId = interlocuteur) */
   getMessages: async (friendId, page = 1, limit = 50) => {
     try {
       const res = await api.get(`/api/messages/${friendId}`, {
@@ -479,7 +482,6 @@ export const friendsAPI = {
     }
   },
 
-  /** Envoyer un message direct */
   sendMessage: async (receiverId, content, type = 'text') => {
     try {
       if (!receiverId || !content) {
@@ -496,7 +498,6 @@ export const friendsAPI = {
     }
   },
 
-  /** Marquer un message comme lu */
   markMessageAsRead: async (messageId) => {
     try {
       const res = await api.put(`/api/messages/${messageId}/read`);
@@ -510,7 +511,6 @@ export const friendsAPI = {
     }
   },
 
-  /** Supprimer un message (route messages simple) */
   deleteMessage: async (messageId) => {
     try {
       const res = await api.delete(`/api/messages/${messageId}`);
@@ -524,7 +524,6 @@ export const friendsAPI = {
     }
   },
 
-  /** Compteur de non lus */
   getUnreadCount: async () => {
     try {
       const res = await api.get('/api/messages/unread/count');
@@ -569,7 +568,6 @@ export const friendsAPI = {
     }
   },
 
-  /** Suppression avancée (deleteForEveryone) */
   deleteMessageAdvanced: async (messageId, deleteForEveryone = false) => {
     try {
       const res = await api.delete(`/api/chat/messages/${messageId}`, {
@@ -735,7 +733,6 @@ export const friendsAPI = {
   // DIAGNOSTIC
   // ============================================
 
-  /** Ping de routes utiles pour débogage rapide */
   testFriendRoutes: async () => {
     const results = {};
     const getRoutes = [

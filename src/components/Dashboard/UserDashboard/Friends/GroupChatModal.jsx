@@ -26,17 +26,14 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
 
   const currentUserId = user?._id || user?.id || null;
 
-  // ID du "Friend Group" (organisation) - peut être utile plus tard
-  const friendGroupId = group?._id || group?.id || null;
-
-  // ID de la conversation de groupe réelle (modèle Conversation)
-  const initialConversationId =
+  // ID "fonctionnel" de la conversation de groupe (Conversation._id)
+  const [conversationId, setConversationId] = useState(
     group?.conversationId ||
-    group?.chatConversationId ||
-    (group?.conversation && (group.conversation._id || group.conversation.id)) ||
-    null;
-
-  const [conversationId, setConversationId] = useState(initialConversationId);
+      group?.chatConversationId ||
+      group?.conversation?._id ||
+      group?.conversation?.id ||
+      null
+  );
 
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
@@ -52,6 +49,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
+  // Auto scroll en bas
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -115,10 +113,9 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
   };
 
   /**
-   * 🔁 Étape 1 : s'assurer qu'on a bien un ID de conversation de groupe
-   * - si group.conversationId existe -> on l'utilise
-   * - sinon on cherche une conversation de type "group" avec le même nom
-   * - sinon on crée une nouvelle conversation de groupe
+   * 1️⃣ S'assurer qu'on a une conversation de groupe côté backend
+   *    - si group.conversationId existe on l'utilise
+   *    - sinon on crée un groupe via /api/conversations/groups
    */
   useEffect(() => {
     const ensureConversation = async () => {
@@ -127,55 +124,84 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
         return;
       }
 
-      // Déjà résolu
+      // Déjà résolue
       if (conversationId) {
+        return;
+      }
+
+      // Si la conversation est déjà connue côté parent (prop)
+      const existingConvId =
+        group.conversationId ||
+        group.chatConversationId ||
+        (group.conversation && (group.conversation._id || group.conversation.id));
+
+      if (existingConvId) {
+        setConversationId(existingConvId);
+        return;
+      }
+
+      // Construire la liste des participants à partir du Friend Group
+      const rawMembers = Array.isArray(group.members) ? group.members : [];
+      const memberIds = rawMembers
+        .map((m) => {
+          if (!m) return null;
+          if (typeof m === 'string' || typeof m === 'number') return m;
+          return m._id || m.id || null;
+        })
+        .filter(Boolean);
+
+      // ⚠️ IMPORTANT :
+      // On exclut le créateur de la liste envoyée au backend
+      // car Conversation.createGroup() l'ajoute déjà,
+      // et Friendship.areFriends(userId, userId) renvoie false.
+      const participantIds = memberIds.filter(
+        (id) => String(id) !== String(currentUserId)
+      );
+
+      if (participantIds.length < 2) {
+        // Backend impose au moins 2 participants (donc groupe >= 3 personnes au total)
+        setLoading(false);
+        setConfirmModal({
+          isOpen: true,
+          type: 'info',
+          data: {
+            title: 'Group too small',
+            message:
+              'To create a group chat, you must have at least 3 members in the friend group.',
+            showCancel: false,
+            confirmText: 'OK'
+          }
+        });
         return;
       }
 
       try {
         const groupName = group.name || group.groupName || 'Group';
 
-        // 1) Essayer de trouver une conversation de type "group" existante
-        if (typeof friendsAPI.getAllConversations === 'function') {
-          const res = await friendsAPI.getAllConversations();
-          if (res?.success && Array.isArray(res.data)) {
-            const existing = res.data.find((conv) => {
-              if (conv.type !== 'group') return false;
-              if (!conv.groupName) return false;
-              if (conv.groupName !== groupName) return false;
-              // S'assurer que l'utilisateur actuel est dedans
-              const participantIds = (conv.participants || []).map((p) =>
-                String(p._id || p.id || p)
-              );
-              return participantIds.includes(String(currentUserId));
-            });
-
-            if (existing) {
-              const id = existing._id || existing.id;
-              setConversationId(id);
-              if (onUpdateGroup) {
-                onUpdateGroup({
-                  ...group,
-                  conversationId: id
-                });
-              }
-              return;
-            }
-          }
-        }
-
-        // 2) Sinon, créer une nouvelle conversation de groupe
-        const baseMembers = Array.isArray(group.members) ? [...group.members] : [];
-        const currentIdStr = String(currentUserId);
-        if (!baseMembers.some((id) => String(id) === currentIdStr)) {
-          baseMembers.push(currentUserId);
-        }
-
-        const createRes = await friendsAPI.createGroup(groupName, baseMembers, null);
+        const createRes = await friendsAPI.createGroup(
+          groupName,
+          participantIds,
+          group.description || null
+        );
 
         if (!createRes?.success || !createRes.data) {
-          console.error('Error creating group conversation:', createRes?.message);
+          console.error(
+            'Error creating group conversation:',
+            createRes?.message
+          );
           setLoading(false);
+          setConfirmModal({
+            isOpen: true,
+            type: 'error',
+            data: {
+              title: 'Error',
+              message:
+                createRes?.message ||
+                'Unable to create the group chat. Please try again later.',
+              showCancel: false,
+              confirmText: 'OK'
+            }
+          });
           return;
         }
 
@@ -184,15 +210,33 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
 
         setConversationId(newId);
 
+        // Permet au parent de mémoriser l'ID de conversation pour ce groupe
         if (onUpdateGroup) {
           onUpdateGroup({
             ...group,
-            conversationId: newId
+            conversationId: newId,
+            conversation: newConv
           });
         }
       } catch (err) {
-        console.error('Error resolving group conversation:', err);
+        console.error('Error creating group conversation:', err);
         setLoading(false);
+
+        let msg = 'Unable to create the group chat.';
+        if (err?.response?.data?.message) {
+          msg = err.response.data.message;
+        }
+
+        setConfirmModal({
+          isOpen: true,
+          type: 'error',
+          data: {
+            title: 'Error',
+            message: msg,
+            showCancel: false,
+            confirmText: 'OK'
+          }
+        });
       }
     };
 
@@ -201,12 +245,15 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
   }, [group, currentUserId, conversationId]);
 
   /**
-   * 🔁 Étape 2 : charger les messages une fois qu'on a conversationId
-   * et rejoindre le groupe via Socket.IO
+   * 2️⃣ Charger les messages une fois qu'on a conversationId
+   *    + rejoindre le groupe via Socket.IO
    */
   useEffect(() => {
     const fetchMessages = async () => {
-      if (!conversationId) return;
+      if (!conversationId) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
@@ -215,7 +262,6 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
         if (!response?.success) {
           console.error('Error loading group messages:', response?.message);
           setMessages([]);
-          setLoading(false);
           return;
         }
 
@@ -257,7 +303,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
   }, [conversationId, isConnected]);
 
   /**
-   * 🔁 Étape 3 : écouter les messages temps réel pour cette conversation
+   * 3️⃣ Ecouter les messages temps réel (événement 'group-message')
    */
   useEffect(() => {
     if (!socket || !conversationId) return;
@@ -266,9 +312,8 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
       const incomingGroupId =
         data.groupId || data.group_id || data.group?._id || data.group?.id;
 
-      if (!incomingGroupId || String(incomingGroupId) !== String(conversationId)) {
-        return;
-      }
+      if (!incomingGroupId) return;
+      if (String(incomingGroupId) !== String(conversationId)) return;
 
       const payload = data.message || data;
       const mapped = buildMessageFromApi(payload);
@@ -294,9 +339,8 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
     e.preventDefault();
     if (!message.trim()) return;
 
-    // Si la conversation n'est pas encore prête, on bloque l'envoi
     if (!conversationId) {
-      console.error('Missing group conversation id, cannot send message.');
+      console.error('Missing conversation id, cannot send message.');
       return;
     }
 
@@ -336,22 +380,9 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? finalMessage : m))
       );
-
-      // Optionnel : émettre aussi via socket si le backend n'émet pas après la création
-      if (socket && isConnected) {
-        socket.emit('group-message', {
-          groupId: conversationId,
-          message: apiMessage || {
-            content: contentToSend,
-            sender: currentUserId,
-            type: 'text',
-            created_date: new Date()
-          }
-        });
-      }
     } catch (err) {
       console.error('Error sending group message:', err);
-      // Retirer l’optimistic message en cas d’erreur
+      // Annuler le message optimiste
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setConfirmModal({
         isOpen: true,
@@ -388,8 +419,6 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
         showCancel: true,
         confirmText: 'OK',
         onConfirm: () => {
-          // TODO: ouvrir un modal de sélection de membres
-          // et utiliser friendsAPI.addParticipantToGroup(conversationId, memberId)
           setShowOptionsMenu(false);
         }
       }
@@ -406,7 +435,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
         confirmText: 'Leave',
         cancelText: 'Cancel',
         onConfirm: () => {
-          // TODO: appeler friendsAPI.removeParticipantFromGroup(conversationId, currentUserId)
+          // TODO: appeler conversationsController.removeParticipant côté API si nécessaire
           onClose();
         }
       }
@@ -414,8 +443,6 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
   };
 
   const handleDeleteGroup = () => {
-    if (!conversationId && !friendGroupId) return;
-
     setConfirmModal({
       isOpen: true,
       type: 'error',
@@ -426,9 +453,6 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
         cancelText: 'Cancel',
         onConfirm: () => {
           // TODO: endpoint dédié pour supprimer un groupe de conversation si tu le prévois
-          if (onUpdateGroup) {
-            onUpdateGroup();
-          }
           onClose();
         }
       }
@@ -438,7 +462,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.chatModal} onClick={(e) => e.stopPropagation()}>
-        {/* Group Header */}
+        {/* Header */}
         <div className={styles.chatHeader}>
           <div className={styles.chatHeaderLeft}>
             <div
@@ -492,7 +516,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
                       className={styles.chatOptionItem}
                       onClick={() => {
                         setShowOptionsMenu(false);
-                        // TODO: ouvrir modal "view members"
+                        // TODO: ouvrir un modal "view members"
                       }}
                     >
                       <FontAwesomeIcon
@@ -512,7 +536,6 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
                       />
                       Leave Group
                     </button>
-                    {/* Only show delete if user is group creator */}
                     {group.isCreator && (
                       <button
                         className={`${styles.chatOptionItem} ${styles.dangerItem}`}
@@ -536,7 +559,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
           </div>
         </div>
 
-        {/* Messages Area */}
+        {/* Messages */}
         <div className={styles.chatMessages}>
           {loading && (
             <div className={styles.loadingMessages}>
@@ -571,7 +594,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
+        {/* Zone de saisie */}
         <form className={styles.chatInput} onSubmit={handleSendMessage}>
           <div className={styles.chatInputActions}>
             <button
