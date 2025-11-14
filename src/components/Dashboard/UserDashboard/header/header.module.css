@@ -166,6 +166,7 @@
   justify-content: flex-end;
 }
 
+/* Create Button (si réactivé un jour) */
 .createButton {
   display: flex;
   align-items: center;
@@ -188,6 +189,11 @@
   font-weight: 500;
 }
 
+/* Notifications */
+.notificationContainer {
+  position: relative;
+}
+
 .notificationButton {
   width: 40px;
   height: 40px;
@@ -203,6 +209,27 @@
   margin-right: 10px;
 }
 
+.notificationButton:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.notificationBadge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background-color: #8b0000;
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+
 /* Create Dropdown Container */
 .createContainer {
   position: relative;
@@ -215,7 +242,6 @@
   right: -10px;
 }
 
-/* Hover effect for dropdown items specific to Create */
 .createContainer .dropdownItem:hover {
   background-color: #f8f8f8;
   color: #8b0000;
@@ -225,7 +251,6 @@
   color: #8b0000;
 }
 
-/* Mobile adjustments for Create dropdown */
 @media (max-width: 480px) {
   .createContainer .dropdown {
     right: -40px;
@@ -233,7 +258,7 @@
   }
 }
 
-/* Animation for both dropdowns */
+/* Dropdown générique (profil / notifications) */
 .dropdown {
   position: absolute;
   top: calc(100% + 10px);
@@ -246,8 +271,7 @@
   z-index: 1000;
 }
 
-
-/* Ajouter au fichier header.module.css */
+/* Suggestions recherche */
 .suggestionsList {
   position: absolute;
   top: calc(100% + 4px);
@@ -295,42 +319,21 @@
   text-transform: capitalize;
 }
 
-
 /* Ensure proper positioning when both dropdowns are open */
 .createContainer .dropdown,
 .profileContainer .dropdown {
   z-index: 1001;
 }
 
-/* Adjust dropdown for narrower screens */
 @media (max-width: 768px) {
   .createContainer .dropdown {
     width: 200px;
   }
 }
 
-
-
-
-.notificationButton:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.notificationBadge {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  background-color: #8b0000;
-  color: white;
-  font-size: 11px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Profile Button & Dropdown */
@@ -354,24 +357,6 @@
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-}
-
-.dropdown {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 300px;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  animation: fadeIn 0.2s ease;
-  z-index: 1000;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .dropdownHeader {
@@ -441,6 +426,164 @@
   margin: 8px 0;
 }
 
+/* NOTIFICATION DROPDOWN */
+
+.notificationDropdown {
+  width: 360px;
+  right: -40px;
+}
+
+.notificationHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+.notificationTitle {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.notificationStatus {
+  font-size: 12px;
+  color: #888;
+}
+
+.markAllReadButton {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: #8b0000;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.notificationBody {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.notificationList {
+  display: flex;
+  flex-direction: column;
+}
+
+.notificationItem {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.notificationItem:hover {
+  background-color: #f8f8f8;
+}
+
+.notificationItemUnread {
+  background-color: #fff5f5;
+}
+
+.notificationIconWrapper {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.notificationIcon {
+  font-size: 14px;
+  color: #8b0000;
+}
+
+.notificationUnreadDot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #8b0000;
+  border: 2px solid #fff;
+}
+
+.notificationContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.notificationItemTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.notificationMessage {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 4px;
+}
+
+.notificationMeta {
+  font-size: 11px;
+  color: #999;
+}
+
+.notificationEmpty {
+  padding: 24px 16px;
+  text-align: center;
+  color: #666;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.notificationEmptyIcon {
+  font-size: 24px;
+  color: #8b0000;
+  margin-bottom: 4px;
+}
+
+.notificationEmpty p {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+}
+
+.notificationFooter {
+  border-top: 1px solid #f1f1f1;
+  padding: 10px 12px;
+}
+
+.viewAllNotificationsButton {
+  width: 100%;
+  border: none;
+  background: #f8f8f8;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #8b0000;
+  font-weight: 500;
+}
+
+.viewAllNotificationsButton:hover {
+  background: #f0f0f0;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   .createText {
@@ -453,6 +596,11 @@
   
   .searchContainer {
     max-width: 400px;
+  }
+
+  .notificationDropdown {
+    width: 320px;
+    right: 0;
   }
 }
 
@@ -477,6 +625,11 @@
     padding: 0;
     width: 40px;
     justify-content: center;
+  }
+
+  .notificationDropdown {
+    width: 300px;
+    right: -10px;
   }
 }
 
@@ -520,7 +673,6 @@
     margin-left: auto;
   }
   
-  /* Améliorer les zones tactiles sur mobile */
   .notificationButton,
   .createButton,
   .profileButton,
@@ -530,7 +682,6 @@
     min-height: 44px;
   }
   
-  /* Réduire les marges pour optimiser l'espace */
   .headerRight {
     gap: 4px;
   }
@@ -540,9 +691,13 @@
     margin-right: 4px;
   }
   
-  /* Style pour le dropdown sur mobile */
   .dropdown {
     right: -10px;
     width: 280px;
+  }
+
+  .notificationDropdown {
+    width: 280px;
+    right: -10px;
   }
 }

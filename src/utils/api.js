@@ -496,20 +496,67 @@ const conversationsAPI = {
     }
   }
 };
+// ============================================
+// NOTIFICATIONS API (NOUVEAU)
+// ============================================
+
+const notificationsAPI = {
+  getUserNotifications: async () => {
+    try {
+      const res = await api.get('/api/notifications');
+      // backend renvoie normalement { success, data, unreadCount }
+      return res.data;
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load notifications',
+        data: [],
+        unreadCount: 0
+      };
+    }
+  },
+
+  markAllAsRead: async () => {
+    try {
+      const res = await api.post('/api/notifications/mark-all-read');
+      return res.data;
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to mark notifications as read'
+      };
+    }
+  },
+
+  markAsRead: async (id) => {
+    try {
+      const res = await api.post(`/api/notifications/${id}/read`);
+      return res.data;
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to mark notification as read'
+      };
+    }
+  }
+};
 
 // ============================================
 // EXPORTS
 // ============================================
 
-// Exporter les modules API
 export { videoAPI };
 export { podcastAPI };
 export { playlistAPI };
 export { searchAPI };
 export { socialAPI };
 export { adminAPI };
-export { friendsAPI }; 
+export { friendsAPI };
 export { conversationsAPI };
+export { notificationsAPI };
 
 // Export par défaut de l'instance axios
 export default api;

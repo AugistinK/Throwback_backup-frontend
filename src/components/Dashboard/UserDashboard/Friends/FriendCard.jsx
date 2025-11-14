@@ -55,34 +55,7 @@ const FriendCard = ({ friend, onRemove, onMessage, onViewProfile }) => {
         
         {showMenu && (
           <>
-            <div 
-              className={styles.menuOverlay} 
-              onClick={() => setShowMenu(false)}
-            />
-            <div className={styles.dropdown}>
-              <button 
-                className={styles.dropdownItem}
-                onClick={(e) => handleMenuClick(e, () => onViewProfile(friend.id))}
-              >
-                <FontAwesomeIcon icon={faUser} style={{ fontSize: 16 }} />
-                View Profile
-              </button>
-              <button 
-                className={styles.dropdownItem}
-                onClick={(e) => handleMenuClick(e, () => onMessage(friend))}
-              >
-                <FontAwesomeIcon icon={faMessage} style={{ fontSize: 16 }} />
-                Send Message
-              </button>
-              <div className={styles.dropdownDivider} />
-              <button 
-                className={`${styles.dropdownItem} ${styles.dangerItem}`}
-                onClick={(e) => handleMenuClick(e, () => onRemove(friend.id))}
-              >
-                <FontAwesomeIcon icon={faUserMinus} style={{ fontSize: 16 }} />
-                Unfriend
-              </button>
-            </div>
+            {/* Menu supprimé (View Profile / Send Message / Unfriend) */}
           </>
         )}
       </div>

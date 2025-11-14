@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './header.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faBell, 
-  faSignOutAlt, 
+import {
+  faBell,
+  faSignOutAlt,
   faSearch,
   faTimes,
   faCog,
@@ -20,14 +20,15 @@ import {
   faList,
   faEdit,
   faUsers,
-  faFilm
+  faFilm,
+  faUserPlus,
+  faCommentDots,
+  faCircle,
 } from '@fortawesome/free-solid-svg-icons';
-// import Logo from '../../../../images/Logo.png';
 import { useAuth } from '../../../../contexts/AuthContext';
-// Importer le service de recherche
-import { searchAPI } from '../../../../utils/api';
+import { searchAPI, notificationsAPI } from '../../../../utils/api';
+import { useSocket } from '../../../../contexts/SocketContext';
 
-// Styles pour le badge "Coming Soon"
 const comingSoonStyle = {
   fontSize: '0.6rem',
   padding: '2px 4px',
@@ -43,34 +44,42 @@ const comingSoonStyle = {
 
 const Header = ({ toggleSidebar, isSidebarOpen }) => {
   const { user, logout } = useAuth();
+  const { socket } = useSocket();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCreateDropdownOpen, setIsCreateDropdownOpen] = useState(false);
   const [showClearButton, setShowClearButton] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
+
+  // Notifications
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
-  // Nouveaux états pour l'auto-complétion
+
+  // Autocomplete recherche
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  
+
   const searchInputRef = useRef(null);
-  const dropdownRef = useRef(null);
+  const profileDropdownRef = useRef(null);
   const createDropdownRef = useRef(null);
   const suggestionsRef = useRef(null);
+  const notificationsRef = useRef(null);
+
   const navigate = useNavigate();
 
-  // Fonction pour convertir les chemins relatifs en URLs absolues
   const getImageUrl = (path) => {
     if (!path) return 'https://via.placeholder.com/32';
     if (path.startsWith('http')) return path;
-    
-    // Assurez-vous que le chemin commence par un slash
+
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    
-    // Utiliser l'URL complète du backend
-    const backendUrl = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com ';
+    const backendUrl =
+      process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
     return `${backendUrl}${normalizedPath}`;
   };
 
@@ -89,18 +98,34 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     };
   }, []);
 
-  // Detect clicks outside dropdowns
+  // Fermer dropdowns quand on clique à l’extérieur
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target)
+      ) {
         setIsDropdownOpen(false);
       }
-      if (createDropdownRef.current && !createDropdownRef.current.contains(event.target)) {
+      if (
+        createDropdownRef.current &&
+        !createDropdownRef.current.contains(event.target)
+      ) {
         setIsCreateDropdownOpen(false);
       }
-      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target) && 
-          searchInputRef.current && !searchInputRef.current.contains(event.target)) {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target) &&
+        searchInputRef.current &&
+        !searchInputRef.current.contains(event.target)
+      ) {
         setShowSuggestions(false);
+      }
+      if (
+        notificationsRef.current &&
+        !notificationsRef.current.contains(event.target)
+      ) {
+        setIsNotificationsOpen(false);
       }
     };
 
@@ -117,18 +142,150 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     }
   }, [showMobileSearch]);
 
-  // Fonction pour récupérer les suggestions de recherche
+  // ===========================
+  //         NOTIFICATIONS
+  // ===========================
+
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return '';
+    const now = new Date();
+    const created = new Date(dateString);
+    const diffMs = now - created;
+
+    const minutes = Math.floor(diffMs / (1000 * 60));
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    if (hours < 24) return `${hours} h ago`;
+    return `${days} d ago`;
+  };
+
+  const loadNotifications = async () => {
+    try {
+      setIsLoadingNotifications(true);
+      const response = await notificationsAPI.getUserNotifications();
+      if (response?.success) {
+        const data = response.data || response.data?.data || response.data || [];
+        const list = Array.isArray(data) ? data : response.data.data || [];
+        setNotifications(list);
+        const unreadCount =
+          response.unreadCount ??
+          list.filter((n) => !n.read).length;
+        setUnreadNotifications(unreadCount);
+      } else {
+        setNotifications([]);
+        setUnreadNotifications(0);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des notifications :', error);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      if (unreadNotifications === 0) return;
+      await notificationsAPI.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadNotifications(0);
+    } catch (error) {
+      console.error(
+        'Erreur lors du marquage des notifications comme lues :',
+        error
+      );
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    try {
+      if (!notification.read) {
+        await notificationsAPI.markAsRead(notification.id);
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notification.id ? { ...n, read: true } : n
+          )
+        );
+        setUnreadNotifications((prev) => Math.max(prev - 1, 0));
+      }
+    } catch (error) {
+      console.error(
+        'Erreur lors du marquage de la notification comme lue :',
+        error
+      );
+    }
+
+    if (notification.link) {
+      navigate(notification.link);
+      setIsNotificationsOpen(false);
+    }
+  };
+
+  // Charger les notifications au montage
+  useEffect(() => {
+    loadNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const getNotificationIcon = (notification) => {
+    switch (notification.type) {
+      case 'friend_request':
+        return faUserPlus;
+      case 'friend_request_accepted':
+        return faUsers;
+      case 'like':
+        return faThumbsUp;
+      case 'comment':
+        return faCommentDots;
+      case 'message':
+        return faCommentDots;
+      case 'system':
+        return faBell;
+      case 'content':
+        return faPlayCircle;
+      default:
+        return faCircle;
+    }
+  };
+
+  // ===========================
+  //   SOCKET.IO (NOTIFS TEMPS RÉEL)
+  // ===========================
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewNotification = (notification) => {
+      setNotifications((prev) => [notification, ...prev]);
+      if (!notification.read) {
+        setUnreadNotifications((prev) => prev + 1);
+      }
+    };
+
+    socket.on('notification:new', handleNewNotification);
+
+    return () => {
+      socket.off('notification:new', handleNewNotification);
+    };
+  }, [socket]);
+
+  // ===========================
+  //         RECHERCHE
+  // ===========================
+
   const fetchSuggestions = async (value) => {
     if (!value || value.length < 2) {
       setSuggestions([]);
       setIsLoadingSuggestions(false);
       return;
     }
-    
+
     try {
       setIsLoadingSuggestions(true);
       const response = await searchAPI.getSearchSuggestions(value);
-      
+
       if (response.success) {
         setSuggestions(response.data || []);
       } else {
@@ -141,8 +298,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       setIsLoadingSuggestions(false);
     }
   };
-  
-  // Debounce pour les suggestions de recherche
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchTerm.trim()) {
@@ -151,18 +307,16 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
         setSuggestions([]);
       }
     }, 300);
-    
+
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Handle search input change
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     setShowClearButton(e.target.value.length > 0);
     setShowSuggestions(e.target.value.length > 0);
   };
 
-  // Clear search input
   const clearSearch = () => {
     setSearchTerm('');
     setShowClearButton(false);
@@ -173,18 +327,22 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     }
   };
 
-  // Sélectionner une suggestion
   const handleSelectSuggestion = (suggestion) => {
     setSearchTerm(suggestion.query || suggestion.text);
     setShowSuggestions(false);
-    navigate(`/dashboard/search?q=${encodeURIComponent(suggestion.query || suggestion.text)}&type=${suggestion.type !== 'artist' ? suggestion.type : 'videos'}`);
+    navigate(
+      `/dashboard/search?q=${encodeURIComponent(
+        suggestion.query || suggestion.text
+      )}&type=${suggestion.type !== 'artist' ? suggestion.type : 'videos'}`
+    );
   };
 
-  // Handle search submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      navigate(`/dashboard/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      navigate(
+        `/dashboard/search?q=${encodeURIComponent(searchTerm.trim())}`
+      );
       setShowSuggestions(false);
       if (isMobile) {
         setShowMobileSearch(false);
@@ -192,7 +350,10 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     }
   };
 
-  // Navigation functions
+  // ===========================
+  //   NAVIGATION / PROFIL
+  // ===========================
+
   const handleProfileClick = () => {
     navigate('/dashboard/profile');
     setIsDropdownOpen(false);
@@ -208,67 +369,44 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     navigate('/login');
   };
 
-  // Modifié pour rediriger vers la page temporaire
-  const handleNotificationsClick = () => {
-    navigate('/dashboard/notifications', { state: { title: 'Notifications' } });
+  const handleNotificationsButtonClick = () => {
+    const nextOpen = !isNotificationsOpen;
+    setIsNotificationsOpen(nextOpen);
+
+    if (nextOpen && unreadNotifications > 0) {
+      markAllAsRead();
+    }
   };
 
-  // Modifié pour simplement ouvrir/fermer le dropdown
-  // const handleCreateClick = () => {
-  //   setIsCreateDropdownOpen(!isCreateDropdownOpen);
-  // };
-
-  // Handle menu button click to toggle sidebar
   const handleMenuButtonClick = () => {
     toggleSidebar();
   };
 
-  // Fermer la recherche mobile
   const handleCloseMobileSearch = () => {
     setShowMobileSearch(false);
     setShowSuggestions(false);
   };
 
-  // // Modifiés pour rediriger vers la page temporaire
-  // const handleUploadShortClick = () => {
-  //   navigate('/dashboard/upload/short', { state: { title: 'Upload Short' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleUploadVideoClick = () => {
-  //   navigate('/dashboard/upload/video', { state: { title: 'Upload Video' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleCreatePlaylistClick = () => {
-  //   navigate('/dashboard/playlistsquick/create', { state: { title: 'Create Playlist' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleCreatePostClick = () => {
-  //   navigate('/dashboard/posts/create', { state: { title: 'Create Post' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleCreateGroupClick = () => {
-  //   navigate('/dashboard/groups/create', { state: { title: 'Create Group' } });
-  //   setIsCreateDropdownOpen(false);
-  // };
-
-  // const handleHistoryClick = () => {
-  //   navigate('/dashboard/history', { state: { title: 'History' } });
-  //   setIsDropdownOpen(false);
-  // };
-
   return (
     <header className={styles.header}>
       <div className={styles.headerLeft}>
+        {/* <button
+          className={styles.menuButton}
+          onClick={handleMenuButtonClick}
+          aria-label="Open sidebar"
+        >
+          <FontAwesomeIcon icon={faBars} />
+        </button> */}
         <Link to="/dashboard" className={styles.logoLink}>
           <span className={styles.logoText}>ThrowBack Connect</span>
         </Link>
       </div>
 
-      <div className={`${styles.searchContainer} ${showMobileSearch ? styles.showMobileSearch : ''}`}>
+      <div
+        className={`${styles.searchContainer} ${
+          showMobileSearch ? styles.showMobileSearch : ''
+        }`}
+      >
         <form onSubmit={handleSearchSubmit} className={styles.searchForm}>
           <div className={styles.searchInputWrapper}>
             <input
@@ -280,19 +418,18 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
               onChange={handleSearchChange}
               onFocus={() => setShowSuggestions(searchTerm.length > 0)}
             />
-            
+
             {showClearButton && (
-              <button 
-                type="button" 
-                className={styles.clearButton} 
+              <button
+                type="button"
+                className={styles.clearButton}
                 onClick={clearSearch}
                 aria-label="Clear search"
               >
                 <FontAwesomeIcon icon={faTimes} />
               </button>
             )}
-            
-            {/* Suggestions de recherche */}
+
             {showSuggestions && (
               <div className={styles.suggestionsList} ref={suggestionsRef}>
                 {isLoadingSuggestions ? (
@@ -302,23 +439,31 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
                   </div>
                 ) : suggestions.length > 0 ? (
                   suggestions.map((suggestion, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className={styles.suggestionItem}
                       onClick={() => handleSelectSuggestion(suggestion)}
                     >
-                      <FontAwesomeIcon 
+                      <FontAwesomeIcon
                         icon={
-                          suggestion.type === 'video' ? faVideo :
-                          suggestion.type === 'playlist' ? faList :
-                          suggestion.type === 'podcast' ? faMicrophone :
-                          suggestion.type === 'artist' ? faMusic :
-                          faSearch
-                        } 
-                        className={styles.suggestionIcon} 
+                          suggestion.type === 'video'
+                            ? faVideo
+                            : suggestion.type === 'playlist'
+                            ? faList
+                            : suggestion.type === 'podcast'
+                            ? faMicrophone
+                            : suggestion.type === 'artist'
+                            ? faMusic
+                            : faSearch
+                        }
+                        className={styles.suggestionIcon}
                       />
-                      <span className={styles.suggestionText}>{suggestion.text}</span>
-                      <span className={styles.suggestionType}>{suggestion.type}</span>
+                      <span className={styles.suggestionText}>
+                        {suggestion.text}
+                      </span>
+                      <span className={styles.suggestionType}>
+                        {suggestion.type}
+                      </span>
                     </div>
                   ))
                 ) : searchTerm.length >= 2 ? (
@@ -329,14 +474,18 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
               </div>
             )}
           </div>
-          
-          <button type="submit" className={styles.searchButton} aria-label="Search">
+
+          <button
+            type="submit"
+            className={styles.searchButton}
+            aria-label="Search"
+          >
             <FontAwesomeIcon icon={faSearch} />
           </button>
 
           {isMobile && (
-            <button 
-              type="button" 
+            <button
+              type="button"
               className={styles.mobileCloseButton}
               onClick={handleCloseMobileSearch}
               aria-label="Close search"
@@ -348,8 +497,8 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       </div>
 
       {isMobile && (
-        <button 
-          className={styles.mobileSearchButton} 
+        <button
+          className={styles.mobileSearchButton}
           onClick={() => setShowMobileSearch(!showMobileSearch)}
           aria-label="Search"
         >
@@ -358,89 +507,138 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       )}
 
       <div className={styles.headerRight}>
-        {/* <div className={styles.createContainer} ref={createDropdownRef}>
-          <button 
-            className={styles.createButton} 
-            onClick={handleCreateClick}
-            aria-label="Create"
+        {/* Centre de notifications */}
+        <div className={styles.notificationContainer} ref={notificationsRef}>
+          <button
+            className={styles.notificationButton}
+            onClick={handleNotificationsButtonClick}
+            aria-label="Notifications"
           >
-            <FontAwesomeIcon icon={faPlus} />
-            <span className={styles.createText}>Create</span>
-            <span style={comingSoonStyle}>Coming Soon</span>
+            <FontAwesomeIcon icon={faBell} />
+            {unreadNotifications > 0 && (
+              <span className={styles.notificationBadge}>
+                {unreadNotifications}
+              </span>
+            )}
           </button>
-          
-          {isCreateDropdownOpen && (
-            <div className={styles.dropdown}>
-              <div className={styles.dropdownBody}>
-                <button className={styles.dropdownItem} onClick={handleUploadShortClick}>
-                  <FontAwesomeIcon icon={faFilm} className={styles.dropdownIcon} />
-                  <span>Upload Short</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-                
-                <button className={styles.dropdownItem} onClick={handleCreatePlaylistClick}>
-                  <FontAwesomeIcon icon={faList} className={styles.dropdownIcon} />
-                  <span>Create Playlist</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-                
-                <button className={styles.dropdownItem} onClick={handleCreatePostClick}>
-                  <FontAwesomeIcon icon={faEdit} className={styles.dropdownIcon} />
-                  <span>Create Post</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button>
-                
-                <button className={styles.dropdownItem} onClick={handleCreateGroupClick}>
-                  <FontAwesomeIcon icon={faUsers} className={styles.dropdownIcon} />
-                  <span>Create Group</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
+
+          {isNotificationsOpen && (
+            <div
+              className={`${styles.dropdown} ${styles.notificationDropdown}`}
+            >
+              <div className={styles.notificationHeader}>
+                <span className={styles.notificationTitle}>Notifications</span>
+                {unreadNotifications === 0 ? (
+                  <span className={styles.notificationStatus}>
+                    All caught up
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.markAllReadButton}
+                    onClick={markAllAsRead}
+                  >
+                    Mark all as read
+                  </button>
+                )}
+              </div>
+
+              <div className={styles.notificationBody}>
+                {isLoadingNotifications ? (
+                  <div className={styles.notificationEmpty}>
+                    <FontAwesomeIcon
+                      icon={faBell}
+                      className={styles.notificationEmptyIcon}
+                    />
+                    <span>Loading notifications...</span>
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className={styles.notificationEmpty}>
+                    <FontAwesomeIcon
+                      icon={faBell}
+                      className={styles.notificationEmptyIcon}
+                    />
+                    <span>No notifications yet</span>
+                    <p>We’ll let you know when something happens.</p>
+                  </div>
+                ) : (
+                  <div className={styles.notificationList}>
+                    {notifications.map((notification) => (
+                      <button
+                        key={notification.id}
+                        type="button"
+                        className={`${styles.notificationItem} ${
+                          !notification.read
+                            ? styles.notificationItemUnread
+                            : ''
+                        }`}
+                        onClick={() =>
+                          handleNotificationClick(notification)
+                        }
+                      >
+                        <div className={styles.notificationIconWrapper}>
+                          <FontAwesomeIcon
+                            icon={getNotificationIcon(notification)}
+                            className={styles.notificationIcon}
+                          />
+                          {!notification.read && (
+                            <span className={styles.notificationUnreadDot} />
+                          )}
+                        </div>
+                        <div className={styles.notificationContent}>
+                          <span className={styles.notificationItemTitle}>
+                            {notification.title}
+                          </span>
+                          <span className={styles.notificationMessage}>
+                            {notification.message}
+                          </span>
+                          <span className={styles.notificationMeta}>
+                            {formatTimeAgo(notification.createdAt)}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.notificationFooter}>
+                <button
+                  type="button"
+                  className={styles.viewAllNotificationsButton}
+                  onClick={() => {
+                    setIsNotificationsOpen(false);
+                    navigate('/dashboard/notifications');
+                  }}
+                >
+                  View all notifications
                 </button>
               </div>
             </div>
           )}
-        </div> */}
-        
-        {/* Les notifications */}
-        <button 
-          className={styles.notificationButton} 
-          onClick={handleNotificationsClick}
-          aria-label="Notifications"
-        >
-          <FontAwesomeIcon icon={faBell} />
-          {unreadNotifications > 0 && (
-            <span className={styles.notificationBadge}>{unreadNotifications}</span>
-          )}
-          <span style={{
-            ...comingSoonStyle,
-            position: 'absolute',
-            bottom: '-18px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            whiteSpace: 'nowrap'
-          }}>Coming Soon</span>
-        </button>
-        
-        <div className={styles.profileContainer} ref={dropdownRef}>
-          <button 
-            className={styles.profileButton} 
+        </div>
+
+        <div className={styles.profileContainer} ref={profileDropdownRef}>
+          <button
+            className={styles.profileButton}
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             aria-label="Profile menu"
           >
-            <img 
-              src={getImageUrl(user?.photo_profil)} 
-              alt="Profile" 
+            <img
+              src={getImageUrl(user?.photo_profil)}
+              alt="Profile"
               className={styles.profileImage}
               crossOrigin="anonymous"
             />
           </button>
-          
+
           {isDropdownOpen && (
             <div className={styles.dropdown}>
               <div className={styles.dropdownHeader}>
-                <img 
-                  src={getImageUrl(user?.photo_profil)} 
-                  alt="Profile" 
-                  className={styles.dropdownProfileImage} 
+                <img
+                  src={getImageUrl(user?.photo_profil)}
+                  alt="Profile"
+                  className={styles.dropdownProfileImage}
                   crossOrigin="anonymous"
                 />
                 <div className={styles.dropdownUserInfo}>
@@ -452,33 +650,53 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
                   </span>
                 </div>
               </div>
-              
+
               <div className={styles.dropdownBody}>
-                <button className={styles.dropdownItem} onClick={handleProfileClick}>
-                  <FontAwesomeIcon icon={faUser} className={styles.dropdownIcon} />
+                <button
+                  className={styles.dropdownItem}
+                  onClick={handleProfileClick}
+                >
+                  <FontAwesomeIcon
+                    icon={faUser}
+                    className={styles.dropdownIcon}
+                  />
                   <span>Your Profile</span>
                 </button>
-                
-                <button className={styles.dropdownItem} onClick={() => navigate('/dashboard/playlists')}>
-                  <FontAwesomeIcon icon={faMusic} className={styles.dropdownIcon} />
+
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() =>
+                    navigate('/dashboard/playlists')
+                  }
+                >
+                  <FontAwesomeIcon
+                    icon={faMusic}
+                    className={styles.dropdownIcon}
+                  />
                   <span>Your Playlists</span>
                 </button>
-                
-                {/* <button className={styles.dropdownItem} onClick={handleHistoryClick}>
-                  <FontAwesomeIcon icon={faHistory} className={styles.dropdownIcon} />
-                  <span>History</span>
-                  <span style={comingSoonStyle}>Coming Soon</span>
-                </button> */}
-                
+
                 <div className={styles.dropdownDivider}></div>
-                
-                <button className={styles.dropdownItem} onClick={handleSettingsClick}>
-                  <FontAwesomeIcon icon={faCog} className={styles.dropdownIcon} />
+
+                <button
+                  className={styles.dropdownItem}
+                  onClick={handleSettingsClick}
+                >
+                  <FontAwesomeIcon
+                    icon={faCog}
+                    className={styles.dropdownIcon}
+                  />
                   <span>Settings</span>
                 </button>
-                
-                <button className={styles.dropdownItem} onClick={handleLogoutClick}>
-                  <FontAwesomeIcon icon={faSignOutAlt} className={styles.dropdownIcon} />
+
+                <button
+                  className={styles.dropdownItem}
+                  onClick={handleLogoutClick}
+                >
+                  <FontAwesomeIcon
+                    icon={faSignOutAlt}
+                    className={styles.dropdownIcon}
+                  />
                   <span>Logout</span>
                 </button>
               </div>

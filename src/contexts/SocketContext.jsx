@@ -20,10 +20,32 @@ export const SocketProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const { token, user } = useAuth();
 
+  // Fonction pour ajouter une notification locale (toasts, etc.)
+  const addNotification = useCallback((notification) => {
+    setNotifications(prev => [{
+      id: Date.now(),
+      ...notification,
+      read: false
+    }, ...prev].slice(0, 50));
+  }, []);
+
+  const markNotificationAsRead = useCallback((notificationId) => {
+    setNotifications(prev =>
+      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+    );
+  }, []);
+
+  const removeNotification = useCallback((notificationId) => {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+  }, []);
+
+  const clearNotifications = useCallback(() => {
+    setNotifications([]);
+  }, []);
+
   // Initialiser la connexion Socket.IO
   useEffect(() => {
     if (!token || !user) {
-      // Déconnecter si pas de token
       if (socket) {
         socket.disconnect();
         setSocket(null);
@@ -44,31 +66,26 @@ export const SocketProvider = ({ children }) => {
       reconnectionAttempts: 5
     });
 
-    // Événement de connexion
     newSocket.on('connect', () => {
       console.log('✅ Socket.IO connected:', newSocket.id);
       setIsConnected(true);
     });
 
-    // Événement de déconnexion
     newSocket.on('disconnect', (reason) => {
       console.log('❌ Socket.IO disconnected:', reason);
       setIsConnected(false);
     });
 
-    // Événement d'erreur
     newSocket.on('connect_error', (error) => {
       console.error('❌ Socket.IO connection error:', error.message);
       setIsConnected(false);
     });
 
-    // Liste des utilisateurs en ligne
     newSocket.on('online-users', (data) => {
       console.log('👥 Online users received:', data.count);
       setOnlineUsers(new Set(data.users));
     });
 
-    // Changement de statut utilisateur
     newSocket.on('user-status-change', (data) => {
       console.log(`👤 User status changed: ${data.userId} is ${data.status}`);
       setOnlineUsers(prev => {
@@ -82,7 +99,6 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
-    // Notifications de nouvelle demande d'ami
     newSocket.on('friend-request-received', (data) => {
       console.log('🤝 Friend request received from:', data.senderName);
       addNotification({
@@ -94,7 +110,6 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
-    // Demande acceptée
     newSocket.on('friend-request-was-accepted', (data) => {
       console.log('✅ Friend request accepted by:', data.acceptedBy);
       addNotification({
@@ -106,7 +121,6 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
-    // Notification de nouveau message
     newSocket.on('new-message-notification', (data) => {
       console.log('💬 New message from:', data.senderName);
       addNotification({
@@ -118,47 +132,32 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
+    // 👉 Nouveau : notifications persistantes unifiées
+    newSocket.on('notification:new', (notif) => {
+      console.log('🔔 Real-time notification received:', notif.title);
+      addNotification({
+        type: notif.type,
+        title: notif.title,
+        message: notif.message,
+        senderId: notif.actor,
+        timestamp: notif.createdAt,
+        backendId: notif.id
+      });
+    });
+
     setSocket(newSocket);
 
-    // Cleanup à la déconnexion
     return () => {
       console.log('🔌 Cleaning up Socket.IO connection');
       newSocket.disconnect();
     };
-  }, [token, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, user]); // addNotification est stable (useCallback sans dépendances)
 
-  // Fonction pour ajouter une notification
-  const addNotification = useCallback((notification) => {
-    setNotifications(prev => [{
-      id: Date.now(),
-      ...notification,
-      read: false
-    }, ...prev].slice(0, 50)); // Garder max 50 notifications
-  }, []);
-
-  // Fonction pour marquer une notification comme lue
-  const markNotificationAsRead = useCallback((notificationId) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-    );
-  }, []);
-
-  // Fonction pour supprimer une notification
-  const removeNotification = useCallback((notificationId) => {
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
-  }, []);
-
-  // Fonction pour vider toutes les notifications
-  const clearNotifications = useCallback(() => {
-    setNotifications([]);
-  }, []);
-
-  // Vérifier si un utilisateur est en ligne
   const isUserOnline = useCallback((userId) => {
     return onlineUsers.has(userId);
   }, [onlineUsers]);
 
-  // Envoyer un message
   const sendMessage = useCallback((receiverId, content, type = 'text', tempId = null) => {
     if (!socket || !isConnected) {
       console.error('Socket not connected');
@@ -189,7 +188,6 @@ export const SocketProvider = ({ children }) => {
     });
   }, [socket, isConnected]);
 
-  // Rejoindre une conversation
   const joinConversation = useCallback((friendId) => {
     if (socket && isConnected) {
       socket.emit('join-conversation', { friendId });
@@ -197,7 +195,6 @@ export const SocketProvider = ({ children }) => {
     }
   }, [socket, isConnected]);
 
-  // Indicateur de saisie
   const startTyping = useCallback((receiverId) => {
     if (socket && isConnected) {
       socket.emit('typing-start', { receiverId });
@@ -210,21 +207,18 @@ export const SocketProvider = ({ children }) => {
     }
   }, [socket, isConnected]);
 
-  // Marquer messages comme lus
   const markMessagesAsRead = useCallback((friendId) => {
     if (socket && isConnected) {
       socket.emit('mark-messages-read', { friendId });
     }
   }, [socket, isConnected]);
 
-  // Notifier demande d'ami envoyée
   const notifyFriendRequest = useCallback((receiverId, senderName) => {
     if (socket && isConnected) {
       socket.emit('friend-request-sent', { receiverId, senderName });
     }
   }, [socket, isConnected]);
 
-  // Notifier demande acceptée
   const notifyFriendRequestAccepted = useCallback((requesterId) => {
     if (socket && isConnected) {
       socket.emit('friend-request-accepted', { requesterId });
