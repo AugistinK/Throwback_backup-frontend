@@ -132,16 +132,92 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
-    // 👉 Nouveau : notifications persistantes unifiées
+    // 👉 Notifications persistantes unifiées
     newSocket.on('notification:new', (notif) => {
       console.log('🔔 Real-time notification received:', notif.title);
       addNotification({
-        type: notif.type,
+        type: notif.type || 'notification',
         title: notif.title,
         message: notif.message,
         senderId: notif.actor,
         timestamp: notif.createdAt,
         backendId: notif.id
+      });
+    });
+
+    // 👉 Notifications liées aux groupes d'amis (FriendGroup)
+    newSocket.on('group-invitation', (data) => {
+      console.log('👥 Friend group invitation:', data.groupName);
+      addNotification({
+        type: 'friend-group',
+        title: 'New Friend Group',
+        message: `${data.creatorName || 'A friend'} added you to "${data.groupName}"`,
+        senderId: data.creatorId,
+        groupId: data.groupId,
+        timestamp: data.timestamp || Date.now()
+      });
+    });
+
+    newSocket.on('group-updated', (data) => {
+      const groupId = data.groupId || data.group?._id || data.group?.id;
+      const groupName =
+        data.groupName ||
+        data.group?.groupName ||
+        data.group?.name ||
+        'Group';
+
+      console.log('✏️ Group updated:', groupName);
+      addNotification({
+        type: 'group-update',
+        title: 'Group Updated',
+        message: `"${groupName}" has been updated`,
+        groupId,
+        timestamp: data.timestamp || Date.now()
+      });
+    });
+
+    // 👉 Groupes de conversations (chat groups)
+    newSocket.on('group-created', (payload) => {
+      const group = payload.group || {};
+      const groupId = group._id || group.id;
+      const groupName = group.groupName || group.name || 'Group chat';
+
+      console.log('💬 New chat group created:', groupName);
+      addNotification({
+        type: 'chat-group',
+        title: 'New Group Chat',
+        message: `You were added to "${groupName}"`,
+        groupId,
+        senderId: payload.createdBy,
+        timestamp: group.created_date || Date.now()
+      });
+    });
+
+    newSocket.on('added-to-group', (payload) => {
+      const group = payload.group || {};
+      const groupId = group._id || group.id;
+      const groupName = group.groupName || group.name || 'Group chat';
+
+      console.log('➕ Added to group:', groupName);
+      addNotification({
+        type: 'chat-group',
+        title: 'Added to Group',
+        message: `You were added to "${groupName}"`,
+        groupId,
+        senderId: payload.addedBy,
+        timestamp: Date.now()
+      });
+    });
+
+    newSocket.on('removed-from-group', (payload) => {
+      console.log('➖ Removed from group:', payload.groupId);
+      addNotification({
+        type: 'chat-group',
+        title: 'Removed from Group',
+        message: 'You were removed from a group',
+        groupId: payload.groupId,
+        senderId: payload.removedBy,
+        timestamp: Date.now()
       });
     });
 
@@ -151,8 +227,8 @@ export const SocketProvider = ({ children }) => {
       console.log('🔌 Cleaning up Socket.IO connection');
       newSocket.disconnect();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user]); // addNotification est stable (useCallback sans dépendances)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, user]);
 
   const isUserOnline = useCallback((userId) => {
     return onlineUsers.has(userId);
