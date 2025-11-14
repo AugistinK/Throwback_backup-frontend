@@ -25,14 +25,29 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
   const { user } = useAuth();
 
   const currentUserId = user?._id || user?.id || null;
-  const groupId = group?._id || group?.id || null;
+
+  // ID du "Friend Group" (organisation) - peut être utile plus tard
+  const friendGroupId = group?._id || group?.id || null;
+
+  // ID de la conversation de groupe réelle (modèle Conversation)
+  const initialConversationId =
+    group?.conversationId ||
+    group?.chatConversationId ||
+    (group?.conversation && (group.conversation._id || group.conversation.id)) ||
+    null;
+
+  const [conversationId, setConversationId] = useState(initialConversationId);
 
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', data: null });
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    type: '',
+    data: null
+  });
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -79,14 +94,11 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
     if (!m) return null;
     const sender = m.sender || m.from;
     const senderId =
-      (typeof sender === 'string' || typeof sender === 'number')
+      typeof sender === 'string' || typeof sender === 'number'
         ? sender
         : sender?._id || sender?.id || null;
 
-    const senderName =
-      m.senderName ||
-      getSenderNameFromUser(sender) ||
-      'Unknown';
+    const senderName = m.senderName || getSenderNameFromUser(sender) || 'Unknown';
 
     return {
       id: m._id || m.id,
@@ -102,21 +114,108 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
     };
   };
 
-  // Charger les messages du groupe depuis l'API
+  /**
+   * 🔁 Étape 1 : s'assurer qu'on a bien un ID de conversation de groupe
+   * - si group.conversationId existe -> on l'utilise
+   * - sinon on cherche une conversation de type "group" avec le même nom
+   * - sinon on crée une nouvelle conversation de groupe
+   */
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (!groupId) {
+    const ensureConversation = async () => {
+      if (!group || !currentUserId) {
         setLoading(false);
         return;
       }
 
+      // Déjà résolu
+      if (conversationId) {
+        return;
+      }
+
+      try {
+        const groupName = group.name || group.groupName || 'Group';
+
+        // 1) Essayer de trouver une conversation de type "group" existante
+        if (typeof friendsAPI.getAllConversations === 'function') {
+          const res = await friendsAPI.getAllConversations();
+          if (res?.success && Array.isArray(res.data)) {
+            const existing = res.data.find((conv) => {
+              if (conv.type !== 'group') return false;
+              if (!conv.groupName) return false;
+              if (conv.groupName !== groupName) return false;
+              // S'assurer que l'utilisateur actuel est dedans
+              const participantIds = (conv.participants || []).map((p) =>
+                String(p._id || p.id || p)
+              );
+              return participantIds.includes(String(currentUserId));
+            });
+
+            if (existing) {
+              const id = existing._id || existing.id;
+              setConversationId(id);
+              if (onUpdateGroup) {
+                onUpdateGroup({
+                  ...group,
+                  conversationId: id
+                });
+              }
+              return;
+            }
+          }
+        }
+
+        // 2) Sinon, créer une nouvelle conversation de groupe
+        const baseMembers = Array.isArray(group.members) ? [...group.members] : [];
+        const currentIdStr = String(currentUserId);
+        if (!baseMembers.some((id) => String(id) === currentIdStr)) {
+          baseMembers.push(currentUserId);
+        }
+
+        const createRes = await friendsAPI.createGroup(groupName, baseMembers, null);
+
+        if (!createRes?.success || !createRes.data) {
+          console.error('Error creating group conversation:', createRes?.message);
+          setLoading(false);
+          return;
+        }
+
+        const newConv = createRes.data;
+        const newId = newConv._id || newConv.id;
+
+        setConversationId(newId);
+
+        if (onUpdateGroup) {
+          onUpdateGroup({
+            ...group,
+            conversationId: newId
+          });
+        }
+      } catch (err) {
+        console.error('Error resolving group conversation:', err);
+        setLoading(false);
+      }
+    };
+
+    ensureConversation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group, currentUserId, conversationId]);
+
+  /**
+   * 🔁 Étape 2 : charger les messages une fois qu'on a conversationId
+   * et rejoindre le groupe via Socket.IO
+   */
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!conversationId) return;
+
       try {
         setLoading(true);
-        const response = await friendsAPI.getGroupMessages(groupId);
+        const response = await friendsAPI.getGroupMessages(conversationId);
 
         if (!response?.success) {
           console.error('Error loading group messages:', response?.message);
           setMessages([]);
+          setLoading(false);
           return;
         }
 
@@ -131,9 +230,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
           rawMessages = serverData.data.messages;
         }
 
-        const mapped = rawMessages
-          .map((m) => buildMessageFromApi(m))
-          .filter(Boolean);
+        const mapped = rawMessages.map(buildMessageFromApi).filter(Boolean);
 
         setMessages(mapped);
       } catch (err) {
@@ -147,30 +244,29 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
     fetchMessages();
 
     // Rejoindre le groupe via Socket.IO
-    if (isConnected && socket && groupId) {
-      socket.emit('join-group', { groupId });
+    if (isConnected && socket && conversationId) {
+      socket.emit('join-group', { groupId: conversationId });
     }
 
     return () => {
-      if (socket && groupId) {
-        socket.emit('leave-group', { groupId });
+      if (socket && conversationId) {
+        socket.emit('leave-group', { groupId: conversationId });
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, isConnected]);
+  }, [conversationId, isConnected]);
 
-  // Écouter les messages du groupe via Socket.IO
+  /**
+   * 🔁 Étape 3 : écouter les messages temps réel pour cette conversation
+   */
   useEffect(() => {
-    if (!socket || !groupId) return;
+    if (!socket || !conversationId) return;
 
     const handleGroupMessage = (data) => {
       const incomingGroupId =
-        data.groupId ||
-        data.group_id ||
-        data.group?._id ||
-        data.group?.id;
+        data.groupId || data.group_id || data.group?._id || data.group?.id;
 
-      if (!incomingGroupId || String(incomingGroupId) !== String(groupId)) {
+      if (!incomingGroupId || String(incomingGroupId) !== String(conversationId)) {
         return;
       }
 
@@ -192,19 +288,24 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
       socket.off('group-message', handleGroupMessage);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [socket, groupId, currentUserId]);
+  }, [socket, conversationId, currentUserId]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!message.trim()) return;
+
+    // Si la conversation n'est pas encore prête, on bloque l'envoi
+    if (!conversationId) {
+      console.error('Missing group conversation id, cannot send message.');
+      return;
+    }
 
     const contentToSend = message;
     setMessage('');
     setShowEmojiPicker(false);
 
     const tempId = Date.now().toString();
-    const senderName =
-      getSenderNameFromUser(user) || 'You';
+    const senderName = getSenderNameFromUser(user) || 'You';
 
     const optimisticMessage = {
       id: tempId,
@@ -219,11 +320,11 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
     setMessages((prev) => [...prev, optimisticMessage]);
 
     try {
-      if (!groupId) {
-        throw new Error('Missing group id');
-      }
-
-      const response = await friendsAPI.sendGroupMessage(groupId, contentToSend, 'text');
+      const response = await friendsAPI.sendGroupMessage(
+        conversationId,
+        contentToSend,
+        'text'
+      );
 
       if (!response?.success) {
         throw new Error(response?.message || 'Failed to send group message');
@@ -239,7 +340,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
       // Optionnel : émettre aussi via socket si le backend n'émet pas après la création
       if (socket && isConnected) {
         socket.emit('group-message', {
-          groupId,
+          groupId: conversationId,
           message: apiMessage || {
             content: contentToSend,
             sender: currentUserId,
@@ -287,7 +388,8 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
         showCancel: true,
         confirmText: 'OK',
         onConfirm: () => {
-          // TODO: ouvrir un modal de sélection de membres et utiliser friendsAPI.addParticipantToGroup
+          // TODO: ouvrir un modal de sélection de membres
+          // et utiliser friendsAPI.addParticipantToGroup(conversationId, memberId)
           setShowOptionsMenu(false);
         }
       }
@@ -304,7 +406,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
         confirmText: 'Leave',
         cancelText: 'Cancel',
         onConfirm: () => {
-          // TODO: appeler friendsAPI.removeParticipantFromGroup(groupId, currentUserId)
+          // TODO: appeler friendsAPI.removeParticipantFromGroup(conversationId, currentUserId)
           onClose();
         }
       }
@@ -312,7 +414,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
   };
 
   const handleDeleteGroup = () => {
-    if (!groupId) return;
+    if (!conversationId && !friendGroupId) return;
 
     setConfirmModal({
       isOpen: true,
@@ -343,7 +445,10 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
               className={styles.chatAvatar}
               style={{ backgroundColor: group.color || '#b31217' }}
             >
-              <FontAwesomeIcon icon={faUsers} style={{ fontSize: 24, color: 'white' }} />
+              <FontAwesomeIcon
+                icon={faUsers}
+                style={{ fontSize: 24, color: 'white' }}
+              />
             </div>
             <div className={styles.chatHeaderInfo}>
               <h3 className={styles.chatName}>{group.name}</h3>
@@ -360,7 +465,10 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
                 title="More options"
                 onClick={() => setShowOptionsMenu(!showOptionsMenu)}
               >
-                <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 20 }} />
+                <FontAwesomeIcon
+                  icon={faEllipsisVertical}
+                  style={{ fontSize: 20 }}
+                />
               </button>
 
               {showOptionsMenu && (
@@ -374,7 +482,10 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
                       className={styles.chatOptionItem}
                       onClick={handleAddMembers}
                     >
-                      <FontAwesomeIcon icon={faUserPlus} style={{ fontSize: 16 }} />
+                      <FontAwesomeIcon
+                        icon={faUserPlus}
+                        style={{ fontSize: 16 }}
+                      />
                       Add Members
                     </button>
                     <button
@@ -384,7 +495,10 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
                         // TODO: ouvrir modal "view members"
                       }}
                     >
-                      <FontAwesomeIcon icon={faUsers} style={{ fontSize: 16 }} />
+                      <FontAwesomeIcon
+                        icon={faUsers}
+                        style={{ fontSize: 16 }}
+                      />
                       View Members
                     </button>
                     <div className={styles.dropdownDivider} />
@@ -392,7 +506,10 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
                       className={`${styles.chatOptionItem} ${styles.dangerItem}`}
                       onClick={handleLeaveGroup}
                     >
-                      <FontAwesomeIcon icon={faRightFromBracket} style={{ fontSize: 16 }} />
+                      <FontAwesomeIcon
+                        icon={faRightFromBracket}
+                        style={{ fontSize: 16 }}
+                      />
                       Leave Group
                     </button>
                     {/* Only show delete if user is group creator */}
@@ -401,7 +518,10 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
                         className={`${styles.chatOptionItem} ${styles.dangerItem}`}
                         onClick={handleDeleteGroup}
                       >
-                        <FontAwesomeIcon icon={faTrash} style={{ fontSize: 16 }} />
+                        <FontAwesomeIcon
+                          icon={faTrash}
+                          style={{ fontSize: 16 }}
+                        />
                         Delete Group
                       </button>
                     )}
@@ -459,6 +579,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
               className={styles.chatInputButton}
               title="Add emoji"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              disabled={!isConnected || !conversationId}
             >
               <FontAwesomeIcon icon={faSmile} style={{ fontSize: 20 }} />
             </button>
@@ -470,15 +591,21 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={isConnected ? 'Type a message...' : 'Connecting...'}
+            placeholder={
+              !isConnected
+                ? 'Connecting...'
+                : !conversationId
+                ? 'Preparing group chat...'
+                : 'Type a message...'
+            }
             className={styles.chatInputField}
-            disabled={!isConnected}
+            disabled={!isConnected || !conversationId}
           />
 
           <button
             type="submit"
             className={styles.sendButton}
-            disabled={!message.trim() || !isConnected}
+            disabled={!message.trim() || !isConnected || !conversationId}
           >
             <FontAwesomeIcon icon={faPaperPlane} style={{ fontSize: 20 }} />
           </button>
@@ -494,7 +621,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
 
         {!isConnected && (
           <div className={styles.connectionWarning}>
-            ⚠️ Connecting to chat server...
+            Connecting to chat server...
           </div>
         )}
       </div>
@@ -502,7 +629,9 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
       {/* Confirm Modal */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false, type: '', data: null })}
+        onClose={() =>
+          setConfirmModal({ isOpen: false, type: '', data: null })
+        }
         onConfirm={confirmModal.data?.onConfirm}
         title={confirmModal.data?.title || ''}
         message={confirmModal.data?.message || ''}

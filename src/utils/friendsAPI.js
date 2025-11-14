@@ -15,7 +15,7 @@ import api from './api';
  * - Actions avancées sur messages (éditer, copier, transférer, répondre, suppression globale)
  * - Statistiques & utilitaires de diagnostic
  *
- * @version 2.1.0
+ * @version 2.1.1
  * @date Novembre 2025
  */
 
@@ -31,7 +31,11 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error fetching friends:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to load friends', data: [] };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load friends',
+        data: []
+      };
     }
   },
 
@@ -42,7 +46,11 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error fetching friend requests:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to load friend requests', data: [] };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load friend requests',
+        data: []
+      };
     }
   },
 
@@ -53,7 +61,11 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error fetching friend suggestions:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to load suggestions', data: [] };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load suggestions',
+        data: []
+      };
     }
   },
 
@@ -65,31 +77,46 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error sending friend request:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to send friend request' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to send friend request'
+      };
     }
   },
 
   /** Accepter une demande (friendshipId = _id du document Friendship) */
   acceptFriendRequest: async (friendshipId) => {
     try {
-      if (!friendshipId || typeof friendshipId !== 'string') throw new Error('Invalid friendship ID');
+      if (!friendshipId || typeof friendshipId !== 'string') {
+        throw new Error('Invalid friendship ID');
+      }
       const res = await api.put(`/api/friends/accept/${friendshipId}`);
       return res.data;
     } catch (error) {
       console.error('Error accepting friend request:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to accept friend request', error: error.message };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to accept friend request',
+        error: error.message
+      };
     }
   },
 
   /** Rejeter une demande (friendshipId) */
   rejectFriendRequest: async (friendshipId) => {
     try {
-      if (!friendshipId || typeof friendshipId !== 'string') throw new Error('Invalid friendship ID');
+      if (!friendshipId || typeof friendshipId !== 'string') {
+        throw new Error('Invalid friendship ID');
+      }
       const res = await api.delete(`/api/friends/reject/${friendshipId}`);
       return res.data;
     } catch (error) {
       console.error('Error rejecting friend request:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to reject friend request', error: error.message };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to reject friend request',
+        error: error.message
+      };
     }
   },
 
@@ -111,11 +138,17 @@ export const friendsAPI = {
           return res2.data;
         } catch (e2) {
           console.error('Error removing friend (fallback failed):', e2);
-          return { success: false, message: e2.response?.data?.message || 'Failed to remove friend' };
+          return {
+            success: false,
+            message: e2.response?.data?.message || 'Failed to remove friend'
+          };
         }
       }
       console.error('Error removing friend:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to remove friend' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to remove friend'
+      };
     }
   },
 
@@ -130,7 +163,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error blocking user:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to block user' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to block user'
+      };
     }
   },
 
@@ -141,7 +177,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error unblocking user:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to unblock user' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to unblock user'
+      };
     }
   },
 
@@ -151,7 +190,11 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error fetching blocked users:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to load blocked users', data: [] };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load blocked users',
+        data: []
+      };
     }
   },
 
@@ -162,13 +205,21 @@ export const friendsAPI = {
   searchUsers: async (query) => {
     try {
       if (!query || query.trim().length < 2) {
-        return { success: false, message: 'Search query must be at least 2 characters', data: [] };
+        return {
+          success: false,
+          message: 'Search query must be at least 2 characters',
+          data: []
+        };
       }
       const res = await api.get(`/api/users/search?q=${encodeURIComponent(query)}`);
       return res.data;
     } catch (error) {
       console.error('Error searching users:', error);
-      return { success: false, message: error.response?.data?.message || 'Search failed', data: [] };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Search failed',
+        data: []
+      };
     }
   },
 
@@ -179,7 +230,11 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error fetching mutual friends:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to load mutual friends', data: [] };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load mutual friends',
+        data: []
+      };
     }
   },
 
@@ -193,7 +248,11 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error fetching friend groups:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to load friend groups', data: [] };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load friend groups',
+        data: []
+      };
     }
   },
 
@@ -204,7 +263,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error creating friend group:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to create friend group' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to create friend group'
+      };
     }
   },
 
@@ -214,7 +276,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error updating friend group:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to update friend group' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update friend group'
+      };
     }
   },
 
@@ -224,7 +289,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error deleting friend group:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to delete friend group' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to delete friend group'
+      };
     }
   },
 
@@ -234,17 +302,25 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error adding members to group:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to add members to group' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to add members to group'
+      };
     }
   },
 
   removeMembersFromGroup: async (groupId, memberIds) => {
     try {
-      const res = await api.delete(`/api/friends/groups/${groupId}/members`, { data: { memberIds } });
+      const res = await api.delete(`/api/friends/groups/${groupId}/members`, {
+        data: { memberIds }
+      });
       return res.data;
     } catch (error) {
       console.error('Error removing members from group:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to remove members from group' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to remove members from group'
+      };
     }
   },
 
@@ -252,14 +328,36 @@ export const friendsAPI = {
   // CONVERSATIONS (DIRECTES & GROUPES)
   // ============================================
 
-  /** Conversations list */
+  /** Conversations list (ancienne API basée sur /api/messages/conversations) */
   getConversations: async () => {
     try {
       const res = await api.get('/api/messages/conversations');
       return res.data;
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to load conversations', data: [] };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load conversations',
+        data: []
+      };
+    }
+  },
+
+  /**
+   * 🆕 Récupérer toutes les conversations (directes + groupes)
+   * basées sur le nouveau modèle Conversation via /api/conversations
+   */
+  getAllConversations: async () => {
+    try {
+      const res = await api.get('/api/conversations');
+      return res.data; // { success, data: [conversationsWithUnread] }
+    } catch (error) {
+      console.error('Error fetching all conversations:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load conversations',
+        data: []
+      };
     }
   },
 
@@ -270,18 +368,28 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error getting/creating direct conversation:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to open conversation' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to open conversation'
+      };
     }
   },
 
   /** Créer un groupe de conversation (chat) */
   createGroup: async (name, participants, description = null) => {
     try {
-      const res = await api.post('/api/conversations/groups', { name, participants, description });
+      const res = await api.post('/api/conversations/groups', {
+        name,
+        participants,
+        description
+      });
       return res.data;
     } catch (error) {
       console.error('Error creating group conversation:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to create group' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to create group'
+      };
     }
   },
 
@@ -291,27 +399,41 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error updating group conversation:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to update group' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update group'
+      };
     }
   },
 
   addParticipantToGroup: async (groupId, participantId) => {
     try {
-      const res = await api.post(`/api/conversations/groups/${groupId}/participants`, { participantId });
+      const res = await api.post(
+        `/api/conversations/groups/${groupId}/participants`,
+        { participantId }
+      );
       return res.data;
     } catch (error) {
       console.error('Error adding participant:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to add participant' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to add participant'
+      };
     }
   },
 
   removeParticipantFromGroup: async (groupId, participantId) => {
     try {
-      const res = await api.delete(`/api/conversations/groups/${groupId}/participants/${participantId}`);
+      const res = await api.delete(
+        `/api/conversations/groups/${groupId}/participants/${participantId}`
+      );
       return res.data;
     } catch (error) {
       console.error('Error removing participant:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to remove participant' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to remove participant'
+      };
     }
   },
 
@@ -321,7 +443,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error pinning conversation:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to pin conversation' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to pin conversation'
+      };
     }
   },
 
@@ -332,26 +457,42 @@ export const friendsAPI = {
   /** Messages d’une conversation directe (friendId = interlocuteur) */
   getMessages: async (friendId, page = 1, limit = 50) => {
     try {
-      const res = await api.get(`/api/messages/${friendId}`, { params: { page, limit } });
+      const res = await api.get(`/api/messages/${friendId}`, {
+        params: { page, limit }
+      });
       return res.data;
     } catch (error) {
       console.error('Error fetching messages:', error);
       if (error.response?.status === 403) {
-        return { success: false, message: 'You must be friends to message this user', errorType: 'NOT_FRIENDS', data: { messages: [] } };
+        return {
+          success: false,
+          message: 'You must be friends to message this user',
+          errorType: 'NOT_FRIENDS',
+          data: { messages: [] }
+        };
       }
-      return { success: false, message: error.response?.data?.message || 'Failed to load messages', data: { messages: [] } };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load messages',
+        data: { messages: [] }
+      };
     }
   },
 
   /** Envoyer un message direct */
   sendMessage: async (receiverId, content, type = 'text') => {
     try {
-      if (!receiverId || !content) throw new Error('Receiver ID and content are required');
+      if (!receiverId || !content) {
+        throw new Error('Receiver ID and content are required');
+      }
       const res = await api.post('/api/messages', { receiverId, content, type });
       return res.data;
     } catch (error) {
       console.error('Error sending message:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to send message' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to send message'
+      };
     }
   },
 
@@ -362,7 +503,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error marking message as read:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to mark message as read' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to mark message as read'
+      };
     }
   },
 
@@ -373,7 +517,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error deleting message:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to delete message' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to delete message'
+      };
     }
   },
 
@@ -384,7 +531,11 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error fetching unread count:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to get unread count', data: { count: 0 } };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to get unread count',
+        data: { count: 0 }
+      };
     }
   },
 
@@ -398,7 +549,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error editing message:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to edit message' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to edit message'
+      };
     }
   },
 
@@ -408,38 +562,56 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error copying message:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to copy message' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to copy message'
+      };
     }
   },
 
   /** Suppression avancée (deleteForEveryone) */
   deleteMessageAdvanced: async (messageId, deleteForEveryone = false) => {
     try {
-      const res = await api.delete(`/api/chat/messages/${messageId}`, { data: { deleteForEveryone } });
+      const res = await api.delete(`/api/chat/messages/${messageId}`, {
+        data: { deleteForEveryone }
+      });
       return res.data;
     } catch (error) {
       console.error('Error deleting message (advanced):', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to delete message' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to delete message'
+      };
     }
   },
 
   forwardMessage: async (messageId, recipientIds) => {
     try {
-      const res = await api.post(`/api/chat/messages/${messageId}/forward`, { recipientIds });
+      const res = await api.post(`/api/chat/messages/${messageId}/forward`, {
+        recipientIds
+      });
       return res.data;
     } catch (error) {
       console.error('Error forwarding message:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to forward message' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to forward message'
+      };
     }
   },
 
   replyToMessage: async (messageId, content) => {
     try {
-      const res = await api.post(`/api/chat/messages/${messageId}/reply`, { content });
+      const res = await api.post(`/api/chat/messages/${messageId}/reply`, {
+        content
+      });
       return res.data;
     } catch (error) {
       console.error('Error replying to message:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to reply to message' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to reply to message'
+      };
     }
   },
 
@@ -453,7 +625,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error archiving chat:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to archive chat' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to archive chat'
+      };
     }
   },
 
@@ -463,7 +638,10 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error unarchiving chat:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to unarchive chat' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to unarchive chat'
+      };
     }
   },
 
@@ -473,17 +651,28 @@ export const friendsAPI = {
       return res.data;
     } catch (error) {
       console.error('Error clearing chat history:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to clear chat history' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to clear chat history'
+      };
     }
   },
 
   reportUser: async (reportedUserId, reason, description = '', messageId = null) => {
     try {
-      const res = await api.post('/api/chat/report', { reportedUserId, reason, description, messageId });
+      const res = await api.post('/api/chat/report', {
+        reportedUserId,
+        reason,
+        description,
+        messageId
+      });
       return res.data;
     } catch (error) {
       console.error('Error reporting user:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to report user' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to report user'
+      };
     }
   },
 
@@ -493,21 +682,33 @@ export const friendsAPI = {
 
   getGroupMessages: async (groupId, page = 1, limit = 50) => {
     try {
-      const res = await api.get(`/api/conversations/groups/${groupId}/messages`, { params: { page, limit } });
+      const res = await api.get(`/api/conversations/groups/${groupId}/messages`, {
+        params: { page, limit }
+      });
       return res.data;
     } catch (error) {
       console.error('Error fetching group messages:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to load group messages', data: { messages: [] } };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load group messages',
+        data: { messages: [] }
+      };
     }
   },
 
   sendGroupMessage: async (groupId, content, type = 'text') => {
     try {
-      const res = await api.post(`/api/conversations/groups/${groupId}/messages`, { content, type });
+      const res = await api.post(`/api/conversations/groups/${groupId}/messages`, {
+        content,
+        type
+      });
       return res.data;
     } catch (error) {
       console.error('Error sending group message:', error);
-      return { success: false, message: error.response?.data?.message || 'Failed to send group message' };
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to send group message'
+      };
     }
   },
 
@@ -523,7 +724,8 @@ export const friendsAPI = {
       console.error('Error fetching friendship stats:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to load friendship statistics',
+        message:
+          error.response?.data?.message || 'Failed to load friendship statistics',
         data: { friends: 0, pendingRequests: 0, sentRequests: 0 }
       };
     }
@@ -550,7 +752,11 @@ export const friendsAPI = {
         const r = await api.get(route);
         results[route] = { status: 'SUCCESS', statusCode: r.status };
       } catch (err) {
-        results[route] = { status: 'ERROR', statusCode: err.response?.status, message: err.message };
+        results[route] = {
+          status: 'ERROR',
+          statusCode: err.response?.status,
+          message: err.message
+        };
       }
     }
     return results;
