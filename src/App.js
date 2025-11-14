@@ -1,4 +1,4 @@
-// src/App.js - VERSION CORRIGÉE
+// src/App.js - VERSION AVEC PAGE NOTIFICATIONS
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -37,6 +37,7 @@ import Search from './components/Dashboard/UserDashboard/Search/Search';
 import HelpAndSupport from './components/Profile/HelpAndSupport';
 import Friends from './components/Dashboard/UserDashboard/Friends';
 import Chat from './components/Dashboard/UserDashboard/Chat/Chat';
+import UserNotifications from './components/Dashboard/UserDashboard/Notifications/UserNotifications';
 
 // Admin Dashboard
 import AdminDashboard from './components/Dashboard/AdminDashboard';
@@ -130,13 +131,12 @@ function App() {
               <Route path="help-support" element={<HelpAndSupport />} />
               <Route path="live" element={<LiveThrowback />} />
               
-              {/* ✅ CORRECTION ICI - Chemins relatifs */}
               <Route path="messages" element={<Chat />} />
               <Route path="chat" element={<Chat />} />
               
               <Route path="discover" element={<UserTempPage title="Discover" />} />
               <Route path="favorites" element={<UserTempPage title="Your Favorites" />} />
-              <Route path="notifications" element={<UserTempPage title="Notifications" />} />
+              <Route path="notifications" element={<UserNotifications />} />
               <Route path="upload/short" element={<UserTempPage title="Upload Short" />} />
               <Route path="upload/video" element={<UserTempPage title="Upload Video" />} />
               <Route path="posts/create" element={<UserTempPage title="Create Post" />} />
