@@ -32,10 +32,12 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
       .slice(0, 2);
   };
 
-  const fullName = !isGroup
-    ? `${participant?.prenom || ''} ${participant?.nom || ''}`.trim()
-    : conversation?.name || 'Group';
+  const groupName = conversation?.name || 'Group';
+  const userName = `${participant?.prenom || ''} ${
+    participant?.nom || ''
+  }`.trim() || 'Friend';
 
+  const title = isGroup ? groupName : userName;
   const subtitle = isGroup
     ? conversation?.members?.length
       ? `${conversation.members.length} members`
@@ -48,7 +50,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
     if (isGroup || !participant?._id) return;
 
     const confirmed = window.confirm(
-      `Block ${fullName}? They will no longer be able to chat with you.`
+      `Block ${userName}? They will no longer be able to chat with you.`
     );
     if (!confirmed) return;
 
@@ -67,7 +69,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
     if (isGroup || !participant?._id) return;
 
     const confirmed = window.confirm(
-      `Delete your conversation history with ${fullName}? This cannot be undone.`
+      `Delete your conversation history with ${userName}? This cannot be undone.`
     );
     if (!confirmed) return;
 
@@ -97,17 +99,17 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
         <div className={styles.chatHeaderAvatar}>
           {isGroup ? (
             <div className={styles.headerAvatarPlaceholder}>
-              {getInitials(conversation?.name || 'Group')}
+              {getInitials(groupName)}
             </div>
           ) : participant?.photo_profil ? (
             <img
               src={participant.photo_profil}
-              alt={fullName}
+              alt={userName}
               className={styles.headerAvatarImage}
             />
           ) : (
             <div className={styles.headerAvatarPlaceholder}>
-              {getInitials(fullName)}
+              {getInitials(userName)}
             </div>
           )}
           {!isGroup && isOnline && (
@@ -118,7 +120,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
         </div>
 
         <div className={styles.chatHeaderInfo}>
-          <h3 className={styles.chatHeaderName}>{fullName}</h3>
+          <h3 className={styles.chatHeaderName}>{title}</h3>
           <p className={styles.chatHeaderStatus}>{subtitle}</p>
         </div>
       </div>

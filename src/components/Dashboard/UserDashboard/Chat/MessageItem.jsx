@@ -61,12 +61,10 @@ const MessageItem = ({
   const senderDisplayName = (() => {
     const u = message.sender;
     if (!u) return '';
-    return (
-      u.prenom ||
-      u.firstName ||
-      u.name ||
-      `${u.prenom || ''} ${u.nom || ''}`.trim()
-    );
+    const first =
+      u.prenom || u.firstName || u.name || '';
+    const last = u.nom || u.lastName || '';
+    return `${first} ${last}`.trim() || first || last;
   })();
 
   return (
@@ -99,10 +97,8 @@ const MessageItem = ({
           setShowMenu(true);
         }}
       >
-        {isGroup && !isOwn && (
-          <div className={styles.messageAuthor}>
-            {senderDisplayName}
-          </div>
+        {isGroup && !isOwn && senderDisplayName && (
+          <div className={styles.messageAuthor}>{senderDisplayName}</div>
         )}
 
         {message.type === 'text' && (

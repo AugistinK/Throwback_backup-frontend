@@ -17,8 +17,8 @@ const MessageList = ({
   isGroup
 }) => {
   const getInitials = (nom, prenom) => {
-    if (!nom && !prenom) return '';
     const text = `${prenom || ''} ${nom || ''}`.trim();
+    if (!text) return '';
     return text
       .split(' ')
       .filter(Boolean)
@@ -126,8 +126,8 @@ const MessageList = ({
             </div>
           ))}
 
-          {isTyping && (
-            isGroup ? (
+          {isTyping &&
+            (isGroup ? (
               <div className={styles.typingIndicatorWrapper}>
                 <div className={styles.typingIndicator}>
                   <span></span>
@@ -155,8 +155,7 @@ const MessageList = ({
                   <span></span>
                 </div>
               </div>
-            )
-          )}
+            ))}
 
           <div ref={messagesEndRef} />
         </>

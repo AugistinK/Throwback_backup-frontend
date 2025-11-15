@@ -34,14 +34,35 @@ const ChatArea = ({ conversation, onBack, isOnline }) => {
   };
 
   const normalizeMessage = (msg) => ({
-    id: msg._id,
+    id: msg._id || msg.id,
     sender: msg.sender,
     receiver: msg.receiver,
     content: msg.content,
-    type: msg.type,
-    created_date: msg.created_date,
-    read: msg.read
+    type: msg.type || 'text',
+    created_date:
+      msg.created_date || msg.createdAt || msg.created_at || new Date(),
+    read: !!msg.read
   });
+
+  const extractMessagesPayload = (response) => {
+    if (!response) {
+      return { messages: [], pagination: null };
+    }
+
+    const payload = response.data || response;
+
+    const messages =
+      payload.messages ||
+      payload.data?.messages ||
+      [];
+
+    const pagination =
+      payload.pagination ||
+      payload.data?.pagination ||
+      null;
+
+    return { messages, pagination };
+  };
 
   const loadMessages = async (pageToLoad = 1) => {
     if (!targetId) return;
@@ -51,41 +72,56 @@ const ChatArea = ({ conversation, onBack, isOnline }) => {
       let response;
 
       if (isGroup) {
-        response = await friendsAPI.getGroupMessages(targetId, pageToLoad, 50);
+        response = await friendsAPI.getGroupMessages(
+          targetId,
+          pageToLoad,
+          50
+        );
       } else {
-        response = await friendsAPI.getMessages(targetId, pageToLoad, 50);
+        response = await friendsAPI.getMessages(
+          targetId,
+          pageToLoad,
+          50
+        );
       }
 
-      if (response.success) {
-        const rawMessages =
-          response.data?.messages ||
-          response.data?.data?.messages ||
-          response.data ||
-          [];
-
-        const formattedMessages = rawMessages.map(normalizeMessage);
-
+      if (!response || response.success === false) {
+        console.warn('Messages request failed:', response?.message);
         if (pageToLoad === 1) {
-          setMessages(formattedMessages);
-        } else {
-          setMessages((prev) => [...formattedMessages, ...prev]);
+          setMessages([]);
         }
+        setHasMore(false);
+        return;
+      }
 
-        if (response.data?.pagination) {
-          const { page: currentPage, totalPages } = response.data.pagination;
-          setHasMore(currentPage < totalPages);
-        } else {
-          setHasMore(false);
-        }
+      const { messages: rawMessages, pagination } =
+        extractMessagesPayload(response);
 
-        setPage(pageToLoad);
+      const formattedMessages = rawMessages.map(normalizeMessage);
 
-        if (pageToLoad === 1) {
-          setTimeout(scrollToBottom, 100);
-        }
+      if (pageToLoad === 1) {
+        setMessages(formattedMessages);
+      } else {
+        setMessages((prev) => [...formattedMessages, ...prev]);
+      }
+
+      if (pagination) {
+        setHasMore(pagination.page < pagination.totalPages);
+      } else {
+        setHasMore(formattedMessages.length === 50);
+      }
+
+      setPage(pageToLoad);
+
+      if (pageToLoad === 1) {
+        setTimeout(scrollToBottom, 100);
       }
     } catch (err) {
       console.error('Error loading messages:', err);
+      if (pageToLoad === 1) {
+        setMessages([]);
+      }
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
@@ -100,6 +136,7 @@ const ChatArea = ({ conversation, onBack, isOnline }) => {
     if (targetId) {
       loadMessages(1);
 
+      // On ne rejoint la room Socket que pour les directs
       if (!isGroup && socket) {
         joinConversation(targetId);
         markMessagesAsRead(targetId);
@@ -191,31 +228,24 @@ const ChatArea = ({ conversation, onBack, isOnline }) => {
           type
         );
 
-        if (res.success) {
-          const msgData =
-            res.data?.message ||
-            res.data?.data?.message ||
-            res.message ||
-            null;
-
-          if (msgData) {
-            const saved = normalizeMessage(msgData);
-            setMessages((prev) =>
-              prev.map((m) => (m.tempId === tempId ? saved : m))
-            );
-          } else {
-            // If we don't know the exact shape, just reload latest messages
-            loadMessages(1);
-          }
-        } else {
-          setMessages((prev) => prev.filter((m) => m.tempId !== tempId));
+        if (!res || res.success === false) {
+          console.error('Error sending group message:', res?.message);
+          setMessages((prev) =>
+            prev.filter((m) => m.tempId !== tempId)
+          );
+          return;
         }
+
+        // Pour simplifier, on recharge la dernière page après l'envoi
+        loadMessages(1);
       } else {
         await socketSendMessage(targetId, content, type, tempId);
       }
     } catch (err) {
       console.error('Error sending message:', err);
-      setMessages((prev) => prev.filter((m) => m.tempId !== tempId));
+      setMessages((prev) =>
+        prev.filter((m) => m.tempId !== tempId)
+      );
     }
   };
 

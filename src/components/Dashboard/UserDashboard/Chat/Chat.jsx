@@ -10,13 +10,16 @@ import styles from './Chat.module.css';
 
 const Chat = () => {
   const { user } = useAuth();
-  const { socket, isConnected, onlineUsers } = useSocket();
+  const { socket, onlineUsers } = useSocket();
+
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // all, unread, favorites, groups
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const currentUserId = user?.id || user?._id;
 
   const getImageUrl = (path) => {
     if (!path) return 'https://via.placeholder.com/150';
@@ -28,19 +31,174 @@ const Chat = () => {
     return `${backendUrl}${normalizedPath}`;
   };
 
-  // Load conversations on mount
+  // Normaliser une conversation (directe ou groupe)
+  const normalizeConversation = (raw) => {
+    if (!raw) return null;
+
+    const isGroup =
+      raw.isGroup === true ||
+      raw.type === 'group' ||
+      !!raw.group ||
+      !!raw.groupId ||
+      raw.kind === 'group';
+
+    // ----- GROUP CHAT -----
+    if (isGroup) {
+      const group = raw.group || raw;
+      const id = raw._id || raw.id || group._id || raw.groupId;
+
+      const name =
+        raw.name ||
+        group.name ||
+        raw.title ||
+        'Group';
+
+      const lastMessage =
+        raw.lastMessage ||
+        raw.last_message ||
+        group.lastMessage ||
+        null;
+
+      const unread = raw.unreadCount ?? raw.unread ?? 0;
+
+      return {
+        ...raw,
+        _id: id,
+        isGroup: true,
+        name,
+        members:
+          raw.members || group.members || raw.participants || [],
+        lastMessage,
+        unreadCount: unread,
+        isArchived: !!raw.isArchived
+      };
+    }
+
+    // ----- DIRECT CHAT (AMI) -----
+    let participant = raw.participant || null;
+
+    if (!participant && Array.isArray(raw.participants)) {
+      participant =
+        raw.participants.find((p) => p._id !== currentUserId) ||
+        raw.participants[0];
+    }
+
+    if (!participant) {
+      participant = raw.friend || raw.otherUser || raw.user || null;
+    }
+
+    if (participant && participant.photo_profil) {
+      participant = {
+        ...participant,
+        photo_profil: getImageUrl(participant.photo_profil)
+      };
+    }
+
+    const lastMessage = raw.lastMessage || raw.last_message || null;
+    const unread = raw.unreadCount ?? raw.unread ?? 0;
+
+    return {
+      ...raw,
+      isGroup: false,
+      participant,
+      lastMessage,
+      unreadCount: unread,
+      isArchived: !!raw.isArchived
+    };
+  };
+
+  const loadConversations = async () => {
+    try {
+      setLoading(true);
+
+      // On récupère à la fois les conversations et les groupes d'amis
+      const [convRes, groupsRes] = await Promise.all([
+        friendsAPI.getConversations().catch((e) => {
+          console.error('Error fetching conversations:', e);
+          return null;
+        }),
+        friendsAPI.getFriendGroups().catch((e) => {
+          console.warn('Error fetching friend groups (optional):', e);
+          return null;
+        })
+      ]);
+
+      let items = [];
+
+      // Conversations directes + éventuellement groupes déjà inclus
+      if (convRes) {
+        if (convRes.success && Array.isArray(convRes.data)) {
+          items = items.concat(convRes.data);
+        } else if (Array.isArray(convRes)) {
+          items = items.concat(convRes);
+        }
+      }
+
+      // Groupes d'amis (si pas déjà inclus)
+      if (groupsRes && groupsRes.success && Array.isArray(groupsRes.data)) {
+        const existingGroupIds = new Set(
+          items
+            .filter((c) => c.isGroup || c.type === 'group')
+            .map((c) => (c._id || c.id || c.groupId || '').toString())
+        );
+
+        const groupConvs = groupsRes.data.map((g) => ({
+          ...g,
+          _id: g._id,
+          groupId: g._id,
+          isGroup: true,
+          group: g
+        }));
+
+        groupConvs.forEach((g) => {
+          const idStr = (g._id || g.groupId || '').toString();
+          if (!existingGroupIds.has(idStr)) {
+            items.push(g);
+          }
+        });
+      }
+
+      const normalized = items
+        .map(normalizeConversation)
+        .filter(Boolean);
+
+      // Tri par dernière activité
+      normalized.sort((a, b) => {
+        const da = new Date(
+          a.lastMessage?.created_date || a.updatedAt || a.createdAt || 0
+        ).getTime();
+        const db = new Date(
+          b.lastMessage?.created_date || b.updatedAt || b.createdAt || 0
+        ).getTime();
+        return db - da;
+      });
+
+      setConversations(normalized);
+
+      const totalUnread = normalized.reduce(
+        (sum, conv) => sum + (conv.unreadCount || 0),
+        0
+      );
+      setUnreadCount(totalUnread);
+    } catch (err) {
+      console.error('Error loading conversations:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadConversations();
   }, []);
 
-  // Socket listeners to keep direct conversations list in sync
+  // Mise à jour en temps réel pour les conversations directes (via Socket)
   useEffect(() => {
     if (!socket) return;
 
     const handleNewMessage = (data) => {
-      // Only update direct chats here (groups are handled via REST refresh)
       setConversations((prev) => {
         const updated = prev.map((conv) => {
+          // direct chat
           if (
             !conv.isGroup &&
             conv.participant &&
@@ -51,11 +209,12 @@ const Chat = () => {
               ...conv,
               lastMessage: data.message,
               unreadCount:
-                conv.participant._id === data.message.sender._id
+                data.message.receiver._id === currentUserId
                   ? (conv.unreadCount || 0) + 1
                   : conv.unreadCount || 0
             };
           }
+
           return conv;
         });
 
@@ -66,7 +225,7 @@ const Chat = () => {
         );
       });
 
-      if (data.message.receiver._id === user.id) {
+      if (data.message.receiver._id === currentUserId) {
         setUnreadCount((prev) => prev + 1);
       }
     };
@@ -102,73 +261,19 @@ const Chat = () => {
       socket.off('new-message', handleNewMessage);
       socket.off('message-sent', handleMessageSent);
     };
-  }, [socket, user]);
-
-  const loadConversations = async () => {
-    try {
-      setLoading(true);
-      const response = await friendsAPI.getConversations();
-
-      if (response.success) {
-        const conversationsWithImages = response.data.map((conv) => {
-          // Direct chat: has participant (friend)
-          if (!conv.isGroup && conv.participant) {
-            return {
-              ...conv,
-              participant: {
-                ...conv.participant,
-                photo_profil: getImageUrl(conv.participant.photo_profil)
-              },
-              isGroup: false
-            };
-          }
-
-          // Group chat: keep as is; we only ensure isGroup flag
-          return {
-            ...conv,
-            isGroup: !!conv.isGroup
-          };
-        });
-
-        // Sort by last message date if available
-        conversationsWithImages.sort(
-          (a, b) =>
-            new Date(b.lastMessage?.created_date || 0) -
-            new Date(a.lastMessage?.created_date || 0)
-        );
-
-        setConversations(conversationsWithImages);
-
-        const total = conversationsWithImages.reduce(
-          (sum, conv) => sum + (conv.unreadCount || 0),
-          0
-        );
-        setUnreadCount(total);
-      }
-    } catch (err) {
-      console.error('Error loading conversations:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [socket, currentUserId]);
 
   const handleSelectConversation = (conversation) => {
     setSelectedConversation(conversation);
 
     if (conversation.unreadCount > 0) {
-      const selectedKey = conversation.isGroup
-        ? conversation._id
-        : conversation.participant?._id;
-
       setConversations((prev) =>
-        prev.map((conv) => {
-          const convKey = conv.isGroup ? conv._id : conv.participant?._id;
-          return convKey === selectedKey
+        prev.map((conv) =>
+          conv._id === conversation._id
             ? { ...conv, unreadCount: 0 }
-            : conv;
-        })
+            : conv
+        )
       );
-
       setUnreadCount((prev) =>
         Math.max(0, prev - (conversation.unreadCount || 0))
       );
@@ -183,19 +288,13 @@ const Chat = () => {
     setActiveTab(tab);
   };
 
-  // Archive / Unarchive currently selected conversation
   const handleToggleArchiveConversation = async () => {
-    if (!selectedConversation) {
+    if (!selectedConversation?._id) {
       alert('Please select a conversation first.');
       return;
     }
 
     const conversationId = selectedConversation._id;
-    if (!conversationId) {
-      console.warn('No conversation id for selected conversation');
-      return;
-    }
-
     const currentlyArchived = !!selectedConversation.isArchived;
 
     try {
@@ -227,7 +326,7 @@ const Chat = () => {
     }
   };
 
-  // Filter conversations according to search + active tab
+  // Filtrer les conversations pour la sidebar
   const filteredConversations = conversations.filter((conv) => {
     const q = searchQuery.trim().toLowerCase();
 
@@ -237,13 +336,15 @@ const Chat = () => {
     } else if (conv.participant) {
       displayName = `${conv.participant.prenom || ''} ${
         conv.participant.nom || ''
-      }`;
+      }`.trim();
     }
 
     const matchesSearch =
       !q ||
       displayName.toLowerCase().includes(q) ||
-      (conv.lastMessage?.content || '').toLowerCase().includes(q);
+      (conv.lastMessage?.content || '')
+        .toLowerCase()
+        .includes(q);
 
     if (!matchesSearch) return false;
 
@@ -258,6 +359,12 @@ const Chat = () => {
         return true;
     }
   });
+
+  const isSelectedOnline =
+    selectedConversation &&
+    !selectedConversation.isGroup &&
+    selectedConversation.participant &&
+    onlineUsers.has(selectedConversation.participant._id);
 
   return (
     <div className={styles.chatContainer}>
@@ -279,11 +386,7 @@ const Chat = () => {
         <ChatArea
           conversation={selectedConversation}
           onBack={() => setSelectedConversation(null)}
-          isOnline={
-            !selectedConversation.isGroup &&
-            selectedConversation.participant &&
-            onlineUsers.has(selectedConversation.participant._id)
-          }
+          isOnline={isSelectedOnline}
         />
       ) : (
         <EmptyChat />

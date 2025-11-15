@@ -55,7 +55,8 @@ const ConversationItem = ({ conversation, isSelected, onSelect, isOnline }) => {
 
   const displayName = isGroup
     ? conversation.name || 'Group'
-    : `${participant?.prenom || ''} ${participant?.nom || ''}`.trim();
+    : `${participant?.prenom || ''} ${participant?.nom || ''}`.trim() ||
+      'Friend';
 
   let lastMessagePreview = '';
   if (lastMessage) {
@@ -71,7 +72,8 @@ const ConversationItem = ({ conversation, isSelected, onSelect, isOnline }) => {
     }
   }
 
-  const showStatusIcon = !isGroup && lastMessage && lastMessage.sender && participant;
+  const showStatusIcon =
+    !isGroup && lastMessage && lastMessage.sender && participant;
 
   return (
     <div
