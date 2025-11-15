@@ -1,4 +1,4 @@
-// src/components/Dashboard/UserDashboard/Friends/Friends.jsx - VERSION COMPLÈTE CORRIGÉE
+// src/components/Dashboard/UserDashboard/Friends/Friends.jsx - VERSION COMPLÈTE CORRIGÉE AVEC GROUP CHATS
 import React, { useState, useEffect } from 'react';
 import FriendCard from './FriendCard';
 import RequestCard from './RequestCard';
@@ -6,7 +6,7 @@ import SuggestionCard from './SuggestionCard';
 import FriendGroupsModal from './FriendGroupsModal';
 import ChatModal from './ChatModal';
 import FriendProfileModal from './FriendProfileModal';
-import GroupChatModal from './GroupChatModal'; // ✅ AJOUT
+import GroupChatModal from './GroupChatModal';
 import UserSearchModal from './UserSearchModal';
 import ConfirmModal from './ConfirmModal';
 import { friendsAPI } from '../../../../utils/api';
@@ -24,34 +24,106 @@ import {
   faMessage
 } from '@fortawesome/free-solid-svg-icons';
 
+/**
+ * Petit modal pour lister les conversations de groupe
+ * et permettre d’ouvrir le chat de groupe.
+ */
+const GroupChatsListModal = ({ groups = [], onClose, onOpenGroupChat }) => {
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>
+            <FontAwesomeIcon icon={faUsers} style={{ fontSize: 24 }} />
+            Group Chats
+          </h2>
+          <button className={styles.closeButton} onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div className={styles.modalBody}>
+          {groups.length === 0 ? (
+            <div className={styles.emptyState}>
+              <FontAwesomeIcon icon={faUsers} style={{ fontSize: 48, opacity: 0.4 }} />
+              <h3>No group chats</h3>
+              <p>You haven’t joined any group chats yet.</p>
+            </div>
+          ) : (
+            <div className={styles.groupsList}>
+              {groups.map((group) => (
+                <div key={group.id || group._id} className={styles.groupItem}>
+                  <div
+                    className={styles.groupColor}
+                    style={{ backgroundColor: group.color || '#b31217' }}
+                  />
+                  <div className={styles.groupInfo}>
+                    <h4 className={styles.groupName}>{group.name}</h4>
+                    <p className={styles.groupMembers}>
+                      {group.members?.length || 0} members
+                    </p>
+                  </div>
+                  <div className={styles.groupActions}>
+                    <button
+                      className={styles.iconButton}
+                      type="button"
+                      onClick={() => onOpenGroupChat && onOpenGroupChat(group)}
+                      title="Open group chat"
+                    >
+                      <FontAwesomeIcon
+                        icon={faMessage}
+                        style={{ fontSize: 18, color: '#10b981' }}
+                      />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className={styles.modalFooter}>
+          <button className={styles.footerButton} onClick={onClose} type="button">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Friends = () => {
   const { user } = useAuth();
   const { isUserOnline, notifyFriendRequest, notifyFriendRequestAccepted } = useSocket();
-  
+
+  const currentUserId = user?._id || user?.id || null;
+
   const [activeTab, setActiveTab] = useState('friends');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showGroupsModal, setShowGroupsModal] = useState(false);
+  const [showGroupChatsModal, setShowGroupChatsModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedChatFriend, setSelectedChatFriend] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedProfileFriend, setSelectedProfileFriend] = useState(null);
   const [showUserSearchModal, setShowUserSearchModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', data: null });
-  
-  // ✅ AJOUT: States pour GroupChatModal
+
+  // Group chat modal
   const [showGroupChatModal, setShowGroupChatModal] = useState(false);
   const [selectedGroupChat, setSelectedGroupChat] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Data
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [friendGroups, setFriendGroups] = useState([]);
+  const [chatGroups, setChatGroups] = useState([]); // ✅ conversations de groupe
 
   const getImageUrl = (path) => {
     if (!path) return 'https://via.placeholder.com/150';
@@ -61,7 +133,10 @@ const Friends = () => {
     return `${backendUrl}${normalizedPath}`;
   };
 
-  useEffect(() => { loadAllData(); }, []);
+  useEffect(() => {
+    loadAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadAllData = async () => {
     setLoading(true);
@@ -71,7 +146,8 @@ const Friends = () => {
         loadFriends(),
         loadRequests(),
         loadSuggestions(),
-        loadFriendGroups()
+        loadFriendGroups(),
+        loadChatGroups()
       ]);
     } catch (err) {
       setError('Error loading data');
@@ -85,7 +161,7 @@ const Friends = () => {
     try {
       const response = await friendsAPI.getFriends();
       if (response.success) {
-        const enrichedFriends = response.data.map(friend => ({
+        const enrichedFriends = response.data.map((friend) => ({
           id: friend._id,
           name: `${friend.prenom} ${friend.nom}`,
           username: `@${friend.email.split('@')[0]}`,
@@ -108,7 +184,7 @@ const Friends = () => {
     try {
       const response = await friendsAPI.getFriendRequests();
       if (response.success) {
-        const enrichedRequests = response.data.map(req => ({
+        const enrichedRequests = response.data.map((req) => ({
           id: req._id || req.friendshipId,
           name: req.nom ? `${req.prenom} ${req.nom}` : req.name,
           username: req.email ? `@${req.email.split('@')[0]}` : req.username,
@@ -130,12 +206,12 @@ const Friends = () => {
       const response = await friendsAPI.getFriendSuggestions();
       if (response.success) {
         // Filtrer pour exclure admin et superadmin
-        const filteredSuggestions = response.data.filter(sug => {
+        const filteredSuggestions = response.data.filter((sug) => {
           const userRole = sug.role || (sug.roles && sug.roles[0]?.libelle_role);
           return userRole !== 'admin' && userRole !== 'superadmin';
         });
 
-        const enrichedSuggestions = filteredSuggestions.map(sug => ({
+        const enrichedSuggestions = filteredSuggestions.map((sug) => ({
           id: sug._id,
           name: `${sug.prenom} ${sug.nom}`,
           username: `@${sug.email.split('@')[0]}`,
@@ -156,10 +232,10 @@ const Friends = () => {
     try {
       const response = await friendsAPI.getFriendGroups();
       if (response.success) {
-        const mappedGroups = response.data.map(group => ({
+        const mappedGroups = response.data.map((group) => ({
           id: group._id,
           name: group.name,
-          members: group.members.map(m => m._id || m),
+          members: group.members.map((m) => m._id || m),
           color: group.color || '#b31217',
           isCreator: group.owner === user?.id || group.owner === user?._id
         }));
@@ -170,13 +246,72 @@ const Friends = () => {
     }
   };
 
+  /**
+   * Charger les conversations de groupe auxquelles l’utilisateur participe.
+   * On s’appuie sur /api/conversations qui renvoie déjà uniquement
+   * les conversations dont l’utilisateur est participant.
+   */
+  const loadChatGroups = async () => {
+    try {
+      if (!currentUserId) return;
+
+      let response;
+      if (typeof friendsAPI.getAllConversations === 'function') {
+        response = await friendsAPI.getAllConversations();
+      } else if (typeof friendsAPI.getConversations === 'function') {
+        response = await friendsAPI.getConversations();
+      } else {
+        console.warn('No getAllConversations/getConversations available on friendsAPI');
+        return;
+      }
+
+      if (!response?.success) return;
+
+      const conversations = response.data || [];
+      const groups = conversations
+        .filter((conv) => conv.type === 'group')
+        .map((conv) => {
+          const participants = Array.isArray(conv.participants)
+            ? conv.participants.map((p) =>
+                typeof p === 'string' || typeof p === 'number'
+                  ? p
+                  : p._id || p.id || null
+              )
+            : [];
+
+          const creator =
+            conv.groupCreator &&
+            (conv.groupCreator._id ||
+              conv.groupCreator.id ||
+              conv.groupCreator);
+
+          return {
+            id: conv._id || conv.id,
+            name: conv.groupName || conv.name || 'Group chat',
+            members: participants.filter(Boolean),
+            color: '#b31217',
+            description: conv.groupDescription || '',
+            conversationId: conv._id || conv.id,
+            isCreator:
+              !!creator &&
+              !!currentUserId &&
+              String(creator) === String(currentUserId)
+          };
+        });
+
+      setChatGroups(groups);
+    } catch (err) {
+      console.error('Error loading chat groups:', err);
+    }
+  };
+
   const formatDate = (date) => {
     if (!date) return 'Recently';
     const d = new Date(date);
     const now = new Date();
     const diffTime = Math.abs(now - d);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -189,16 +324,18 @@ const Friends = () => {
     try {
       const response = await friendsAPI.acceptFriendRequest(friendshipId);
       if (response.success) {
-        const acceptedRequest = requests.find(r => r.id === friendshipId);
-        setRequests(prev => prev.filter(r => r.id !== friendshipId));
+        const acceptedRequest = requests.find((r) => r.id === friendshipId);
+        setRequests((prev) => prev.filter((r) => r.id !== friendshipId));
         if (acceptedRequest) {
           const newFriend = {
             ...acceptedRequest,
             status: 'online',
             lastActive: 'Active now'
           };
-          setFriends(prev => [...prev, newFriend]);
-          try { notifyFriendRequestAccepted(acceptedRequest.id); } catch {}
+          setFriends((prev) => [...prev, newFriend]);
+          try {
+            notifyFriendRequestAccepted(acceptedRequest.id);
+          } catch {}
         } else {
           loadFriends();
         }
@@ -240,7 +377,7 @@ const Friends = () => {
         onConfirm: async () => {
           try {
             await friendsAPI.rejectFriendRequest(friendshipId);
-            setRequests(prev => prev.filter(r => r.id !== friendshipId));
+            setRequests((prev) => prev.filter((r) => r.id !== friendshipId));
             setConfirmModal({
               isOpen: true,
               type: 'success',
@@ -282,8 +419,10 @@ const Friends = () => {
           try {
             const response = await friendsAPI.sendFriendRequest(userId);
             if (response.success) {
-              setSuggestions(prev => prev.filter(s => s.id !== userId));
-              try { notifyFriendRequest(userId, `${user?.prenom} ${user?.nom}`); } catch {}
+              setSuggestions((prev) => prev.filter((s) => s.id !== userId));
+              try {
+                notifyFriendRequest(userId, `${user?.prenom} ${user?.nom}`);
+              } catch {}
               setConfirmModal({
                 isOpen: true,
                 type: 'success',
@@ -314,7 +453,7 @@ const Friends = () => {
   };
 
   const handleRemoveFriend = async (friendId) => {
-    const friend = friends.find(f => f.id === friendId);
+    const friend = friends.find((f) => f.id === friendId);
     setConfirmModal({
       isOpen: true,
       type: 'warning',
@@ -326,7 +465,7 @@ const Friends = () => {
         onConfirm: async () => {
           try {
             await friendsAPI.removeFriend(friendId);
-            setFriends(prev => prev.filter(f => f.id !== friendId));
+            setFriends((prev) => prev.filter((f) => f.id !== friendId));
             setConfirmModal({
               isOpen: true,
               type: 'success',
@@ -361,47 +500,50 @@ const Friends = () => {
   };
 
   const handleViewProfile = (friendId) => {
-    const friend = friends.find(f => f.id === friendId);
+    const friend = friends.find((f) => f.id === friendId);
     if (friend) {
       setSelectedProfileFriend(friend);
       setShowProfileModal(true);
     }
   };
 
-  const handleSaveGroups = async (updatedGroups) => {
+  const handleSaveGroups = async () => {
     // Les groupes sont déjà sauvegardés via l'API dans FriendGroupsModal
-    // On recharge simplement pour avoir les données à jour
     await loadFriendGroups();
   };
 
-  // ✅ AJOUT: Fonction pour ouvrir le chat de groupe
   const handleOpenGroupChat = (group) => {
     console.log('Opening group chat:', group);
     setSelectedGroupChat(group);
     setShowGroupChatModal(true);
-    setShowGroupsModal(false); // Fermer le modal de groupes
   };
 
-  // ✅ AJOUT: Fonction pour fermer le chat de groupe
   const handleCloseGroupChat = () => {
     setShowGroupChatModal(false);
     setSelectedGroupChat(null);
   };
 
-  // ✅ AJOUT: Fonction pour mettre à jour le groupe après modifications
   const handleGroupUpdated = async () => {
-    await loadFriendGroups();
+    await Promise.all([loadFriendGroups(), loadChatGroups()]);
   };
 
-  // Filtrer les amis selon le terme de recherche et le filtre de statut
-  const filteredFriends = friends.filter(friend => {
-    const matchesSearch = friend.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         friend.username.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filtrer les amis
+  const filteredFriends = friends.filter((friend) => {
+    const matchesSearch =
+      friend.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      friend.username.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || friend.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
-  // Tabs configuration
+  // Group chats dont l’utilisateur est membre (normalement tous) :
+  const myChatGroups = chatGroups.filter((group) =>
+    !currentUserId
+      ? true
+      : Array.isArray(group.members) &&
+        group.members.some((id) => String(id) === String(currentUserId))
+  );
+
   const tabs = [
     { id: 'friends', label: 'My Friends', icon: faUsers, count: friends.length },
     { id: 'requests', label: 'Requests', icon: faUserPlus, count: requests.length },
@@ -442,15 +584,25 @@ const Friends = () => {
               <FontAwesomeIcon icon={faUsers} style={{ fontSize: 32 }} />
               Friends
             </h1>
-            <p className={styles.subtitle}>Connect with people who love the same throwback music</p>
+            <p className={styles.subtitle}>
+              Connect with people who love the same throwback music
+            </p>
           </div>
           <div className={styles.headerActions}>
-            <button 
+            <button
               className={styles.groupsButton}
               onClick={() => setShowGroupsModal(true)}
             >
               <FontAwesomeIcon icon={faUsers} style={{ fontSize: 20 }} />
               Groups ({friendGroups.length})
+            </button>
+
+            <button
+              className={styles.groupsButton}
+              onClick={() => setShowGroupChatsModal(true)}
+            >
+              <FontAwesomeIcon icon={faMessage} style={{ fontSize: 20 }} />
+              Group Chats ({myChatGroups.length})
             </button>
           </div>
         </div>
@@ -458,11 +610,13 @@ const Friends = () => {
 
       {/* Tabs */}
       <div className={styles.tabs}>
-        {tabs.map(tab => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`${styles.tab} ${activeTab === tab.id ? styles.activeTab : ''}`}
+            className={`${styles.tab} ${
+              activeTab === tab.id ? styles.activeTab : ''
+            }`}
           >
             <FontAwesomeIcon icon={tab.icon} style={{ fontSize: 20 }} />
             <span className={styles.tabLabel}>{tab.label}</span>
@@ -485,7 +639,7 @@ const Friends = () => {
             />
           </div>
           <div className={styles.filterWrapper}>
-            <button 
+            <button
               className={styles.filterButton}
               onClick={() => setShowFilterMenu(!showFilterMenu)}
             >
@@ -494,9 +648,33 @@ const Friends = () => {
             </button>
             {showFilterMenu && (
               <div className={styles.filterMenu}>
-                <button onClick={() => { setFilterStatus('all'); setShowFilterMenu(false); }} className={styles.filterOption}>All Friends</button>
-                <button onClick={() => { setFilterStatus('online'); setShowFilterMenu(false); }} className={styles.filterOption}>Online Only</button>
-                <button onClick={() => { setFilterStatus('offline'); setShowFilterMenu(false); }} className={styles.filterOption}>Offline</button>
+                <button
+                  onClick={() => {
+                    setFilterStatus('all');
+                    setShowFilterMenu(false);
+                  }}
+                  className={styles.filterOption}
+                >
+                  All Friends
+                </button>
+                <button
+                  onClick={() => {
+                    setFilterStatus('online');
+                    setShowFilterMenu(false);
+                  }}
+                  className={styles.filterOption}
+                >
+                  Online Only
+                </button>
+                <button
+                  onClick={() => {
+                    setFilterStatus('offline');
+                    setShowFilterMenu(false);
+                  }}
+                  className={styles.filterOption}
+                >
+                  Offline
+                </button>
               </div>
             )}
           </div>
@@ -506,7 +684,7 @@ const Friends = () => {
       {/* Suggestions Search Bar */}
       {activeTab === 'suggestions' && (
         <div className={styles.searchBar}>
-          <button 
+          <button
             className={styles.searchUsersButton}
             onClick={() => setShowUserSearchModal(true)}
           >
@@ -522,8 +700,8 @@ const Friends = () => {
           <>
             {filteredFriends.length > 0 ? (
               <div className={styles.grid}>
-                {filteredFriends.map(friend => (
-                  <FriendCard 
+                {filteredFriends.map((friend) => (
+                  <FriendCard
                     key={friend.id}
                     friend={friend}
                     onRemove={handleRemoveFriend}
@@ -546,7 +724,7 @@ const Friends = () => {
           <>
             {requests.length > 0 ? (
               <div className={styles.list}>
-                {requests.map(request => (
+                {requests.map((request) => (
                   <RequestCard
                     key={request.id}
                     request={request}
@@ -557,7 +735,10 @@ const Friends = () => {
               </div>
             ) : (
               <div className={styles.emptyState}>
-                <FontAwesomeIcon icon={faUserPlus} style={{ fontSize: 64, opacity: 0.5 }} />
+                <FontAwesomeIcon
+                  icon={faUserPlus}
+                  style={{ fontSize: 64, opacity: 0.5 }}
+                />
                 <h3>No friend requests</h3>
                 <p>You're all caught up!</p>
               </div>
@@ -569,7 +750,7 @@ const Friends = () => {
           <>
             {suggestions.length > 0 ? (
               <div className={styles.grid}>
-                {suggestions.map(suggestion => (
+                {suggestions.map((suggestion) => (
                   <SuggestionCard
                     key={suggestion.id}
                     suggestion={suggestion}
@@ -579,7 +760,10 @@ const Friends = () => {
               </div>
             ) : (
               <div className={styles.emptyState}>
-                <FontAwesomeIcon icon={faUserCheck} style={{ fontSize: 64, opacity: 0.5 }} />
+                <FontAwesomeIcon
+                  icon={faUserCheck}
+                  style={{ fontSize: 64, opacity: 0.5 }}
+                />
                 <h3>No suggestions</h3>
                 <p>We'll suggest friends based on your interests</p>
               </div>
@@ -595,11 +779,21 @@ const Friends = () => {
           friends={friends}
           onClose={() => setShowGroupsModal(false)}
           onSave={handleSaveGroups}
-          onOpenGroupChat={handleOpenGroupChat} // ✅ AJOUT
+          onOpenGroupChat={handleOpenGroupChat}
         />
       )}
 
-      {/* ✅ AJOUT: GroupChatModal */}
+      {showGroupChatsModal && (
+        <GroupChatsListModal
+          groups={myChatGroups}
+          onClose={() => setShowGroupChatsModal(false)}
+          onOpenGroupChat={(group) => {
+            setShowGroupChatsModal(false);
+            handleOpenGroupChat(group);
+          }}
+        />
+      )}
+
       {showGroupChatModal && selectedGroupChat && (
         <GroupChatModal
           group={selectedGroupChat}
@@ -639,7 +833,6 @@ const Friends = () => {
         />
       )}
 
-      {/* Confirm Modal */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ isOpen: false, type: '', data: null })}

@@ -1,4 +1,3 @@
-// src/components/Dashboard/UserDashboard/Chat/EmptyChat.jsx
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMessage, faMusic, faUsers } from '@fortawesome/free-solid-svg-icons';
@@ -17,32 +16,32 @@ const EmptyChat = () => {
         </h2>
         
         <p className={styles.emptyChatSubtitle}>
-          Connectez-vous avec vos amis autour de la musique nostalgique
+          Connect with your friends around nostalgic music
         </p>
 
         <div className={styles.emptyChatFeatures}>
           <div className={styles.featureItem}>
             <FontAwesomeIcon icon={faMessage} className={styles.featureIcon} />
-            <h3>Messages instantanés</h3>
-            <p>Discutez en temps réel avec vos amis</p>
+            <h3>Instant messaging</h3>
+            <p>Chat in real time with your friends</p>
           </div>
           
           <div className={styles.featureItem}>
             <FontAwesomeIcon icon={faMusic} className={styles.featureIcon} />
-            <h3>Partagez de la musique</h3>
-            <p>Envoyez vos morceaux préférés directement dans le chat</p>
+            <h3>Share music</h3>
+            <p>Send your favorite tracks directly in the chat</p>
           </div>
           
           <div className={styles.featureItem}>
             <FontAwesomeIcon icon={faUsers} className={styles.featureIcon} />
-            <h3>Groupes de discussion</h3>
-            <p>Créez des groupes avec vos amis autour de vos genres musicaux préférés</p>
+            <h3>Group chats</h3>
+            <p>Create groups with your friends around your favorite music genres</p>
           </div>
         </div>
 
         <div className={styles.emptyChatFooter}>
           <p className={styles.emptyChatHint}>
-            👈 Sélectionnez une conversation pour commencer
+            👈 Select a conversation to start chatting
           </p>
         </div>
       </div>

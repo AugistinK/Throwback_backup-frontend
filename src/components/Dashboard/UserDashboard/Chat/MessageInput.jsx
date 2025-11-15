@@ -1,4 +1,3 @@
-// src/components/Dashboard/UserDashboard/Chat/MessageInput.jsx
 import React, { useState, useRef } from 'react';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -25,8 +24,10 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  const emojis = ['😊', '😂', '❤️', '👍', '🎵', '🎶', '🔥', '✨', '🎉', '💯', 
-                  '😍', '🥰', '😎', '🤗', '🎸', '🎤', '🎧', '🎹', '🥁', '🎺'];
+  const emojis = [
+    '😊', '😂', '❤️', '👍', '🎵', '🎶', '🔥', '✨', '🎉', '💯', 
+    '😍', '🥰', '😎', '🤗', '🎸', '🎤', '🎧', '🎹', '🥁', '🎺'
+  ];
 
   const handleInputChange = (e) => {
     setMessage(e.target.value);
@@ -49,7 +50,6 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
     
     if (message.trim() || selectedFile) {
       if (selectedFile) {
-        // TODO: Upload file and send
         console.log('Sending file:', selectedFile);
       } else {
         onSendMessage(message, 'text');
@@ -91,7 +91,6 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
 
   const handleVoiceRecord = () => {
     setIsRecording(!isRecording);
-    // TODO: Implement voice recording
     console.log('Voice recording:', !isRecording);
   };
 
@@ -114,7 +113,7 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
 
       <form className={styles.inputForm} onSubmit={handleSubmit}>
         <div className={styles.inputActions}>
-          {/* Bouton Emoji */}
+          {/* Emoji button */}
           <button 
             type="button"
             className={styles.inputActionButton}
@@ -122,12 +121,12 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
               setShowEmojiPicker(!showEmojiPicker);
               setShowMediaMenu(false);
             }}
-            title="Ajouter un emoji"
+            title="Add emoji"
           >
             <FontAwesomeIcon icon={faSmile} />
           </button>
 
-          {/* Bouton Médias */}
+          {/* Media button */}
           <button 
             type="button"
             className={styles.inputActionButton}
@@ -135,12 +134,12 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
               setShowMediaMenu(!showMediaMenu);
               setShowEmojiPicker(false);
             }}
-            title="Attacher un fichier"
+            title="Attach a file"
           >
             <FontAwesomeIcon icon={faPaperclip} />
           </button>
 
-          {/* Menu Médias */}
+          {/* Media menu */}
           {showMediaMenu && (
             <>
               <div 
@@ -159,11 +158,11 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
                 </button>
                 <button className={styles.mediaMenuItem}>
                   <FontAwesomeIcon icon={faVideo} />
-                  <span>Vidéo</span>
+                  <span>Video</span>
                 </button>
                 <button className={styles.mediaMenuItem}>
                   <FontAwesomeIcon icon={faMusic} />
-                  <span>Musique</span>
+                  <span>Music</span>
                 </button>
                 <input 
                   ref={fileInputRef}
@@ -176,7 +175,7 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
             </>
           )}
 
-          {/* Picker Emoji */}
+          {/* Emoji picker */}
           {showEmojiPicker && (
             <>
               <div 
@@ -205,7 +204,7 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
           value={message}
           onChange={handleInputChange}
           onKeyPress={handleKeyPress}
-          placeholder={isConnected ? "Écrivez un message..." : "Connexion..."}
+          placeholder={isConnected ? 'Type a message...' : 'Connecting...'}
           className={styles.textInput}
           disabled={!isConnected}
         />
@@ -215,7 +214,7 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
             type="submit"
             className={styles.sendButton}
             disabled={!isConnected}
-            title="Envoyer"
+            title="Send"
           >
             <FontAwesomeIcon icon={faPaperPlane} />
           </button>
@@ -224,7 +223,7 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
             type="button"
             className={`${styles.sendButton} ${isRecording ? styles.recording : ''}`}
             onClick={handleVoiceRecord}
-            title={isRecording ? "Arrêter l'enregistrement" : "Message vocal"}
+            title={isRecording ? 'Stop recording' : 'Voice message'}
           >
             <FontAwesomeIcon icon={faMicrophone} />
           </button>
@@ -233,7 +232,7 @@ const MessageInput = ({ onSendMessage, receiverId }) => {
 
       {!isConnected && (
         <div className={styles.connectionWarning}>
-          ⚠️ Connexion au serveur de chat...
+          ⚠️ Connecting to chat server...
         </div>
       )}
     </div>

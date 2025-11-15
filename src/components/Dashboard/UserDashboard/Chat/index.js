@@ -1,4 +1,3 @@
-// src/components/Dashboard/UserDashboard/Chat/index.js
 export { default } from './Chat';
 export { default as ConversationSidebar } from './ConversationSidebar';
 export { default as ConversationItem } from './ConversationItem';

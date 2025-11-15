@@ -11,16 +11,80 @@ import {
   faUser,
   faBan,
   faTrash,
-  faBell,
   faBellSlash
 } from '@fortawesome/free-solid-svg-icons';
+import { friendsAPI } from '../../../../utils/api';
 import styles from './Chat.module.css';
 
-const ChatHeader = ({ participant, isOnline, onBack }) => {
+const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
   const [showMenu, setShowMenu] = useState(false);
 
-  const getInitials = (nom, prenom) => {
-    return `${nom[0]}${prenom[0]}`.toUpperCase();
+  const isGroup = !!conversation?.isGroup;
+
+  const getInitials = (text) => {
+    if (!text) return '';
+    const parts = text.trim().split(' ');
+    return parts
+      .filter(Boolean)
+      .map((p) => p[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const fullName = !isGroup
+    ? `${participant?.prenom || ''} ${participant?.nom || ''}`.trim()
+    : conversation?.name || 'Group';
+
+  const subtitle = isGroup
+    ? conversation?.members?.length
+      ? `${conversation.members.length} members`
+      : 'Group chat'
+    : isOnline
+    ? 'Online'
+    : 'Offline';
+
+  const handleBlockUser = async () => {
+    if (isGroup || !participant?._id) return;
+
+    const confirmed = window.confirm(
+      `Block ${fullName}? They will no longer be able to chat with you.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await friendsAPI.blockUser(participant._id);
+      alert(res.message || 'User has been blocked.');
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      alert('Failed to block this user. Please try again.');
+    } finally {
+      setShowMenu(false);
+    }
+  };
+
+  const handleClearConversation = async () => {
+    if (isGroup || !participant?._id) return;
+
+    const confirmed = window.confirm(
+      `Delete your conversation history with ${fullName}? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await friendsAPI.clearChatHistory(participant._id);
+      alert(res.message || 'Conversation history has been deleted.');
+    } catch (error) {
+      console.error('Error clearing conversation history:', error);
+      alert('Failed to delete conversation history. Please try again.');
+    } finally {
+      setShowMenu(false);
+    }
+  };
+
+  const handleToggleNotifications = () => {
+    alert('Conversation notifications: feature coming soon.');
+    setShowMenu(false);
   };
 
   return (
@@ -29,20 +93,24 @@ const ChatHeader = ({ participant, isOnline, onBack }) => {
         <button className={styles.backButton} onClick={onBack}>
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
-        
+
         <div className={styles.chatHeaderAvatar}>
-          {participant.photo_profil ? (
-            <img 
-              src={participant.photo_profil} 
-              alt={`${participant.prenom} ${participant.nom}`}
+          {isGroup ? (
+            <div className={styles.headerAvatarPlaceholder}>
+              {getInitials(conversation?.name || 'Group')}
+            </div>
+          ) : participant?.photo_profil ? (
+            <img
+              src={participant.photo_profil}
+              alt={fullName}
               className={styles.headerAvatarImage}
             />
           ) : (
             <div className={styles.headerAvatarPlaceholder}>
-              {getInitials(participant.nom, participant.prenom)}
+              {getInitials(fullName)}
             </div>
           )}
-          {isOnline && (
+          {!isGroup && isOnline && (
             <span className={styles.headerOnlineIndicator}>
               <FontAwesomeIcon icon={faCircle} />
             </span>
@@ -50,57 +118,79 @@ const ChatHeader = ({ participant, isOnline, onBack }) => {
         </div>
 
         <div className={styles.chatHeaderInfo}>
-          <h3 className={styles.chatHeaderName}>
-            {`${participant.prenom} ${participant.nom}`}
-          </h3>
-          <p className={styles.chatHeaderStatus}>
-            {isOnline ? 'En ligne' : 'Hors ligne'}
-          </p>
+          <h3 className={styles.chatHeaderName}>{fullName}</h3>
+          <p className={styles.chatHeaderStatus}>{subtitle}</p>
         </div>
       </div>
 
       <div className={styles.chatHeaderActions}>
-        <button className={styles.headerActionButton} title="Rechercher">
+        <button
+          className={styles.headerActionButton}
+          title="Search in conversation"
+        >
           <FontAwesomeIcon icon={faSearch} />
         </button>
-        <button className={styles.headerActionButton} title="Appel vocal">
+        <button
+          className={styles.headerActionButton}
+          title="Voice call (coming soon)"
+        >
           <FontAwesomeIcon icon={faPhone} />
         </button>
-        <button className={styles.headerActionButton} title="Appel vidéo">
+        <button
+          className={styles.headerActionButton}
+          title="Video call (coming soon)"
+        >
           <FontAwesomeIcon icon={faVideo} />
         </button>
-        <button 
+        <button
           className={styles.headerActionButton}
           onClick={() => setShowMenu(!showMenu)}
-          title="Plus d'options"
+          title="More options"
         >
           <FontAwesomeIcon icon={faEllipsisVertical} />
         </button>
 
         {showMenu && (
           <>
-            <div 
-              className={styles.menuOverlay} 
+            <div
+              className={styles.menuOverlay}
               onClick={() => setShowMenu(false)}
             />
             <div className={styles.headerDropdown}>
-              <button className={styles.dropdownItem}>
+              <button
+                className={styles.dropdownItem}
+                onClick={() => setShowMenu(false)}
+              >
                 <FontAwesomeIcon icon={faUser} />
-                Voir le profil
+                {isGroup ? 'View group details' : 'View profile'}
               </button>
-              <button className={styles.dropdownItem}>
-                <FontAwesomeIcon icon={faBell} />
-                Désactiver les notifications
+              <button
+                className={styles.dropdownItem}
+                onClick={handleToggleNotifications}
+              >
+                <FontAwesomeIcon icon={faBellSlash} />
+                Mute notifications
               </button>
-              <div className={styles.dropdownDivider} />
-              <button className={`${styles.dropdownItem} ${styles.dangerItem}`}>
-                <FontAwesomeIcon icon={faBan} />
-                Bloquer
-              </button>
-              <button className={`${styles.dropdownItem} ${styles.dangerItem}`}>
-                <FontAwesomeIcon icon={faTrash} />
-                Supprimer la conversation
-              </button>
+
+              {!isGroup && (
+                <>
+                  <div className={styles.dropdownDivider} />
+                  <button
+                    className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                    onClick={handleBlockUser}
+                  >
+                    <FontAwesomeIcon icon={faBan} />
+                    Block user
+                  </button>
+                  <button
+                    className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                    onClick={handleClearConversation}
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                    Delete conversation
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}

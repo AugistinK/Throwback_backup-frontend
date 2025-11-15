@@ -5,46 +5,46 @@ import { faCheck, faCheckDouble, faCircle } from '@fortawesome/free-solid-svg-ic
 import styles from './Chat.module.css';
 
 const ConversationItem = ({ conversation, isSelected, onSelect, isOnline }) => {
-  const { participant, lastMessage, unreadCount } = conversation;
+  const { participant, lastMessage, unreadCount, isGroup } = conversation;
 
-  const getInitials = (nom, prenom) => {
-    return `${nom[0]}${prenom[0]}`.toUpperCase();
+  const getInitials = (text) => {
+    if (!text) return '';
+    const parts = text.trim().split(' ');
+    return parts
+      .filter(Boolean)
+      .map((p) => p[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   const formatTime = (date) => {
+    if (!date) return '';
     const messageDate = new Date(date);
     const now = new Date();
     const diff = now - messageDate;
-    
-    // Moins d'une minute
+
     if (diff < 60000) {
-      return 'À l\'instant';
+      return 'Just now';
     }
-    
-    // Moins d'une heure
     if (diff < 3600000) {
       const minutes = Math.floor(diff / 60000);
       return `${minutes} min`;
     }
-    
-    // Aujourd'hui
     if (messageDate.toDateString() === now.toDateString()) {
-      return messageDate.toLocaleTimeString('fr-FR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return messageDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
       });
     }
-    
-    // Cette semaine
     if (diff < 604800000) {
-      const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       return days[messageDate.getDay()];
     }
-    
-    // Plus ancien
-    return messageDate.toLocaleDateString('fr-FR', { 
-      day: '2-digit', 
-      month: '2-digit' 
+    return messageDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
     });
   };
 
@@ -53,24 +53,51 @@ const ConversationItem = ({ conversation, isSelected, onSelect, isOnline }) => {
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
   };
 
+  const displayName = isGroup
+    ? conversation.name || 'Group'
+    : `${participant?.prenom || ''} ${participant?.nom || ''}`.trim();
+
+  let lastMessagePreview = '';
+  if (lastMessage) {
+    if (isGroup && lastMessage.sender) {
+      const senderName =
+        lastMessage.sender.prenom ||
+        lastMessage.sender.firstName ||
+        lastMessage.sender.name ||
+        '';
+      lastMessagePreview = `${senderName}: ${lastMessage.content}`;
+    } else {
+      lastMessagePreview = lastMessage.content;
+    }
+  }
+
+  const showStatusIcon = !isGroup && lastMessage && lastMessage.sender && participant;
+
   return (
-    <div 
-      className={`${styles.conversationItem} ${isSelected ? styles.conversationSelected : ''}`}
+    <div
+      className={`${styles.conversationItem} ${
+        isSelected ? styles.conversationSelected : ''
+      }`}
       onClick={onSelect}
     >
       <div className={styles.conversationAvatar}>
-        {participant.photo_profil ? (
-          <img 
-            src={participant.photo_profil} 
-            alt={`${participant.prenom} ${participant.nom}`}
+        {isGroup ? (
+          <div className={styles.avatarPlaceholder}>
+            {getInitials(displayName || 'G')}
+          </div>
+        ) : participant?.photo_profil ? (
+          <img
+            src={participant.photo_profil}
+            alt={displayName}
             className={styles.avatarImage}
           />
         ) : (
           <div className={styles.avatarPlaceholder}>
-            {getInitials(participant.nom, participant.prenom)}
+            {getInitials(displayName)}
           </div>
         )}
-        {isOnline && (
+
+        {!isGroup && isOnline && (
           <span className={styles.onlineIndicator}>
             <FontAwesomeIcon icon={faCircle} />
           </span>
@@ -79,9 +106,7 @@ const ConversationItem = ({ conversation, isSelected, onSelect, isOnline }) => {
 
       <div className={styles.conversationContent}>
         <div className={styles.conversationTop}>
-          <h3 className={styles.conversationName}>
-            {`${participant.prenom} ${participant.nom}`}
-          </h3>
+          <h3 className={styles.conversationName}>{displayName}</h3>
           {lastMessage && (
             <span className={styles.conversationTime}>
               {formatTime(lastMessage.created_date)}
@@ -93,16 +118,21 @@ const ConversationItem = ({ conversation, isSelected, onSelect, isOnline }) => {
           <div className={styles.lastMessage}>
             {lastMessage && (
               <>
-                {lastMessage.sender._id !== participant._id && (
-                  <span className={styles.messageStatus}>
-                    <FontAwesomeIcon 
-                      icon={lastMessage.read ? faCheckDouble : faCheck}
-                      className={lastMessage.read ? styles.readIcon : styles.sentIcon}
-                    />
-                  </span>
-                )}
+                {showStatusIcon &&
+                  lastMessage.sender._id !== participant._id && (
+                    <span className={styles.messageStatus}>
+                      <FontAwesomeIcon
+                        icon={lastMessage.read ? faCheckDouble : faCheck}
+                        className={
+                          lastMessage.read
+                            ? styles.readIcon
+                            : styles.sentIcon
+                        }
+                      />
+                    </span>
+                  )}
                 <span className={styles.messageText}>
-                  {truncateMessage(lastMessage.content)}
+                  {truncateMessage(lastMessagePreview)}
                 </span>
               </>
             )}

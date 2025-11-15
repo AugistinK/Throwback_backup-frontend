@@ -5,10 +5,7 @@ import {
   faSearch,
   faEllipsisVertical,
   faMessage,
-  faArchive,
-  faBell,
-  faBellSlash,
-  faCircle
+  faArchive
 } from '@fortawesome/free-solid-svg-icons';
 import ConversationItem from './ConversationItem';
 import styles from './Chat.module.css';
@@ -23,14 +20,17 @@ const ConversationSidebar = ({
   onTabChange,
   unreadCount,
   loading,
-  onlineUsers
+  onlineUsers,
+  onToggleArchive
 }) => {
   const tabs = [
-    { id: 'all', label: 'Toutes', count: conversations.length },
-    { id: 'unread', label: 'Non lues', count: unreadCount },
-    { id: 'favorites', label: 'Favoris' },
-    { id: 'groups', label: 'Groupes' }
+    { id: 'all', label: 'All', count: conversations.length },
+    { id: 'unread', label: 'Unread', count: unreadCount },
+    { id: 'favorites', label: 'Favorites' },
+    { id: 'groups', label: 'Groups' }
   ];
+
+  const isArchivedSelected = !!selectedConversation?.isArchived;
 
   return (
     <div className={styles.sidebar}>
@@ -41,33 +41,35 @@ const ConversationSidebar = ({
           <h2 className={styles.sidebarTitle}>Messages</h2>
         </div>
         <div className={styles.sidebarHeaderActions}>
-          <button className={styles.headerButton} title="Nouveau message">
+          <button className={styles.headerButton} title="New message">
             <FontAwesomeIcon icon={faMessage} />
           </button>
-          <button className={styles.headerButton} title="Plus d'options">
+          <button className={styles.headerButton} title="More options">
             <FontAwesomeIcon icon={faEllipsisVertical} />
           </button>
         </div>
       </div>
 
-      {/* Barre de recherche */}
+      {/* Search bar */}
       <div className={styles.searchBar}>
         <FontAwesomeIcon icon={faSearch} className={styles.searchIcon} />
         <input
           type="text"
-          placeholder="Rechercher ou démarrer une discussion"
+          placeholder="Search or start a chat"
           value={searchQuery}
           onChange={(e) => onSearch(e.target.value)}
           className={styles.searchInput}
         />
       </div>
 
-      {/* Onglets */}
+      {/* Tabs */}
       <div className={styles.tabs}>
-        {tabs.map(tab => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
-            className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+            className={`${styles.tab} ${
+              activeTab === tab.id ? styles.tabActive : ''
+            }`}
             onClick={() => onTabChange(tab.id)}
           >
             {tab.label}
@@ -78,39 +80,59 @@ const ConversationSidebar = ({
         ))}
       </div>
 
-      {/* Archivées */}
-      <button className={styles.archivedButton}>
+      {/* Archive / Unarchive current conversation */}
+      <button
+        className={styles.archivedButton}
+        onClick={onToggleArchive}
+        disabled={!selectedConversation}
+        title={
+          selectedConversation
+            ? isArchivedSelected
+              ? 'Unarchive this conversation'
+              : 'Archive this conversation'
+            : 'Select a conversation to archive'
+        }
+      >
         <FontAwesomeIcon icon={faArchive} />
-        <span>Archivées</span>
+        <span>{isArchivedSelected ? 'Unarchive' : 'Archive'}</span>
       </button>
 
-      {/* Liste des conversations */}
+      {/* Conversation list */}
       <div className={styles.conversationList}>
         {loading ? (
           <div className={styles.loadingConversations}>
             <div className={styles.spinner}></div>
-            <p>Chargement des conversations...</p>
+            <p>Loading conversations...</p>
           </div>
         ) : conversations.length === 0 ? (
           <div className={styles.emptyConversations}>
             <FontAwesomeIcon icon={faMessage} className={styles.emptyIcon} />
-            <p>Aucune conversation</p>
+            <p>No conversations yet</p>
             <p className={styles.emptySubtext}>
-              {searchQuery 
-                ? 'Aucun résultat trouvé' 
-                : 'Commencez une nouvelle conversation'}
+              {searchQuery ? 'No results found' : 'Start a new conversation'}
             </p>
           </div>
         ) : (
-          conversations.map(conversation => (
-            <ConversationItem
-              key={conversation.participant._id}
-              conversation={conversation}
-              isSelected={selectedConversation?.participant._id === conversation.participant._id}
-              onSelect={() => onSelectConversation(conversation)}
-              isOnline={onlineUsers.has(conversation.participant._id)}
-            />
-          ))
+          conversations.map((conversation) => {
+            const isSelected =
+              selectedConversation &&
+              selectedConversation._id === conversation._id;
+
+            const isOnline =
+              !conversation.isGroup &&
+              conversation.participant &&
+              onlineUsers.has(conversation.participant._id);
+
+            return (
+              <ConversationItem
+                key={conversation._id}
+                conversation={conversation}
+                isSelected={isSelected}
+                onSelect={() => onSelectConversation(conversation)}
+                isOnline={isOnline}
+              />
+            );
+          })
         )}
       </div>
     </div>

@@ -1,9 +1,9 @@
 // src/components/Dashboard/UserDashboard/Chat/MessageItem.jsx
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faCheck, 
-  faCheckDouble, 
+import {
+  faCheck,
+  faCheckDouble,
   faEllipsisVertical,
   faReply,
   faCopy,
@@ -12,43 +12,85 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import styles from './Chat.module.css';
 
-const MessageItem = ({ message, isOwn, showAvatar, participant }) => {
+const MessageItem = ({
+  message,
+  isOwn,
+  showAvatar,
+  participant,
+  currentUser,
+  isGroup
+}) => {
   const [showMenu, setShowMenu] = useState(false);
 
   const formatTime = (date) => {
-    return new Date(date).toLocaleTimeString('fr-FR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    if (!date) return '';
+    return new Date(date).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
     });
   };
 
-  const getInitials = (nom, prenom) => {
-    return `${nom[0]}${prenom[0]}`.toUpperCase();
+  const getInitialsFromUser = (user) => {
+    if (!user) return '';
+    const first = user.prenom || user.firstName || user.name || '';
+    const last = user.nom || user.lastName || '';
+    const text = `${first} ${last}`.trim();
+    if (!text) return '';
+    return text
+      .split(' ')
+      .filter(Boolean)
+      .map((p) => p[0])
+      .join('')
+      .toUpperCase();
   };
 
+  const senderForAvatar = isGroup
+    ? message.sender
+    : isOwn
+    ? currentUser
+    : participant;
+
   const handleCopyMessage = () => {
-    navigator.clipboard.writeText(message.content);
+    if (message.content) {
+      navigator.clipboard.writeText(message.content);
+    }
     setShowMenu(false);
   };
 
+  const senderDisplayName = (() => {
+    const u = message.sender;
+    if (!u) return '';
+    return (
+      u.prenom ||
+      u.firstName ||
+      u.name ||
+      `${u.prenom || ''} ${u.nom || ''}`.trim()
+    );
+  })();
+
   return (
-    <div className={`${styles.messageWrapper} ${isOwn ? styles.messageOwn : styles.messageOther}`}>
+    <div
+      className={`${styles.messageWrapper} ${
+        isOwn ? styles.messageOwn : styles.messageOther
+      }`}
+    >
       {!isOwn && showAvatar && (
         <div className={styles.messageAvatar}>
-          {participant.photo_profil ? (
-            <img 
-              src={participant.photo_profil} 
-              alt={`${participant.prenom} ${participant.nom}`}
+          {senderForAvatar?.photo_profil ? (
+            <img
+              src={senderForAvatar.photo_profil}
+              alt={senderDisplayName}
             />
           ) : (
             <div className={styles.messageAvatarPlaceholder}>
-              {getInitials(participant.nom, participant.prenom)}
+              {getInitialsFromUser(senderForAvatar)}
             </div>
           )}
         </div>
       )}
 
-      <div 
+      <div
         className={`${styles.messageBubble} ${
           isOwn ? styles.messageBubbleOwn : styles.messageBubbleOther
         } ${message.tempId ? styles.messageSending : ''}`}
@@ -57,23 +99,31 @@ const MessageItem = ({ message, isOwn, showAvatar, participant }) => {
           setShowMenu(true);
         }}
       >
+        {isGroup && !isOwn && (
+          <div className={styles.messageAuthor}>
+            {senderDisplayName}
+          </div>
+        )}
+
         {message.type === 'text' && (
           <p className={styles.messageContent}>{message.content}</p>
         )}
-        
+
         {message.type === 'image' && (
           <div className={styles.messageImage}>
             <img src={message.content} alt="Shared" />
-            {message.caption && <p className={styles.imageCaption}>{message.caption}</p>}
+            {message.caption && (
+              <p className={styles.imageCaption}>{message.caption}</p>
+            )}
           </div>
         )}
-        
+
         {message.type === 'audio' && (
           <div className={styles.messageAudio}>
             <audio controls src={message.content}></audio>
           </div>
         )}
-        
+
         {message.type === 'video' && (
           <div className={styles.messageVideo}>
             <video controls src={message.content}></video>
@@ -81,18 +131,22 @@ const MessageItem = ({ message, isOwn, showAvatar, participant }) => {
         )}
 
         <div className={styles.messageInfo}>
-          <span className={styles.messageTime}>{formatTime(message.created_date)}</span>
+          <span className={styles.messageTime}>
+            {formatTime(message.created_date)}
+          </span>
           {isOwn && (
             <span className={styles.messageStatus}>
-              <FontAwesomeIcon 
+              <FontAwesomeIcon
                 icon={message.read ? faCheckDouble : faCheck}
-                className={message.read ? styles.readIcon : styles.sentIcon}
+                className={
+                  message.read ? styles.readIcon : styles.sentIcon
+                }
               />
             </span>
           )}
         </div>
 
-        <button 
+        <button
           className={styles.messageMenuButton}
           onClick={() => setShowMenu(!showMenu)}
         >
@@ -101,29 +155,44 @@ const MessageItem = ({ message, isOwn, showAvatar, participant }) => {
 
         {showMenu && (
           <>
-            <div 
-              className={styles.menuOverlay} 
+            <div
+              className={styles.menuOverlay}
               onClick={() => setShowMenu(false)}
             />
-            <div className={`${styles.messageDropdown} ${isOwn ? styles.messageDropdownOwn : ''}`}>
-              <button className={styles.dropdownItem} onClick={() => setShowMenu(false)}>
+            <div
+              className={`${styles.messageDropdown} ${
+                isOwn ? styles.messageDropdownOwn : ''
+              }`}
+            >
+              <button
+                className={styles.dropdownItem}
+                onClick={() => setShowMenu(false)}
+              >
                 <FontAwesomeIcon icon={faReply} />
-                Répondre
+                Reply
               </button>
-              <button className={styles.dropdownItem} onClick={handleCopyMessage}>
+              <button
+                className={styles.dropdownItem}
+                onClick={handleCopyMessage}
+              >
                 <FontAwesomeIcon icon={faCopy} />
-                Copier
+                Copy
               </button>
-              <button className={styles.dropdownItem} onClick={() => setShowMenu(false)}>
+              <button
+                className={styles.dropdownItem}
+                onClick={() => setShowMenu(false)}
+              >
                 <FontAwesomeIcon icon={faForward} />
-                Transférer
+                Forward
               </button>
               {isOwn && (
                 <>
                   <div className={styles.dropdownDivider} />
-                  <button className={`${styles.dropdownItem} ${styles.dangerItem}`}>
+                  <button
+                    className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                  >
                     <FontAwesomeIcon icon={faTrash} />
-                    Supprimer
+                    Delete
                   </button>
                 </>
               )}

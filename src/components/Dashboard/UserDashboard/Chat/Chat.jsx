@@ -18,62 +18,67 @@ const Chat = () => {
   const [activeTab, setActiveTab] = useState('all'); // all, unread, favorites, groups
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // ✅ FONCTION POUR CONVERTIR LES CHEMINS RELATIFS EN URLs ABSOLUES
   const getImageUrl = (path) => {
     if (!path) return 'https://via.placeholder.com/150';
     if (path.startsWith('http')) return path;
-    
-    // Assurez-vous que le chemin commence par un slash
+
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    
-    // Utiliser l'URL complète du backend
-    const backendUrl = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
+    const backendUrl =
+      process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
     return `${backendUrl}${normalizedPath}`;
   };
 
-  // Charger les conversations
+  // Load conversations on mount
   useEffect(() => {
     loadConversations();
   }, []);
 
-  // Écouter les nouveaux messages via Socket.IO
+  // Socket listeners to keep direct conversations list in sync
   useEffect(() => {
     if (!socket) return;
 
     const handleNewMessage = (data) => {
-      // Mettre à jour la conversation avec le nouveau message
-      setConversations(prev => {
-        const updated = prev.map(conv => {
-          if (conv.participant._id === data.message.sender._id || 
-              conv.participant._id === data.message.receiver._id) {
+      // Only update direct chats here (groups are handled via REST refresh)
+      setConversations((prev) => {
+        const updated = prev.map((conv) => {
+          if (
+            !conv.isGroup &&
+            conv.participant &&
+            (conv.participant._id === data.message.sender._id ||
+              conv.participant._id === data.message.receiver._id)
+          ) {
             return {
               ...conv,
               lastMessage: data.message,
-              unreadCount: conv.participant._id === data.message.sender._id 
-                ? conv.unreadCount + 1 
-                : conv.unreadCount
+              unreadCount:
+                conv.participant._id === data.message.sender._id
+                  ? (conv.unreadCount || 0) + 1
+                  : conv.unreadCount || 0
             };
           }
           return conv;
         });
-        
-        // Trier par date du dernier message
-        return updated.sort((a, b) => 
-          new Date(b.lastMessage.created_date) - new Date(a.lastMessage.created_date)
+
+        return updated.sort(
+          (a, b) =>
+            new Date(b.lastMessage?.created_date || 0) -
+            new Date(a.lastMessage?.created_date || 0)
         );
       });
-      
-      // Mettre à jour le compteur de messages non lus
+
       if (data.message.receiver._id === user.id) {
-        setUnreadCount(prev => prev + 1);
+        setUnreadCount((prev) => prev + 1);
       }
     };
 
     const handleMessageSent = (data) => {
-      // Mettre à jour la conversation après envoi
-      setConversations(prev => {
-        const updated = prev.map(conv => {
-          if (conv.participant._id === data.message.receiver._id) {
+      setConversations((prev) => {
+        const updated = prev.map((conv) => {
+          if (
+            !conv.isGroup &&
+            conv.participant &&
+            conv.participant._id === data.message.receiver._id
+          ) {
             return {
               ...conv,
               lastMessage: data.message
@@ -81,9 +86,11 @@ const Chat = () => {
           }
           return conv;
         });
-        
-        return updated.sort((a, b) => 
-          new Date(b.lastMessage.created_date) - new Date(a.lastMessage.created_date)
+
+        return updated.sort(
+          (a, b) =>
+            new Date(b.lastMessage?.created_date || 0) -
+            new Date(a.lastMessage?.created_date || 0)
         );
       });
     };
@@ -101,21 +108,41 @@ const Chat = () => {
     try {
       setLoading(true);
       const response = await friendsAPI.getConversations();
-      
+
       if (response.success) {
-        // ✅ TRANSFORMER LES URLs DES AVATARS
-        const conversationsWithImages = response.data.map(conv => ({
-          ...conv,
-          participant: {
-            ...conv.participant,
-            photo_profil: getImageUrl(conv.participant.photo_profil)
+        const conversationsWithImages = response.data.map((conv) => {
+          // Direct chat: has participant (friend)
+          if (!conv.isGroup && conv.participant) {
+            return {
+              ...conv,
+              participant: {
+                ...conv.participant,
+                photo_profil: getImageUrl(conv.participant.photo_profil)
+              },
+              isGroup: false
+            };
           }
-        }));
-        
+
+          // Group chat: keep as is; we only ensure isGroup flag
+          return {
+            ...conv,
+            isGroup: !!conv.isGroup
+          };
+        });
+
+        // Sort by last message date if available
+        conversationsWithImages.sort(
+          (a, b) =>
+            new Date(b.lastMessage?.created_date || 0) -
+            new Date(a.lastMessage?.created_date || 0)
+        );
+
         setConversations(conversationsWithImages);
-        
-        // Calculer le nombre total de messages non lus
-        const total = conversationsWithImages.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+
+        const total = conversationsWithImages.reduce(
+          (sum, conv) => sum + (conv.unreadCount || 0),
+          0
+        );
         setUnreadCount(total);
       }
     } catch (err) {
@@ -127,15 +154,24 @@ const Chat = () => {
 
   const handleSelectConversation = (conversation) => {
     setSelectedConversation(conversation);
-    
-    // Marquer les messages comme lus
+
     if (conversation.unreadCount > 0) {
-      setConversations(prev => prev.map(conv => 
-        conv.participant._id === conversation.participant._id 
-          ? { ...conv, unreadCount: 0 }
-          : conv
-      ));
-      setUnreadCount(prev => Math.max(0, prev - conversation.unreadCount));
+      const selectedKey = conversation.isGroup
+        ? conversation._id
+        : conversation.participant?._id;
+
+      setConversations((prev) =>
+        prev.map((conv) => {
+          const convKey = conv.isGroup ? conv._id : conv.participant?._id;
+          return convKey === selectedKey
+            ? { ...conv, unreadCount: 0 }
+            : conv;
+        })
+      );
+
+      setUnreadCount((prev) =>
+        Math.max(0, prev - (conversation.unreadCount || 0))
+      );
     }
   };
 
@@ -147,24 +183,77 @@ const Chat = () => {
     setActiveTab(tab);
   };
 
-  // Filtrer les conversations
-  const filteredConversations = conversations.filter(conv => {
-    // Filtre par recherche
-    const matchesSearch = !searchQuery || 
-      conv.participant.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.participant.prenom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.lastMessage?.content.toLowerCase().includes(searchQuery.toLowerCase());
-    
+  // Archive / Unarchive currently selected conversation
+  const handleToggleArchiveConversation = async () => {
+    if (!selectedConversation) {
+      alert('Please select a conversation first.');
+      return;
+    }
+
+    const conversationId = selectedConversation._id;
+    if (!conversationId) {
+      console.warn('No conversation id for selected conversation');
+      return;
+    }
+
+    const currentlyArchived = !!selectedConversation.isArchived;
+
+    try {
+      const res = currentlyArchived
+        ? await friendsAPI.unarchiveChat(conversationId)
+        : await friendsAPI.archiveChat(conversationId);
+
+      if (res?.success === false) {
+        alert(res.message || 'Failed to update archive state.');
+        return;
+      }
+
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv._id === conversationId
+            ? { ...conv, isArchived: !currentlyArchived }
+            : conv
+        )
+      );
+
+      setSelectedConversation((prev) =>
+        prev && prev._id === conversationId
+          ? { ...prev, isArchived: !currentlyArchived }
+          : prev
+      );
+    } catch (error) {
+      console.error('Error toggling archive state:', error);
+      alert('Failed to update archive state. Please try again.');
+    }
+  };
+
+  // Filter conversations according to search + active tab
+  const filteredConversations = conversations.filter((conv) => {
+    const q = searchQuery.trim().toLowerCase();
+
+    let displayName = '';
+    if (conv.isGroup) {
+      displayName = conv.name || '';
+    } else if (conv.participant) {
+      displayName = `${conv.participant.prenom || ''} ${
+        conv.participant.nom || ''
+      }`;
+    }
+
+    const matchesSearch =
+      !q ||
+      displayName.toLowerCase().includes(q) ||
+      (conv.lastMessage?.content || '').toLowerCase().includes(q);
+
     if (!matchesSearch) return false;
 
-    // Filtre par onglet
     switch (activeTab) {
       case 'unread':
-        return conv.unreadCount > 0;
+        return (conv.unreadCount || 0) > 0;
       case 'favorites':
-        return conv.isFavorite;
+        return !!conv.isFavorite;
       case 'groups':
-        return conv.isGroup;
+        return !!conv.isGroup;
       default:
         return true;
     }
@@ -172,7 +261,6 @@ const Chat = () => {
 
   return (
     <div className={styles.chatContainer}>
-      {/* Sidebar des conversations */}
       <ConversationSidebar
         conversations={filteredConversations}
         selectedConversation={selectedConversation}
@@ -184,14 +272,18 @@ const Chat = () => {
         unreadCount={unreadCount}
         loading={loading}
         onlineUsers={onlineUsers}
+        onToggleArchive={handleToggleArchiveConversation}
       />
 
-      {/* Zone de chat principale */}
       {selectedConversation ? (
         <ChatArea
           conversation={selectedConversation}
           onBack={() => setSelectedConversation(null)}
-          isOnline={onlineUsers.has(selectedConversation.participant._id)}
+          isOnline={
+            !selectedConversation.isGroup &&
+            selectedConversation.participant &&
+            onlineUsers.has(selectedConversation.participant._id)
+          }
         />
       ) : (
         <EmptyChat />
