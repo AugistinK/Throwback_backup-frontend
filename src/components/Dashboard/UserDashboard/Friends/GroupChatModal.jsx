@@ -289,7 +289,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
 
     fetchMessages();
 
-    // Rejoindre le groupe via Socket.IO
+    // Rejoindre le groupe via Socket.IO (optionnel, le backend envoie déjà par userId)
     if (isConnected && socket && conversationId) {
       socket.emit('join-group', { groupId: conversationId });
     }
@@ -459,6 +459,8 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
     });
   };
 
+  const groupName = group.name || group.groupName || 'Group chat';
+
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.chatModal} onClick={(e) => e.stopPropagation()}>
@@ -475,7 +477,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
               />
             </div>
             <div className={styles.chatHeaderInfo}>
-              <h3 className={styles.chatName}>{group.name}</h3>
+              <h3 className={styles.chatName}>{groupName}</h3>
               <p className={styles.chatStatus}>
                 {group.members?.length || 0} members
               </p>

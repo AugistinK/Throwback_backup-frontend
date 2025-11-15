@@ -1,4 +1,4 @@
-// src/utils/friendsAPI.js - VERSION COMPLÈTE FINALE POUR THROWBACK (fusionnée)
+// src/utils/friendsAPI.js - VERSION COMPLÈTE FINALE POUR THROWBACK (frontend)
 import api from './api';
 
 /**
@@ -14,7 +14,7 @@ import api from './api';
  * - Actions avancées sur messages (éditer, copier, transférer, répondre, suppression globale)
  * - Statistiques & utilitaires de diagnostic
  *
- * @version 2.1.2
+ * @version 2.1.3
  * @date Novembre 2025
  */
 
@@ -326,9 +326,10 @@ export const friendsAPI = {
   // CONVERSATIONS (DIRECTES & GROUPES)
   // ============================================
 
+  /** Ancien alias – utilise maintenant le nouveau contrôleur de conversations */
   getConversations: async () => {
     try {
-      const res = await api.get('/api/messages/conversations');
+      const res = await api.get('/api/conversations');
       return res.data;
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -340,6 +341,7 @@ export const friendsAPI = {
     }
   },
 
+  /** Nouveau : même chose, plus explicite */
   getAllConversations: async () => {
     try {
       const res = await api.get('/api/conversations');
@@ -376,7 +378,11 @@ export const friendsAPI = {
 
       let cleanedParticipants = Array.isArray(participants) ? participants : [];
       cleanedParticipants = cleanedParticipants
-        .map((p) => (typeof p === 'string' || typeof p === 'number' ? p : p?._id || p?.id || null))
+        .map((p) =>
+          typeof p === 'string' || typeof p === 'number'
+            ? p
+            : p?._id || p?.id || null
+        )
         .filter(Boolean);
 
       // remove doublons
@@ -392,7 +398,8 @@ export const friendsAPI = {
       console.error('Error creating group conversation:', error);
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Failed to create group'
+        message:
+          error.response?.data?.message || error.message || 'Failed to create group'
       };
     }
   },
@@ -741,7 +748,7 @@ export const friendsAPI = {
       '/api/friends/suggestions',
       '/api/friends/stats',
       '/api/friends/groups',
-      '/api/messages/conversations',
+      '/api/conversations',
       '/api/messages/unread/count'
     ];
     for (const route of getRoutes) {

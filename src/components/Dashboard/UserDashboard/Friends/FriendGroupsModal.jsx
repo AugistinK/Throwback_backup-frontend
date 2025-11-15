@@ -24,12 +24,14 @@ const normalizeGroup = (group) => {
 
   const rawMembers = Array.isArray(group.members) ? group.members : [];
 
-  const memberIds = rawMembers.map((m) => {
-    if (!m) return null;
-    if (typeof m === 'string') return m;
-    if (typeof m === 'number') return m;
-    return m._id || m.id || null;
-  }).filter(Boolean);
+  const memberIds = rawMembers
+    .map((m) => {
+      if (!m) return null;
+      if (typeof m === 'string') return m;
+      if (typeof m === 'number') return m;
+      return m._id || m.id || null;
+    })
+    .filter(Boolean);
 
   return {
     ...group,
@@ -37,7 +39,7 @@ const normalizeGroup = (group) => {
     _id: group._id || group.id,
     name: group.name || group.groupName || '',
     members: memberIds,
-    color: group.color || '#b31217',
+    color: group.color || '#b31217'
   };
 };
 
@@ -104,7 +106,7 @@ const FriendGroupsModal = ({ groups = [], friends = [], onClose, onSave, onOpenG
       const payload = {
         name: newGroupName.trim(),
         members: selectedMembers,
-        color: selectedColor,
+        color: selectedColor
       };
 
       const response = await friendsAPI.createFriendGroup(payload);
@@ -137,7 +139,7 @@ const FriendGroupsModal = ({ groups = [], friends = [], onClose, onSave, onOpenG
       const payload = {
         name: newGroupName.trim(),
         members: selectedMembers,
-        color: selectedColor,
+        color: selectedColor
       };
 
       const response = await friendsAPI.updateFriendGroup(groupId, payload);
@@ -165,8 +167,8 @@ const FriendGroupsModal = ({ groups = [], friends = [], onClose, onSave, onOpenG
 
   const handleDeleteGroup = async (groupId) => {
     if (!groupId || loading) return;
-    const confirm = window.confirm('Delete this group?');
-    if (!confirm) return;
+    const confirmDelete = window.confirm('Delete this group?');
+    if (!confirmDelete) return;
 
     try {
       setLoading(true);
@@ -352,7 +354,7 @@ const FriendGroupsModal = ({ groups = [], friends = [], onClose, onSave, onOpenG
                         {group.name}
                       </h4>
                       <p className={styles.groupMembers}>
-                        {group.members?.length || 0} members:{" "}
+                        {group.members?.length || 0} members:{' '}
                         {getMemberNames(group.members)}
                       </p>
                     </div>

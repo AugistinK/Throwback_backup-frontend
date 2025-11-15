@@ -184,7 +184,8 @@ export const SocketProvider = ({ children }) => {
       const createdBy = payload.createdBy;
 
       const currentUserId = user?._id || user?.id;
-      const isCreator = currentUserId && createdBy && String(createdBy) === String(currentUserId);
+      const isCreator =
+        currentUserId && createdBy && String(createdBy) === String(currentUserId);
 
       console.log('💬 New chat group created:', groupName, 'creator:', createdBy);
 

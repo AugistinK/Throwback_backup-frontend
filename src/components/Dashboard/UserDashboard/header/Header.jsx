@@ -245,6 +245,9 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
         return faBell;
       case 'content':
         return faPlayCircle;
+      case 'chat_group_created':
+      case 'chat-group':
+        return faUsers;
       default:
         return faCircle;
     }
