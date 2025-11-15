@@ -31,8 +31,8 @@ const Chat = () => {
     return `${backendUrl}${normalizedPath}`;
   };
 
-  // Normaliser une conversation (directe ou groupe)
-  const normalizeConversation = (raw) => {
+  // Normalise une conversation venant du backend /api/conversations
+  const normalizeBackendConversation = (raw) => {
     if (!raw) return null;
 
     const isGroup =
@@ -42,10 +42,10 @@ const Chat = () => {
       !!raw.groupId ||
       raw.kind === 'group';
 
-    // ----- GROUP CHAT -----
+    // === GROUP CHAT ===
     if (isGroup) {
       const group = raw.group || raw;
-      const id = raw._id || raw.id || group._id || raw.groupId;
+      const groupId = raw.groupId || group._id || raw._id;
 
       const name =
         raw.name ||
@@ -63,18 +63,20 @@ const Chat = () => {
 
       return {
         ...raw,
-        _id: id,
+        _id: groupId,              // ⚠️ on utilise le groupId pour charger les messages
+        groupId,
         isGroup: true,
         name,
         members:
           raw.members || group.members || raw.participants || [],
         lastMessage,
         unreadCount: unread,
-        isArchived: !!raw.isArchived
+        isArchived: !!raw.isArchived,
+        source: 'conversation'
       };
     }
 
-    // ----- DIRECT CHAT (AMI) -----
+    // === DIRECT CHAT (AMI) ===
     let participant = raw.participant || null;
 
     if (!participant && Array.isArray(raw.participants)) {
@@ -87,7 +89,12 @@ const Chat = () => {
       participant = raw.friend || raw.otherUser || raw.user || null;
     }
 
-    if (participant && participant.photo_profil) {
+    if (!participant) {
+      // conversation cassée, on ignore
+      return null;
+    }
+
+    if (participant.photo_profil) {
       participant = {
         ...participant,
         photo_profil: getImageUrl(participant.photo_profil)
@@ -103,7 +110,40 @@ const Chat = () => {
       participant,
       lastMessage,
       unreadCount: unread,
-      isArchived: !!raw.isArchived
+      isArchived: !!raw.isArchived,
+      source: 'conversation'
+    };
+  };
+
+  // Conversation créée à partir d’un ami (si aucune convo backend n’existe)
+  const buildConversationFromFriend = (friend) => {
+    const participant = {
+      ...friend,
+      photo_profil: getImageUrl(friend.photo_profil)
+    };
+
+    return {
+      _id: `friend-${friend._id}`, // id virtuel
+      isGroup: false,
+      participant,
+      lastMessage: null,
+      unreadCount: 0,
+      isArchived: false,
+      source: 'friend'
+    };
+  };
+
+  const buildConversationFromGroup = (group) => {
+    return {
+      _id: group._id,
+      groupId: group._id,
+      isGroup: true,
+      name: group.name || group.title || 'Group',
+      members: group.members || group.participants || [],
+      lastMessage: null,
+      unreadCount: 0,
+      isArchived: false,
+      source: 'group'
     };
   };
 
@@ -111,8 +151,8 @@ const Chat = () => {
     try {
       setLoading(true);
 
-      // On récupère à la fois les conversations et les groupes d'amis
-      const [convRes, groupsRes] = await Promise.all([
+      // 1) conversations (backend)
+      const [convRes, groupsRes, friendsRes] = await Promise.all([
         friendsAPI.getConversations().catch((e) => {
           console.error('Error fetching conversations:', e);
           return null;
@@ -120,50 +160,69 @@ const Chat = () => {
         friendsAPI.getFriendGroups().catch((e) => {
           console.warn('Error fetching friend groups (optional):', e);
           return null;
+        }),
+        friendsAPI.getFriends().catch((e) => {
+          console.warn('Error fetching friends (optional):', e);
+          return null;
         })
       ]);
 
-      let items = [];
+      let all = [];
 
-      // Conversations directes + éventuellement groupes déjà inclus
-      if (convRes) {
-        if (convRes.success && Array.isArray(convRes.data)) {
-          items = items.concat(convRes.data);
-        } else if (Array.isArray(convRes)) {
-          items = items.concat(convRes);
+      // === Conversations backend (directes + éventuellement groupes) ===
+      if (convRes && convRes.success) {
+        let rawConvs = [];
+
+        if (Array.isArray(convRes.data)) {
+          rawConvs = convRes.data;
+        } else if (Array.isArray(convRes.conversations)) {
+          rawConvs = convRes.conversations;
+        } else if (Array.isArray(convRes.data?.conversations)) {
+          rawConvs = convRes.data.conversations;
         }
+
+        const normalized = rawConvs
+          .map(normalizeBackendConversation)
+          .filter(Boolean);
+
+        all = all.concat(normalized);
       }
 
-      // Groupes d'amis (si pas déjà inclus)
+      // === Groupes d'amis (au cas où /api/conversations ne les renvoie pas) ===
       if (groupsRes && groupsRes.success && Array.isArray(groupsRes.data)) {
         const existingGroupIds = new Set(
-          items
-            .filter((c) => c.isGroup || c.type === 'group')
-            .map((c) => (c._id || c.id || c.groupId || '').toString())
+          all
+            .filter((c) => c.isGroup)
+            .map((c) => (c.groupId || c._id || '').toString())
         );
 
-        const groupConvs = groupsRes.data.map((g) => ({
-          ...g,
-          _id: g._id,
-          groupId: g._id,
-          isGroup: true,
-          group: g
-        }));
-
-        groupConvs.forEach((g) => {
-          const idStr = (g._id || g.groupId || '').toString();
+        groupsRes.data.forEach((g) => {
+          const idStr = (g._id || '').toString();
           if (!existingGroupIds.has(idStr)) {
-            items.push(g);
+            all.push(buildConversationFromGroup(g));
           }
         });
       }
 
-      const normalized = items
-        .map(normalizeConversation)
-        .filter(Boolean);
+      // === Amis : on crée des conversations virtuelles pour ceux qui n’en ont pas ===
+      if (friendsRes && friendsRes.success && Array.isArray(friendsRes.data)) {
+        const existingFriendIds = new Set(
+          all
+            .filter((c) => !c.isGroup && c.participant)
+            .map((c) => c.participant._id?.toString())
+        );
 
-      // Tri par dernière activité
-      normalized.sort((a, b) => {
+        friendsRes.data.forEach((friend) => {
+          const friendId = friend._id?.toString();
+          if (!friendId) return;
+          if (!existingFriendIds.has(friendId)) {
+            all.push(buildConversationFromFriend(friend));
+          }
+        });
+      }
+
+      // Tri par dernière activité (les amis sans message vont en bas)
+      all.sort((a, b) => {
         const da = new Date(
           a.lastMessage?.created_date || a.updatedAt || a.createdAt || 0
         ).getTime();
@@ -173,9 +232,9 @@ const Chat = () => {
         return db - da;
       });
 
-      setConversations(normalized);
+      setConversations(all);
 
-      const totalUnread = normalized.reduce(
+      const totalUnread = all.reduce(
         (sum, conv) => sum + (conv.unreadCount || 0),
         0
       );
@@ -191,38 +250,58 @@ const Chat = () => {
     loadConversations();
   }, []);
 
-  // Mise à jour en temps réel pour les conversations directes (via Socket)
+  // Mise à jour temps réel uniquement pour les conversations directes (Socket)
   useEffect(() => {
     if (!socket) return;
 
     const handleNewMessage = (data) => {
       setConversations((prev) => {
+        let found = false;
+
         const updated = prev.map((conv) => {
-          // direct chat
           if (
             !conv.isGroup &&
             conv.participant &&
             (conv.participant._id === data.message.sender._id ||
               conv.participant._id === data.message.receiver._id)
           ) {
+            found = true;
+            const isForMe = data.message.receiver._id === currentUserId;
+
             return {
               ...conv,
               lastMessage: data.message,
-              unreadCount:
-                data.message.receiver._id === currentUserId
-                  ? (conv.unreadCount || 0) + 1
-                  : conv.unreadCount || 0
+              unreadCount: isForMe
+                ? (conv.unreadCount || 0) + 1
+                : conv.unreadCount || 0
             };
           }
-
           return conv;
         });
 
-        return updated.sort(
+        // Si aucune conversation trouvée, on peut en créer une à la volée
+        if (!found) {
+          const otherUser =
+            data.message.sender._id === currentUserId
+              ? data.message.receiver
+              : data.message.sender;
+
+          const newConv = buildConversationFromFriend(otherUser);
+          newConv.lastMessage = data.message;
+          newConv.unreadCount =
+            data.message.receiver._id === currentUserId ? 1 : 0;
+
+          updated.push(newConv);
+        }
+
+        // tri par dernière activité
+        updated.sort(
           (a, b) =>
             new Date(b.lastMessage?.created_date || 0) -
             new Date(a.lastMessage?.created_date || 0)
         );
+
+        return updated;
       });
 
       if (data.message.receiver._id === currentUserId) {
@@ -246,11 +325,13 @@ const Chat = () => {
           return conv;
         });
 
-        return updated.sort(
+        updated.sort(
           (a, b) =>
             new Date(b.lastMessage?.created_date || 0) -
             new Date(a.lastMessage?.created_date || 0)
         );
+
+        return updated;
       });
     };
 
@@ -288,9 +369,15 @@ const Chat = () => {
     setActiveTab(tab);
   };
 
+  // Archive / unarchive uniquement les conversations réelles (pas les virtuelles créées depuis les amis)
   const handleToggleArchiveConversation = async () => {
     if (!selectedConversation?._id) {
       alert('Please select a conversation first.');
+      return;
+    }
+
+    if (selectedConversation.source !== 'conversation') {
+      alert('Archiving is only available for existing conversations.');
       return;
     }
 
@@ -326,7 +413,7 @@ const Chat = () => {
     }
   };
 
-  // Filtrer les conversations pour la sidebar
+  // Filtre pour la sidebar
   const filteredConversations = conversations.filter((conv) => {
     const q = searchQuery.trim().toLowerCase();
 
