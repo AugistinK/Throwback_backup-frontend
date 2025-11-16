@@ -5,7 +5,6 @@ import { friendsAPI } from '../../../../utils/api';
 import MessageContextMenu from './MessageContextMenu';
 import EmojiPicker from './EmojiPicker';
 import ConfirmModal from './ConfirmModal';
-import ForwardMessageModal from './ForwardMessageModal';
 import styles from './Friends.module.css';
 
 // Font Awesome
@@ -15,23 +14,22 @@ import {
   faPaperPlane,
   faSmile,
   faEllipsisVertical,
-  faArchive,
   faTrash,
   faFlag,
   faUserMinus
 } from '@fortawesome/free-solid-svg-icons';
 
 const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
-  const { 
-    socket, 
-    isConnected, 
-    sendMessage, 
-    joinConversation, 
-    startTyping, 
-    stopTyping, 
-    markMessagesAsRead 
+  const {
+    socket,
+    isConnected,
+    sendMessage,
+    joinConversation,
+    startTyping,
+    stopTyping,
+    markMessagesAsRead
   } = useSocket();
-  
+
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,10 +37,8 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [typing, setTyping] = useState(false);
   const [editingMessage, setEditingMessage] = useState(null);
-  const [replyingTo, setReplyingTo] = useState(null);
-  const [forwardModal, setForwardModal] = useState({ isOpen: false, message: null });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', data: null });
-  
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -76,28 +72,32 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
       const senderId = data.message?.sender?._id || data.message?.sender;
       const receiverId = data.message?.receiver?._id || data.message?.receiver;
       if (senderId === friend.id || receiverId === friend.id) {
-        setMessages(prev => [...prev, formatMessage(data.message)]);
+        setMessages((prev) => [...prev, formatMessage(data.message)]);
         markMessagesAsRead(friend.id);
       }
     };
 
     const handleMessageEdited = (data) => {
-      setMessages(prev => prev.map(msg =>
-        msg.id === data.messageId
-          ? { ...msg, text: data.content, edited: true, editedAt: data.editedAt }
-          : msg
-      ));
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === data.messageId
+            ? { ...msg, text: data.content, edited: true, editedAt: data.editedAt }
+            : msg
+        )
+      );
     };
 
     const handleMessageDeleted = (data) => {
       if (data.deletedForEveryone) {
-        setMessages(prev => prev.map(msg =>
-          msg.id === data.messageId
-            ? { ...msg, deleted: true, text: 'This message was deleted' }
-            : msg
-        ));
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === data.messageId
+              ? { ...msg, deleted: true, text: 'This message was deleted' }
+              : msg
+          )
+        );
       } else {
-        setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
+        setMessages((prev) => prev.filter((msg) => msg.id !== data.messageId));
       }
     };
 
@@ -154,9 +154,9 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
   };
 
   const formatTime = (date) => {
-    return new Date(date).toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(date).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -165,7 +165,7 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     (name || '')
       .split(' ')
       .filter(Boolean)
-      .map(n => n[0])
+      .map((n) => n[0])
       .join('')
       .slice(0, 2)
       .toUpperCase();
@@ -183,9 +183,6 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
       if (editingMessage) {
         await friendsAPI.editMessage(editingMessage.id, content);
         setEditingMessage(null);
-      } else if (replyingTo) {
-        await friendsAPI.replyToMessage(replyingTo.id, content);
-        setReplyingTo(null);
       } else {
         // Envoi serveur
         await sendMessage(friend.id, content, 'text');
@@ -193,7 +190,7 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
         // ✅ APPEND OPTIMISTE : on ajoute immédiatement notre message
         const localMsg = {
           id: `local-${Date.now()}`,
-          sender: 'self',               // différent de friend.id => classé côté droit
+          sender: 'self',
           senderName: 'You',
           text: content,
           timestamp: formatTime(Date.now()),
@@ -203,7 +200,7 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
           forwarded: false,
           replyTo: null
         };
-        setMessages(prev => [...prev, localMsg]);
+        setMessages((prev) => [...prev, localMsg]);
       }
     } catch (err) {
       console.error('Error sending message:', err);
@@ -229,7 +226,7 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
 
   const handleInputChange = (e) => {
     setMessage(e.target.value);
-    
+
     if (!typing && e.target.value) {
       startTyping(friend.id);
       setTyping(true);
@@ -242,21 +239,14 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
   };
 
   const handleEmojiSelect = (emoji) => {
-    setMessage(prev => prev + emoji);
+    setMessage((prev) => prev + emoji);
     inputRef.current?.focus();
   };
 
   // Actions sur les messages
-  const handleReply = (msg) => {
-    setReplyingTo(msg);
-    setEditingMessage(null);
-    inputRef.current?.focus();
-  };
-
   const handleEdit = (msg) => {
     setEditingMessage(msg);
     setMessage(msg.text);
-    setReplyingTo(null);
     inputRef.current?.focus();
   };
 
@@ -278,17 +268,13 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     }
   };
 
-  const handleForward = (msg) => {
-    setForwardModal({ isOpen: true, message: msg });
-  };
-
   const handleDelete = (msg, isOwnMessage) => {
     setConfirmModal({
       isOpen: true,
       type: 'warning',
       data: {
         title: 'Delete Message',
-        message: isOwnMessage 
+        message: isOwnMessage
           ? 'Delete this message for everyone? This cannot be undone.'
           : 'Delete this message for you?',
         confirmText: 'Delete',
@@ -297,13 +283,15 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
           try {
             await friendsAPI.deleteMessage(msg.id, isOwnMessage);
             if (isOwnMessage) {
-              setMessages(prev => prev.map(m =>
-                m.id === msg.id
-                  ? { ...m, deleted: true, text: 'This message was deleted' }
-                  : m
-              ));
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === msg.id
+                    ? { ...m, deleted: true, text: 'This message was deleted' }
+                    : m
+                )
+              );
             } else {
-              setMessages(prev => prev.filter(m => m.id !== msg.id));
+              setMessages((prev) => prev.filter((m) => m.id !== msg.id));
             }
           } catch (err) {
             console.error('Error deleting message:', err);
@@ -314,27 +302,6 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
   };
 
   // Actions de chat
-  const handleArchiveChat = () => {
-    setConfirmModal({
-      isOpen: true,
-      type: 'info',
-      data: {
-        title: 'Archive Chat',
-        message: 'Archive this conversation? You can find it in archived chats.',
-        confirmText: 'Archive',
-        cancelText: 'Cancel',
-        onConfirm: async () => {
-          try {
-            await friendsAPI.archiveChat(friend.id);
-            onClose();
-          } catch (err) {
-            console.error('Error archiving chat:', err);
-          }
-        }
-      }
-    });
-  };
-
   const handleClearHistory = () => {
     setConfirmModal({
       isOpen: true,
@@ -377,7 +344,11 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
         cancelText: 'Cancel',
         onConfirm: async () => {
           try {
-            await friendsAPI.reportUser(friend.id, 'inappropriate_content', 'Reported from chat');
+            await friendsAPI.reportUser(
+              friend.id,
+              'inappropriate_content',
+              'Reported from chat'
+            );
             setConfirmModal({
               isOpen: true,
               type: 'success',
@@ -427,46 +398,44 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                   {friend.name.charAt(0)}
                 </div>
               )}
-              <span 
+              <span
                 className={styles.statusDot}
-                style={{ 
-                  backgroundColor: friend.status === 'online' ? '#10b981' : '#9ca3af' 
+                style={{
+                  backgroundColor:
+                    friend.status === 'online' ? '#10b981' : '#9ca3af'
                 }}
               />
             </div>
             <div className={styles.chatHeaderInfo}>
               <h3 className={styles.chatName}>{friend.name}</h3>
               <p className={styles.chatStatus}>
-                {typing ? 'typing...' : friend.status === 'online' ? 'Active now' : friend.lastActive}
+                {typing
+                  ? 'typing...'
+                  : friend.status === 'online'
+                  ? 'Active now'
+                  : friend.lastActive}
               </p>
             </div>
           </div>
-          
+
           <div className={styles.chatHeaderActions}>
             <div className={styles.optionsMenuWrapper}>
-              <button 
-                className={styles.chatActionButton} 
+              <button
+                className={styles.chatActionButton}
                 title="More options"
                 onClick={() => setShowOptionsMenu(!showOptionsMenu)}
               >
                 <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 20 }} />
               </button>
-              
+
               {showOptionsMenu && (
                 <>
-                  <div 
-                    className={styles.menuOverlay} 
+                  <div
+                    className={styles.menuOverlay}
                     onClick={() => setShowOptionsMenu(false)}
                   />
                   <div className={styles.chatOptionsMenu}>
-                    <button 
-                      className={styles.chatOptionItem}
-                      onClick={handleArchiveChat}
-                    >
-                      <FontAwesomeIcon icon={faArchive} style={{ fontSize: 16 }} />
-                      Archive Chat
-                    </button>
-                    <button 
+                    <button
                       className={styles.chatOptionItem}
                       onClick={handleClearHistory}
                     >
@@ -474,14 +443,14 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                       Clear Chat History
                     </button>
                     <div className={styles.dropdownDivider} />
-                    <button 
+                    <button
                       className={`${styles.chatOptionItem} ${styles.dangerItem}`}
                       onClick={handleReportUser}
                     >
                       <FontAwesomeIcon icon={faFlag} style={{ fontSize: 16 }} />
                       Report User
                     </button>
-                    <button 
+                    <button
                       className={`${styles.chatOptionItem} ${styles.dangerItem}`}
                       onClick={handleRemoveFriend}
                     >
@@ -492,7 +461,7 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                 </>
               )}
             </div>
-            
+
             <button className={styles.closeButton} onClick={onClose}>
               <FontAwesomeIcon icon={faXmark} style={{ fontSize: 24 }} />
             </button>
@@ -507,29 +476,25 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
             </div>
           )}
 
-          {/* Reply indicator */}
-          {replyingTo && (
-            <div className={styles.replyIndicator}>
-              <span>Replying to: {replyingTo.text.substring(0, 50)}...</span>
-              <button onClick={() => setReplyingTo(null)}>×</button>
-            </div>
-          )}
-
           {/* Edit indicator */}
           {editingMessage && (
             <div className={styles.editIndicator}>
               <span>Editing message</span>
-              <button onClick={() => {
-                setEditingMessage(null);
-                setMessage('');
-              }}>×</button>
+              <button
+                onClick={() => {
+                  setEditingMessage(null);
+                  setMessage('');
+                }}
+              >
+                ×
+              </button>
             </div>
           )}
 
           {messages.map((msg, index) => {
             const isOwnMessage = msg.sender !== friend.id;
             return (
-              <div 
+              <div
                 key={msg.id || index}
                 className={`${styles.messageWrapper} ${
                   isOwnMessage ? styles.messageRight : styles.messageLeft
@@ -554,7 +519,7 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                       <small>Reply to previous message</small>
                     </div>
                   )}
-                  
+
                   {msg.deleted ? (
                     <p className={styles.messageDeleted}>
                       <em>{msg.text}</em>
@@ -565,16 +530,16 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                       <div className={styles.messageFooter}>
                         <span className={styles.messageTime}>
                           {msg.timestamp}
-                          {msg.edited && <em className={styles.editedLabel}> (edited)</em>}
+                          {msg.edited && (
+                            <em className={styles.editedLabel}> (edited)</em>
+                          )}
                         </span>
                         {!msg.deleted && (
                           <MessageContextMenu
                             message={msg}
                             isOwnMessage={isOwnMessage}
-                            onReply={handleReply}
                             onEdit={handleEdit}
                             onCopy={handleCopy}
-                            onForward={handleForward}
                             onDelete={handleDelete}
                           />
                         )}
@@ -585,23 +550,23 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
               </div>
             );
           })}
-          
+
           <div ref={messagesEndRef} />
         </div>
 
         {/* Input Area */}
         <form className={styles.chatInput} onSubmit={handleSendMessage}>
           <div className={styles.chatInputActions}>
-            <button 
-              type="button" 
-              className={styles.chatInputButton} 
+            <button
+              type="button"
+              className={styles.chatInputButton}
               title="Add emoji"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             >
               <FontAwesomeIcon icon={faSmile} style={{ fontSize: 20 }} />
             </button>
           </div>
-          
+
           <input
             ref={inputRef}
             type="text"
@@ -609,20 +574,18 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             placeholder={
-              isConnected 
-                ? editingMessage 
-                  ? "Edit your message..." 
-                  : replyingTo
-                    ? "Type your reply..."
-                    : "Type a message..." 
-                : "Connecting..."
+              isConnected
+                ? editingMessage
+                  ? 'Edit your message...'
+                  : 'Type a message...'
+                : 'Connecting...'
             }
             className={styles.chatInputField}
             disabled={!isConnected}
           />
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             className={styles.sendButton}
             disabled={!message.trim() || !isConnected}
           >
@@ -644,14 +607,6 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
           </div>
         )}
       </div>
-
-      {/* Forward Modal */}
-      {forwardModal.isOpen && (
-        <ForwardMessageModal
-          message={forwardModal.message}
-          onClose={() => setForwardModal({ isOpen: false, message: null })}
-        />
-      )}
 
       {/* Confirm Modal */}
       <ConfirmModal
