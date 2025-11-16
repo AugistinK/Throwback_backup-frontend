@@ -5,10 +5,8 @@ import {
   faCheck,
   faCheckDouble,
   faEllipsisVertical,
-  faReply,
   faCopy,
-  faTrash,
-  faForward
+  faTrash
 } from '@fortawesome/free-solid-svg-icons';
 import styles from './Chat.module.css';
 
@@ -61,8 +59,7 @@ const MessageItem = ({
   const senderDisplayName = (() => {
     const u = message.sender;
     if (!u) return '';
-    const first =
-      u.prenom || u.firstName || u.name || '';
+    const first = u.prenom || u.firstName || u.name || '';
     const last = u.nom || u.lastName || '';
     return `${first} ${last}`.trim() || first || last;
   })();
@@ -160,13 +157,7 @@ const MessageItem = ({
                 isOwn ? styles.messageDropdownOwn : ''
               }`}
             >
-              <button
-                className={styles.dropdownItem}
-                onClick={() => setShowMenu(false)}
-              >
-                <FontAwesomeIcon icon={faReply} />
-                Reply
-              </button>
+              {/* Reply & Forward retirés – il reste seulement Copy + Delete */}
               <button
                 className={styles.dropdownItem}
                 onClick={handleCopyMessage}
@@ -174,13 +165,7 @@ const MessageItem = ({
                 <FontAwesomeIcon icon={faCopy} />
                 Copy
               </button>
-              <button
-                className={styles.dropdownItem}
-                onClick={() => setShowMenu(false)}
-              >
-                <FontAwesomeIcon icon={faForward} />
-                Forward
-              </button>
+
               {isOwn && (
                 <>
                   <div className={styles.dropdownDivider} />
