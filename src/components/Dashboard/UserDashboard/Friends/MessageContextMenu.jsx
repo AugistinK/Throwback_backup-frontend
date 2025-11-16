@@ -4,21 +4,17 @@ import styles from './Friends.module.css';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faReply,
   faCopy,
   faPen,
-  faShare,
   faTrash,
   faEllipsisVertical
 } from '@fortawesome/free-solid-svg-icons';
 
-const MessageContextMenu = ({ 
-  message, 
+const MessageContextMenu = ({
+  message,
   isOwnMessage,
-  onReply,
   onEdit,
   onCopy,
-  onForward,
   onDelete
 }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -29,7 +25,7 @@ const MessageContextMenu = ({
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
-        menuRef.current && 
+        menuRef.current &&
         !menuRef.current.contains(event.target) &&
         buttonRef.current &&
         !buttonRef.current.contains(event.target)
@@ -49,20 +45,20 @@ const MessageContextMenu = ({
 
   const handleMenuClick = (action) => {
     setShowMenu(false);
-    action();
+    if (action) action();
   };
 
   const toggleMenu = (e) => {
     e.stopPropagation();
-    
-    if (!showMenu) {
+
+    if (!showMenu && buttonRef.current) {
       const buttonRect = buttonRef.current.getBoundingClientRect();
       setMenuPosition({
         top: buttonRect.bottom + 5,
         left: isOwnMessage ? buttonRect.left - 150 : buttonRect.right
       });
     }
-    
+
     setShowMenu(!showMenu);
   };
 
@@ -88,18 +84,10 @@ const MessageContextMenu = ({
             zIndex: 9999
           }}
         >
-          <button
-            className={styles.contextMenuItem}
-            onClick={() => handleMenuClick(() => onReply(message))}
-          >
-            <FontAwesomeIcon icon={faReply} style={{ fontSize: 14 }} />
-            Reply
-          </button>
-
           {isOwnMessage && (
             <button
               className={styles.contextMenuItem}
-              onClick={() => handleMenuClick(() => onEdit(message))}
+              onClick={() => handleMenuClick(() => onEdit && onEdit(message))}
             >
               <FontAwesomeIcon icon={faPen} style={{ fontSize: 14 }} />
               Edit
@@ -108,25 +96,19 @@ const MessageContextMenu = ({
 
           <button
             className={styles.contextMenuItem}
-            onClick={() => handleMenuClick(() => onCopy(message))}
+            onClick={() => handleMenuClick(() => onCopy && onCopy(message))}
           >
             <FontAwesomeIcon icon={faCopy} style={{ fontSize: 14 }} />
             Copy
-          </button>
-
-          <button
-            className={styles.contextMenuItem}
-            onClick={() => handleMenuClick(() => onForward(message))}
-          >
-            <FontAwesomeIcon icon={faShare} style={{ fontSize: 14 }} />
-            Forward
           </button>
 
           <div className={styles.contextMenuDivider} />
 
           <button
             className={`${styles.contextMenuItem} ${styles.dangerItem}`}
-            onClick={() => handleMenuClick(() => onDelete(message, isOwnMessage))}
+            onClick={() =>
+              handleMenuClick(() => onDelete && onDelete(message, isOwnMessage))
+            }
           >
             <FontAwesomeIcon icon={faTrash} style={{ fontSize: 14 }} />
             {isOwnMessage ? 'Delete for everyone' : 'Delete for me'}
