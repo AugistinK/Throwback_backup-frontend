@@ -3,10 +3,7 @@ import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowLeft,
-  faSearch,
   faEllipsisVertical,
-  faPhone,
-  faVideo,
   faCircle,
   faUser,
   faBan,
@@ -33,9 +30,8 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
   };
 
   const groupName = conversation?.name || 'Group';
-  const userName = `${participant?.prenom || ''} ${
-    participant?.nom || ''
-  }`.trim() || 'Friend';
+  const userName =
+    `${participant?.prenom || ''} ${participant?.nom || ''}`.trim() || 'Friend';
 
   const title = isGroup ? groupName : userName;
   const subtitle = isGroup
@@ -126,24 +122,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
       </div>
 
       <div className={styles.chatHeaderActions}>
-        <button
-          className={styles.headerActionButton}
-          title="Search in conversation"
-        >
-          <FontAwesomeIcon icon={faSearch} />
-        </button>
-        <button
-          className={styles.headerActionButton}
-          title="Voice call (coming soon)"
-        >
-          <FontAwesomeIcon icon={faPhone} />
-        </button>
-        <button
-          className={styles.headerActionButton}
-          title="Video call (coming soon)"
-        >
-          <FontAwesomeIcon icon={faVideo} />
-        </button>
+        {/* Plus de recherche / appel audio / appel vidéo */}
         <button
           className={styles.headerActionButton}
           onClick={() => setShowMenu(!showMenu)}
