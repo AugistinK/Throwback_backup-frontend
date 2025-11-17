@@ -1,4 +1,4 @@
-// src/components/Dashboard/UserDashboard/Chat/MessageItem.jsx - AVEC SUPPORT GROUPE/DIRECT
+// src/components/Dashboard/UserDashboard/Chat/MessageItem.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -20,7 +20,6 @@ const MessageItem = ({
   participant,
   currentUser,
   isGroup,
-  groupId, // NOUVEAU : ID du groupe si message de groupe
   onEdit,
   onCopy,
   onDelete
@@ -139,12 +138,7 @@ const MessageItem = ({
     }
 
     try {
-      // Utiliser l'API appropriée selon le type de message
-      if (isGroup && groupId) {
-        await friendsAPI.editGroupMessage(groupId, id, trimmed);
-      } else {
-        await friendsAPI.editMessage(id, trimmed);
-      }
+      await friendsAPI.editMessage(id, trimmed);
 
       setLocalMessage((prev) => ({
         ...prev,
@@ -203,12 +197,7 @@ const MessageItem = ({
     const id = getMessageId();
     
     try {
-      // Utiliser l'API appropriée selon le type de message
-      if (isGroup && groupId) {
-        await friendsAPI.deleteGroupMessage(groupId, id, !!isOwn);
-      } else {
-        await friendsAPI.deleteMessage(id, !!isOwn);
-      }
+      await friendsAPI.deleteMessage(id, !!isOwn);
 
       if (isOwn) {
         setLocalMessage((prev) => ({
@@ -288,7 +277,7 @@ const MessageItem = ({
             <div className={styles.messageAuthor}>{senderDisplayName}</div>
           )}
 
-          {localMessage.deleted || localMessage.deletedForEveryone ? (
+          {localMessage.deleted ? (
             <p className={styles.messageContent}>
               <em>This message was deleted</em>
             </p>
@@ -327,7 +316,7 @@ const MessageItem = ({
                 localMessage.created_date || localMessage.createdAt
               )}
             </span>
-            {isOwn && !isGroup && (
+            {isOwn && (
               <span className={styles.messageStatus}>
                 <FontAwesomeIcon
                   icon={localMessage.read ? faCheckDouble : faCheck}
@@ -365,7 +354,7 @@ const MessageItem = ({
                     zIndex: 9999
                   }}
                 >
-                  {isOwn && !localMessage.deleted && !localMessage.deletedForEveryone && (
+                  {isOwn && (
                     <button
                       className={styles.dropdownItem}
                       onClick={() => handleMenuClick(handleEditClick)}
@@ -375,15 +364,13 @@ const MessageItem = ({
                     </button>
                   )}
 
-                  {!localMessage.deleted && !localMessage.deletedForEveryone && (
-                    <button
-                      className={styles.dropdownItem}
-                      onClick={() => handleMenuClick(handleCopyClick)}
-                    >
-                      <FontAwesomeIcon icon={faCopy} style={{ fontSize: 14 }} />
-                      Copy
-                    </button>
-                  )}
+                  <button
+                    className={styles.dropdownItem}
+                    onClick={() => handleMenuClick(handleCopyClick)}
+                  >
+                    <FontAwesomeIcon icon={faCopy} style={{ fontSize: 14 }} />
+                    Copy
+                  </button>
 
                   <div className={styles.dropdownDivider} />
 

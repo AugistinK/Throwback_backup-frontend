@@ -1,290 +1,364 @@
-// src/components/Dashboard/UserDashboard/Chat/ChatArea.jsx - AVEC GROUPID
-import React, { useState, useEffect, useRef } from 'react';
-import { useSocket } from '../../../../contexts/SocketContext';
-import { useAuth } from '../../../../contexts/AuthContext';
+// src/components/Dashboard/UserDashboard/Chat/ChatHeader.jsx
+import React, { useState, useEffect } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faArrowLeft,
+  faEllipsisVertical,
+  faCircle,
+  faBan,
+  faTrash,
+  faBellSlash,
+  faUnlock
+} from '@fortawesome/free-solid-svg-icons';
 import { friendsAPI } from '../../../../utils/api';
-import ChatHeader from './ChatHeader';
-import MessageList from './MessageList';
-import MessageInput from './MessageInput';
+import CustomModal from './CustomModal';
 import styles from './Chat.module.css';
 
-const ChatArea = ({ conversation, onBack, isOnline }) => {
-  const { user } = useAuth();
-  const {
-    socket,
-    sendMessage: socketSendMessage,
-    joinConversation,
-    markMessagesAsRead
-  } = useSocket();
+const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  
+  // Ã‰tats pour les diffÃ©rents modals
+  const [blockModal, setBlockModal] = useState({ isOpen: false });
+  const [unblockModal, setUnblockModal] = useState({ isOpen: false });
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false });
+  const [muteModal, setMuteModal] = useState({ isOpen: false });
+  const [successModal, setSuccessModal] = useState({ isOpen: false, message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
 
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isTyping, setIsTyping] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const messagesEndRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
+  const isGroup = !!conversation?.isGroup;
 
-  const isGroup = !!conversation.isGroup;
-  const participant = isGroup ? null : conversation.participant;
-  const targetId = isGroup ? (conversation._id || conversation.groupId) : participant?._id;
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const getInitials = (text) => {
+    if (!text) return '';
+    const parts = text.trim().split(' ');
+    return parts
+      .filter(Boolean)
+      .map((p) => p[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
-  const normalizeMessage = (msg) => ({
-    id: msg._id || msg.id,
-    sender: msg.sender,
-    receiver: msg.receiver,
-    content: msg.content,
-    type: msg.type || 'text',
-    created_date:
-      msg.created_date || msg.createdAt || msg.created_at || new Date(),
-    read: !!msg.read,
-    deleted: !!msg.deleted,
-    deletedForEveryone: !!msg.deletedForEveryone
-  });
+  const groupName = conversation?.name || 'Group';
+  const userName =
+    `${participant?.prenom || ''} ${participant?.nom || ''}`.trim() || 'Friend';
 
-  const extractMessagesPayload = (response) => {
-    if (!response) {
-      return { messages: [], pagination: null };
-    }
+  const title = isGroup ? groupName : userName;
+  const subtitle = isGroup
+    ? conversation?.members?.length
+      ? `${conversation.members.length} members`
+      : 'Group chat'
+    : isOnline
+    ? 'Online'
+    : 'Offline';
 
-    const payload = response.data || response;
-
-    const messages =
-      payload.messages ||
-      payload.data?.messages ||
-      [];
-
-    const pagination =
-      payload.pagination ||
-      payload.data?.pagination ||
-      null;
-
-    return { messages, pagination };
-  };
-
-  const loadMessages = async (pageToLoad = 1) => {
-    if (!targetId) return;
-
-    try {
-      setLoading(true);
-      let response;
-
-      if (isGroup) {
-        response = await friendsAPI.getGroupMessages(
-          targetId,
-          pageToLoad,
-          50
-        );
-      } else {
-        response = await friendsAPI.getMessages(
-          targetId,
-          pageToLoad,
-          50
-        );
-      }
-
-      if (!response || response.success === false) {
-        console.warn('Messages request failed:', response?.message);
-        if (pageToLoad === 1) {
-          setMessages([]);
-        }
-        setHasMore(false);
-        return;
-      }
-
-      const { messages: rawMessages, pagination } =
-        extractMessagesPayload(response);
-
-      const formattedMessages = rawMessages.map(normalizeMessage);
-
-      if (pageToLoad === 1) {
-        setMessages(formattedMessages);
-      } else {
-        setMessages((prev) => [...formattedMessages, ...prev]);
-      }
-
-      if (pagination) {
-        setHasMore(pagination.page < pagination.totalPages);
-      } else {
-        setHasMore(formattedMessages.length === 50);
-      }
-
-      setPage(pageToLoad);
-
-      if (pageToLoad === 1) {
-        setTimeout(scrollToBottom, 100);
-      }
-    } catch (err) {
-      console.error('Error loading messages:', err);
-      if (pageToLoad === 1) {
-        setMessages([]);
-      }
-      setHasMore(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Initial load when conversation changes
+  // VÃ©rifier si l'utilisateur est bloquÃ©
   useEffect(() => {
-    setMessages([]);
-    setPage(1);
-    setHasMore(true);
-
-    if (targetId) {
-      loadMessages(1);
-
-      // On ne rejoint la room Socket que pour les directs
-      if (!isGroup && socket) {
-        joinConversation(targetId);
-        markMessagesAsRead(targetId);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversation._id, isGroup, socket]);
-
-  // Socket events only for direct chat
-  useEffect(() => {
-    if (!socket || isGroup || !participant) return;
-
-    const handleNewMessage = (data) => {
-      if (
-        data.message.sender._id === participant._id ||
-        data.message.receiver._id === participant._id
-      ) {
-        setMessages((prev) => [
-          ...prev,
-          normalizeMessage(data.message)
-        ]);
-        setTimeout(scrollToBottom, 100);
-      }
-    };
-
-    const handleMessageSent = (data) => {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.tempId === data.tempId
-            ? {
-                ...msg,
-                id: data.message._id,
-                created_date: data.message.created_date
-              }
-            : msg
-        )
-      );
-    };
-
-    const handleUserTyping = (data) => {
-      if (data.userId === participant._id) {
-        setIsTyping(data.isTyping);
-
-        if (data.isTyping) {
-          if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-          }
-          typingTimeoutRef.current = setTimeout(() => {
-            setIsTyping(false);
-          }, 3000);
-        }
-      }
-    };
-
-    socket.on('new-message', handleNewMessage);
-    socket.on('message-sent', handleMessageSent);
-    socket.on('user-typing', handleUserTyping);
-
-    return () => {
-      socket.off('new-message', handleNewMessage);
-      socket.off('message-sent', handleMessageSent);
-      socket.off('user-typing', handleUserTyping);
-    };
-  }, [socket, participant, isGroup]);
-
-  const handleSendMessage = async (content, type = 'text') => {
-    if (!content.trim() || !targetId) return;
-
-    const tempId = Date.now();
-    const optimisticMessage = {
-      id: null,
-      tempId,
-      sender: user,
-      receiver: isGroup ? null : participant,
-      content,
-      type,
-      created_date: new Date().toISOString(),
-      read: false
-    };
-
-    setMessages((prev) => [...prev, optimisticMessage]);
-    setTimeout(scrollToBottom, 100);
-
-    try {
-      if (isGroup) {
-        const res = await friendsAPI.sendGroupMessage(
-          targetId,
-          content,
-          type
-        );
-
-        if (!res || res.success === false) {
-          console.error('Error sending group message:', res?.message);
-          setMessages((prev) =>
-            prev.filter((m) => m.tempId !== tempId)
+    const checkBlockStatus = async () => {
+      if (!participant?._id) return;
+      
+      try {
+        const res = await friendsAPI.getBlockedUsers();
+        if (res.success && Array.isArray(res.data)) {
+          const blocked = res.data.some(
+            (blocked) => blocked._id === participant._id
           );
-          return;
+          setIsBlocked(blocked);
         }
-
-        // Pour simplifier, on recharge la dernière page après l'envoi
-        loadMessages(1);
-      } else {
-        await socketSendMessage(targetId, content, type, tempId);
+      } catch (error) {
+        console.error('Error checking block status:', error);
       }
-    } catch (err) {
-      console.error('Error sending message:', err);
-      setMessages((prev) =>
-        prev.filter((m) => m.tempId !== tempId)
-      );
+    };
+
+    checkBlockStatus();
+  }, [participant]);
+
+  // Bloquer un utilisateur
+  const handleBlockUser = () => {
+    if (isGroup || !participant?._id) return;
+    setShowMenu(false);
+    setBlockModal({ isOpen: true });
+  };
+
+  const confirmBlockUser = async () => {
+    try {
+      const res = await friendsAPI.blockUser(participant._id);
+      
+      if (res.success) {
+        setIsBlocked(true);
+        setSuccessModal({
+          isOpen: true,
+          message: `${userName} has been blocked successfully. They can no longer send you messages.`
+        });
+        
+        setTimeout(() => {
+          onBack();
+        }, 2000);
+      } else {
+        setErrorModal({
+          isOpen: true,
+          message: res.message || 'Failed to block this user. Please try again.'
+        });
+      }
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      setErrorModal({
+        isOpen: true,
+        message: 'An error occurred while blocking this user. Please try again.'
+      });
     }
   };
 
-  const handleLoadMore = () => {
-    if (hasMore && !loading) {
-      loadMessages(page + 1);
+  // DÃ©bloquer un utilisateur
+  const handleUnblockUser = () => {
+    if (isGroup || !participant?._id) return;
+    setShowMenu(false);
+    setUnblockModal({ isOpen: true });
+  };
+
+  const confirmUnblockUser = async () => {
+    try {
+      const res = await friendsAPI.unblockUser(participant._id);
+      
+      if (res.success) {
+        setIsBlocked(false);
+        setSuccessModal({
+          isOpen: true,
+          message: `${userName} has been unblocked successfully. You can now send messages.`
+        });
+      } else {
+        setErrorModal({
+          isOpen: true,
+          message: res.message || 'Failed to unblock this user. Please try again.'
+        });
+      }
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+      setErrorModal({
+        isOpen: true,
+        message: 'An error occurred while unblocking this user. Please try again.'
+      });
+    }
+  };
+
+  // Supprimer la conversation
+  const handleClearConversation = () => {
+    if (isGroup || !participant?._id) return;
+    setShowMenu(false);
+    setDeleteModal({ isOpen: true });
+  };
+
+  const confirmClearConversation = async () => {
+    try {
+      const res = await friendsAPI.clearChatHistory(participant._id);
+      
+      if (res.success) {
+        setSuccessModal({
+          isOpen: true,
+          message: 'Conversation history has been deleted successfully.'
+        });
+        
+        setTimeout(() => {
+          onBack();
+        }, 2000);
+      } else {
+        setErrorModal({
+          isOpen: true,
+          message: res.message || 'Failed to delete conversation history. Please try again.'
+        });
+      }
+    } catch (error) {
+      console.error('Error clearing conversation history:', error);
+      setErrorModal({
+        isOpen: true,
+        message: 'An error occurred while deleting the conversation. Please try again.'
+      });
+    }
+  };
+
+  // DÃ©sactiver les notifications
+  const handleToggleNotifications = () => {
+    setShowMenu(false);
+    setMuteModal({ isOpen: true });
+  };
+
+  const confirmMuteNotifications = async () => {
+    try {
+      setSuccessModal({
+        isOpen: true,
+        message: 'Notifications have been muted for this conversation.'
+      });
+    } catch (error) {
+      console.error('Error muting notifications:', error);
+      setErrorModal({
+        isOpen: true,
+        message: 'Failed to mute notifications. Please try again.'
+      });
     }
   };
 
   return (
-    <div className={styles.chatArea}>
-      <ChatHeader
-        participant={participant}
-        conversation={conversation}
-        isOnline={!isGroup && isOnline}
-        onBack={onBack}
+    <>
+      <div className={styles.chatHeader}>
+        <div className={styles.chatHeaderLeft}>
+          <button className={styles.backButton} onClick={onBack}>
+            <FontAwesomeIcon icon={faArrowLeft} />
+          </button>
+
+          <div className={styles.chatHeaderAvatar}>
+            {isGroup ? (
+              <div className={styles.headerAvatarPlaceholder}>
+                {getInitials(groupName)}
+              </div>
+            ) : participant?.photo_profil ? (
+              <img
+                src={participant.photo_profil}
+                alt={userName}
+                className={styles.headerAvatarImage}
+              />
+            ) : (
+              <div className={styles.headerAvatarPlaceholder}>
+                {getInitials(userName)}
+              </div>
+            )}
+            {!isGroup && isOnline && (
+              <span className={styles.headerOnlineIndicator}>
+                <FontAwesomeIcon icon={faCircle} />
+              </span>
+            )}
+          </div>
+
+          <div className={styles.chatHeaderInfo}>
+            <h3 className={styles.chatHeaderName}>{title}</h3>
+            <p className={styles.chatHeaderStatus}>{subtitle}</p>
+          </div>
+        </div>
+
+        <div className={styles.chatHeaderActions}>
+          <button
+            className={styles.headerActionButton}
+            onClick={() => setShowMenu(!showMenu)}
+            title="More options"
+          >
+            <FontAwesomeIcon icon={faEllipsisVertical} />
+          </button>
+
+          {showMenu && (
+            <>
+              <div
+                className={styles.menuOverlay}
+                onClick={() => setShowMenu(false)}
+              />
+              <div className={styles.headerDropdown}>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={handleToggleNotifications}
+                >
+                  <FontAwesomeIcon icon={faBellSlash} />
+                  Mute notifications
+                </button>
+
+                {!isGroup && (
+                  <>
+                    <div className={styles.dropdownDivider} />
+                    
+                    {isBlocked ? (
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={handleUnblockUser}
+                      >
+                        <FontAwesomeIcon icon={faUnlock} />
+                        Unblock user
+                      </button>
+                    ) : (
+                      <button
+                        className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                        onClick={handleBlockUser}
+                      >
+                        <FontAwesomeIcon icon={faBan} />
+                        Block user
+                      </button>
+                    )}
+                    
+                    <button
+                      className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                      onClick={handleClearConversation}
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                      Delete conversation
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Modals de confirmation */}
+      <CustomModal
+        isOpen={blockModal.isOpen}
+        onClose={() => setBlockModal({ isOpen: false })}
+        title="Block User"
+        message={`Are you sure you want to block ${userName}? They will no longer be able to send you messages or see your profile.`}
+        onConfirm={confirmBlockUser}
+        confirmText="Block"
+        cancelText="Cancel"
+        isDanger={true}
       />
 
-      <MessageList
-        messages={messages}
-        currentUser={user}
-        isTyping={isTyping}
-        loading={loading}
-        hasMore={hasMore}
-        onLoadMore={handleLoadMore}
-        participant={participant}
-        messagesEndRef={messagesEndRef}
-        isGroup={isGroup}
-        groupId={isGroup ? targetId : null} // NOUVEAU : Passer le groupId
+      <CustomModal
+        isOpen={unblockModal.isOpen}
+        onClose={() => setUnblockModal({ isOpen: false })}
+        title="Unblock User"
+        message={`Are you sure you want to unblock ${userName}? They will be able to send you messages again.`}
+        onConfirm={confirmUnblockUser}
+        confirmText="Unblock"
+        cancelText="Cancel"
       />
 
-      <MessageInput
-        onSendMessage={handleSendMessage}
-        receiverId={isGroup ? null : participant?._id}
+      <CustomModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false })}
+        title="Delete Conversation"
+        message={`Are you sure you want to delete your conversation history with ${userName}? This action cannot be undone.`}
+        onConfirm={confirmClearConversation}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDanger={true}
       />
-    </div>
+
+      <CustomModal
+        isOpen={muteModal.isOpen}
+        onClose={() => setMuteModal({ isOpen: false })}
+        title="Mute Notifications"
+        message={`Do you want to mute notifications for this conversation? You will stop receiving alerts for new messages.`}
+        onConfirm={confirmMuteNotifications}
+        confirmText="Mute"
+        cancelText="Cancel"
+      />
+
+      {/* Modals de succÃ¨s et d'erreur */}
+      <CustomModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, message: '' })}
+        title="Success"
+        message={successModal.message}
+        type="alert"
+        confirmText="OK"
+      />
+
+      <CustomModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, message: '' })}
+        title="Error"
+        message={errorModal.message}
+        type="alert"
+        confirmText="OK"
+        isDanger={true}
+      />
+    </>
   );
 };
 
-export default ChatArea;
+export default ChatHeader;
