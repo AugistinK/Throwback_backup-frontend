@@ -335,7 +335,7 @@ const MessageItem = ({
               onClick={toggleMenu}
               title="Message options"
             >
-              <FontAwesomeIcon icon={faEllipsisVertical} />
+              <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 14 }} />
             </button>
 
             {showMenu && (
@@ -350,7 +350,9 @@ const MessageItem = ({
                   style={{
                     position: 'fixed',
                     top: `${menuPosition.top}px`,
-                    left: `${menuPosition.left}px`
+                    left: `${menuPosition.left}px`,
+                    zIndex: 9999,
+                    background: '#ffffff'
                   }}
                 >
                   {isOwn && (
@@ -358,7 +360,7 @@ const MessageItem = ({
                       className={styles.dropdownItem}
                       onClick={() => handleMenuClick(handleEditClick)}
                     >
-                      <FontAwesomeIcon icon={faPen} />
+                      <FontAwesomeIcon icon={faPen} style={{ fontSize: 14 }} />
                       Edit
                     </button>
                   )}
@@ -367,7 +369,7 @@ const MessageItem = ({
                     className={styles.dropdownItem}
                     onClick={() => handleMenuClick(handleCopyClick)}
                   >
-                    <FontAwesomeIcon icon={faCopy} />
+                    <FontAwesomeIcon icon={faCopy} style={{ fontSize: 14 }} />
                     Copy
                   </button>
 
@@ -377,7 +379,7 @@ const MessageItem = ({
                     className={`${styles.dropdownItem} ${styles.dangerItem}`}
                     onClick={() => handleMenuClick(handleDeleteClick)}
                   >
-                    <FontAwesomeIcon icon={faTrash} />
+                    <FontAwesomeIcon icon={faTrash} style={{ fontSize: 14 }} />
                     {isOwn ? 'Delete for everyone' : 'Delete for me'}
                   </button>
                 </div>
