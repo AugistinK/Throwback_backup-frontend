@@ -1036,8 +1036,7 @@
   z-index: 999;
 }
 
-.headerDropdown,
-.messageDropdown {
+.headerDropdown {
   position: absolute;
   top: 48px;
   right: 0;
@@ -1094,6 +1093,129 @@
 .dangerItem:hover {
   background: rgba(220, 38, 38, 0.1);
   color: #dc2626;
+}
+
+
+/* ============================================
+   MESSAGE DROPDOWN MENU - FOND BLANC
+   ============================================ */
+
+.messageDropdown {
+  position: fixed;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  padding: 4px 0;
+  z-index: 9999;
+  animation: slideDown 0.2s ease-out;
+}
+
+.dropdownItem {
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: #333333;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 400;
+  transition: all 0.2s;
+}
+
+.dropdownItem:hover {
+  background: #f5f5f5;
+}
+
+.dropdownItem svg {
+  color: #666666;
+  width: 14px;
+  height: 14px;
+}
+
+.dangerItem {
+  color: #dc2626;
+}
+
+.dangerItem:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.dangerItem svg {
+  color: #dc2626;
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 4px 0;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Menu overlay pour fermer en cliquant à l'extérieur */
+.menuOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+  background: transparent;
+}
+
+/* ============================================
+   BOUTON MENU DES MESSAGES
+   ============================================ */
+
+.messageActions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.messageWrapper:hover .messageActions {
+  opacity: 1;
+}
+
+.messageMenuButton {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #666666;
+  transition: all 0.2s;
+}
+
+.messageMenuButton:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #333333;
+}
+
+.messageMenuButton:active {
+  transform: scale(0.95);
 }
 
 /* ============================================
