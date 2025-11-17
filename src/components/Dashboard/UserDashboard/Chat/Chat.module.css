@@ -1034,43 +1034,32 @@
   transform: scale(1.2);
 }
 
+
+
 /* Menu contextuel */
 .menuOverlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 999;
 }
 
-.headerDropdown,
+/* MENU DU MESSAGE (dropdown blanc) */
 .messageDropdown {
-  position: absolute;
-  top: 48px;
-  right: 0;
-  background: #ffffff;
+  /* on laisse la position gérée en inline dans MessageItem */
+  background: #ffffff !important;
   border: 1px solid #e0e0e0;
   border-radius: 12px;
-  min-width: 200px;
+  min-width: 220px;
   padding: 8px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
   z-index: 1000;
 }
 
-.messageDropdown {
-  top: auto;
-  bottom: 100%;
-  right: auto;
-  left: 0;
-  margin-bottom: 8px;
-}
-
 .messageDropdownOwn {
-  left: auto;
-  right: 0;
+  /* optionnel, au cas où tu veux ajuster plus tard */
 }
 
+/* Items du menu */
 .dropdownItem {
   display: flex;
   align-items: center;
@@ -1079,13 +1068,30 @@
   background: transparent;
   border: none;
   border-radius: 8px;
-  color: #1a1a1a;
+  color: #111827;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
   width: 100%;
   text-align: left;
+  transition: all 0.15s ease;
 }
+
+.dropdownItem:hover {
+  background: #f8f9fa;
+  color: #b31217;
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 6px 0;
+}
+
+.dangerItem:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
 
 .dropdownItem:hover {
   background: #f8f9fa;
