@@ -59,6 +59,8 @@ import MyProfile from './components/Dashboard/AdminDashboard/Profile/MyProfile';
 
 // ✅ Nouveau module admin Friends & Chat
 import AdminFriendsChat from './components/Dashboard/AdminDashboard/FriendsChat/AdminFriendsChat';
+import AdminNotifications from './components/Dashboard/AdminDashboard/Notifications/AdminNotifications';
+
 
 // Composant temporaire pour les pages admin
 const TempPage = ({ title }) => (
@@ -183,7 +185,8 @@ function App() {
 
               <Route path="logs" element={<TempPage title="Logs Système" />} />
               <Route path="profile" element={<MyProfile />} />
-              <Route path="notifications" element={<TempPage title="Notifications" />} />
+              <Route path="notifications" element={<AdminNotifications />} />
+
             </Route>
 
             {/* Fallbacks */}
