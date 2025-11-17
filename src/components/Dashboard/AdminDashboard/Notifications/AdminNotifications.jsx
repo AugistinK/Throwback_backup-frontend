@@ -7,23 +7,30 @@ import styles from './AdminNotifications.module.css';
 const AdminNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, unread, read
-  const [sortOrder, setSortOrder] = useState('desc'); // desc, asc
+  const [filter, setFilter] = useState('all'); // all | unread | read
+  const [sortOrder, setSortOrder] = useState('desc'); // desc | asc
   const { socket } = useSocket();
 
-  // Charger les notifications depuis le backend
+  // Load notifications from backend
   const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
       const response = await notificationsAPI.getUserNotifications();
-      
+
       if (response && response.success) {
-        const notifList = Array.isArray(response.data) 
-          ? response.data 
-          : Array.isArray(response.data?.data) 
-          ? response.data.data 
-          : [];
-        
+        const raw =
+          Array.isArray(response.data)
+            ? response.data
+            : Array.isArray(response.data?.data)
+            ? response.data.data
+            : [];
+
+        // Normaliser l'id pour être sûr d'avoir notif.id
+        const notifList = raw.map((n) => ({
+          ...n,
+          id: n.id || n._id, // compatibilité MongoDB
+        }));
+
         setNotifications(notifList);
       } else {
         console.error('Failed to load notifications:', response?.message);
@@ -37,22 +44,21 @@ const AdminNotifications = () => {
     }
   }, []);
 
-  // Charger au montage
+  // Load on mount
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
 
-  // Écouter les nouvelles notifications via Socket.IO
+  // Listen to new notifications via Socket.IO
   useEffect(() => {
     if (!socket) return;
 
     const handleNewNotification = (notif) => {
-      console.log('🔔 Nouvelle notification reçue:', notif);
-      
-      // Ajouter la notification en haut de la liste
-      setNotifications(prev => [
+      console.log('🔔 New notification received:', notif);
+
+      setNotifications((prev) => [
         {
-          id: notif.id,
+          id: notif.id || notif._id,
           type: notif.type,
           title: notif.title,
           message: notif.message,
@@ -60,18 +66,18 @@ const AdminNotifications = () => {
           read: false,
           createdAt: notif.createdAt,
           actor: notif.actor,
-          metadata: notif.metadata || {}
+          metadata: notif.metadata || {},
         },
-        ...prev
+        ...prev,
       ]);
 
-      // Jouer un son de notification (optionnel)
+      // Play notification sound (optional)
       try {
         const audio = new Audio('/sounds/notification.mp3');
         audio.volume = 0.3;
-        audio.play().catch(e => console.log('Cannot play sound:', e));
+        audio.play().catch((e) => console.log('Cannot play sound:', e));
       } catch (e) {
-        // Ignorer les erreurs de lecture audio
+        // ignore audio errors
       }
     };
 
@@ -82,14 +88,16 @@ const AdminNotifications = () => {
     };
   }, [socket]);
 
-  // Marquer une notification comme lue
+  // Mark notification as read
   const markAsRead = async (notifId) => {
+    if (!notifId) return;
+
     try {
       const response = await notificationsAPI.markAsRead(notifId);
-      
+
       if (response && response.success) {
-        setNotifications(prev =>
-          prev.map(n => n.id === notifId ? { ...n, read: true } : n)
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notifId ? { ...n, read: true } : n))
         );
       }
     } catch (error) {
@@ -97,40 +105,40 @@ const AdminNotifications = () => {
     }
   };
 
-  // Marquer toutes comme lues
+  // Mark all as read
   const markAllAsRead = async () => {
     try {
       const response = await notificationsAPI.markAllAsRead();
-      
+
       if (response && response.success) {
-        setNotifications(prev =>
-          prev.map(n => ({ ...n, read: true }))
-        );
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       }
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
   };
 
-  // Filtrer les notifications
-  const filteredNotifications = notifications.filter(n => {
+  // Filter notifications
+  const filteredNotifications = notifications.filter((n) => {
     if (filter === 'unread') return !n.read;
     if (filter === 'read') return n.read;
     return true;
   });
 
-  // Trier les notifications
+  // Sort notifications
   const sortedNotifications = [...filteredNotifications].sort((a, b) => {
     const dateA = new Date(a.createdAt).getTime();
     const dateB = new Date(b.createdAt).getTime();
     return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
   });
 
-  // Compter les non lues
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Count unread
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // Formater la date
+  // Human readable date
   const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+
     const date = new Date(dateStr);
     const now = new Date();
     const diffMs = now - date;
@@ -138,19 +146,19 @@ const AdminNotifications = () => {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'À l\'instant';
-    if (diffMins < 60) return `Il y a ${diffMins} min`;
-    if (diffHours < 24) return `Il y a ${diffHours}h`;
-    if (diffDays < 7) return `Il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
-    
-    return date.toLocaleDateString('fr-FR', {
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    return date.toLocaleDateString('en-US', {
       day: 'numeric',
       month: 'short',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
     });
   };
 
-  // Obtenir l'icône selon le type
+  // Icon by type
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'friend_request':
@@ -174,7 +182,7 @@ const AdminNotifications = () => {
     }
   };
 
-  // Obtenir la couleur selon le type
+  // Color by type
   const getNotificationColor = (type) => {
     switch (type) {
       case 'friend_request':
@@ -199,152 +207,184 @@ const AdminNotifications = () => {
         <div className={styles.header}>
           <h1>
             <i className="fas fa-bell"></i>
-            Notifications Admin
+            Admin Notifications
           </h1>
         </div>
         <div className={styles.loadingContainer}>
           <div className={styles.spinner}></div>
-          <p>Chargement des notifications...</p>
+          <p>Loading notifications...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
-      {/* En-tête */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1>
-            <i className="fas fa-bell"></i>
-            Notifications Admin
-          </h1>
-          {unreadCount > 0 && (
-            <span className={styles.unreadBadge}>{unreadCount} non lue{unreadCount > 1 ? 's' : ''}</span>
-          )}
-        </div>
-        
+    <div className={styles.dashboardContainer}>
+      {/* Header */}
+      <div className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>
+          <i className="fas fa-bell"></i>
+          Notifications
+        </h1>
         <div className={styles.headerActions}>
           {unreadCount > 0 && (
-            <button
-              className={styles.markAllReadBtn}
-              onClick={markAllAsRead}
-            >
+            <button className={styles.markAllReadBtn} onClick={markAllAsRead}>
               <i className="fas fa-check-double"></i>
-              Tout marquer comme lu
+              Mark All as Read
             </button>
           )}
-          
-          <button
-            className={styles.refreshBtn}
-            onClick={loadNotifications}
-          >
+          <button className={styles.refreshBtn} onClick={loadNotifications}>
             <i className="fas fa-sync-alt"></i>
           </button>
         </div>
       </div>
 
-      {/* Filtres */}
-      <div className={styles.filters}>
-        <div className={styles.filterGroup}>
-          <button
-            className={`${styles.filterBtn} ${filter === 'all' ? styles.active : ''}`}
-            onClick={() => setFilter('all')}
-          >
-            Toutes ({notifications.length})
-          </button>
-          <button
-            className={`${styles.filterBtn} ${filter === 'unread' ? styles.active : ''}`}
-            onClick={() => setFilter('unread')}
-          >
-            Non lues ({unreadCount})
-          </button>
-          <button
-            className={`${styles.filterBtn} ${filter === 'read' ? styles.active : ''}`}
-            onClick={() => setFilter('read')}
-          >
-            Lues ({notifications.length - unreadCount})
-          </button>
+      {/* Stats Cards */}
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ background: '#b31217' }}>
+            <i className="fas fa-bell"></i>
+          </div>
+          <div className={styles.statContent}>
+            <h3>{notifications.length}</h3>
+            <p>Total</p>
+          </div>
         </div>
-
-        <div className={styles.sortGroup}>
-          <label>Trier par:</label>
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-            className={styles.sortSelect}
-          >
-            <option value="desc">Plus récentes d'abord</option>
-            <option value="asc">Plus anciennes d'abord</option>
-          </select>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ background: '#FF9800' }}>
+            <i className="fas fa-bell-slash"></i>
+          </div>
+          <div className={styles.statContent}>
+            <h3>{unreadCount}</h3>
+            <p>Unread</p>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ background: '#4CAF50' }}>
+            <i className="fas fa-check-circle"></i>
+          </div>
+          <div className={styles.statContent}>
+            <h3>{notifications.length - unreadCount}</h3>
+            <p>Read</p>
+          </div>
         </div>
       </div>
 
-      {/* Liste des notifications */}
-      <div className={styles.notificationsList}>
-        {sortedNotifications.length === 0 ? (
-          <div className={styles.emptyState}>
-            <i className="fas fa-bell-slash"></i>
-            <h3>Aucune notification</h3>
-            <p>
-              {filter === 'unread' 
-                ? 'Vous n\'avez aucune notification non lue'
-                : filter === 'read'
-                ? 'Vous n\'avez aucune notification lue'
-                : 'Vous n\'avez reçu aucune notification pour le moment'}
-            </p>
-          </div>
-        ) : (
-          sortedNotifications.map((notif) => (
-            <div
-              key={notif.id}
-              className={`${styles.notificationCard} ${!notif.read ? styles.unread : ''}`}
-              onClick={() => {
-                if (!notif.read) {
-                  markAsRead(notif.id);
-                }
-                if (notif.link) {
-                  window.location.href = notif.link;
-                }
-              }}
+      {/* Filters + List */}
+      <div className={styles.contentCard}>
+        {/* Filters */}
+        <div className={styles.filters}>
+          <div className={styles.filterGroup}>
+            <button
+              className={`${styles.filterBtn} ${
+                filter === 'all' ? styles.active : ''
+              }`}
+              onClick={() => setFilter('all')}
             >
+              All ({notifications.length})
+            </button>
+            <button
+              className={`${styles.filterBtn} ${
+                filter === 'unread' ? styles.active : ''
+              }`}
+              onClick={() => setFilter('unread')}
+            >
+              Unread ({unreadCount})
+            </button>
+            <button
+              className={`${styles.filterBtn} ${
+                filter === 'read' ? styles.active : ''
+              }`}
+              onClick={() => setFilter('read')}
+            >
+              Read ({notifications.length - unreadCount})
+            </button>
+          </div>
+
+          <div className={styles.sortGroup}>
+            <label>Sort by:</label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className={styles.sortSelect}
+            >
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Notifications List */}
+        <div className={styles.notificationsList}>
+          {sortedNotifications.length === 0 ? (
+            <div className={styles.emptyState}>
+              <i className="fas fa-bell-slash"></i>
+              <h3>No Notifications</h3>
+              <p>
+                {filter === 'unread'
+                  ? 'You have no unread notifications'
+                  : filter === 'read'
+                  ? 'You have no read notifications'
+                  : 'You have not received any notifications yet'}
+              </p>
+            </div>
+          ) : (
+            sortedNotifications.map((notif) => (
               <div
-                className={styles.notificationIcon}
-                style={{ backgroundColor: getNotificationColor(notif.type) }}
+                key={notif.id || notif._id}
+                className={`${styles.notificationCard} ${
+                  !notif.read ? styles.unread : ''
+                }`}
+                onClick={() => {
+                  if (!notif.read && notif.id) {
+                    markAsRead(notif.id);
+                  }
+                  if (notif.link) {
+                    window.location.href = notif.link;
+                  }
+                }}
               >
-                <i className={`fas ${getNotificationIcon(notif.type)}`}></i>
-              </div>
-
-              <div className={styles.notificationContent}>
-                <div className={styles.notificationHeader}>
-                  <h3>{notif.title}</h3>
-                  <span className={styles.notificationTime}>
-                    {formatDate(notif.createdAt)}
-                  </span>
+                <div
+                  className={styles.notificationIcon}
+                  style={{ backgroundColor: getNotificationColor(notif.type) }}
+                >
+                  <i className={`fas ${getNotificationIcon(notif.type)}`}></i>
                 </div>
-                
-                <p className={styles.notificationMessage}>{notif.message}</p>
 
-                {notif.metadata && Object.keys(notif.metadata).length > 0 && (
-                  <div className={styles.notificationMeta}>
-                    {notif.metadata.type_action && (
-                      <span className={styles.metaTag}>
-                        <i className="fas fa-tag"></i>
-                        {notif.metadata.type_action}
-                      </span>
+                <div className={styles.notificationContent}>
+                  <div className={styles.notificationHeader}>
+                    <h3>{notif.title}</h3>
+                    <span className={styles.notificationTime}>
+                      {formatDate(notif.createdAt)}
+                    </span>
+                  </div>
+
+                  <p className={styles.notificationMessage}>
+                    {notif.message}
+                  </p>
+
+                  {notif.metadata &&
+                    Object.keys(notif.metadata).length > 0 && (
+                      <div className={styles.notificationMeta}>
+                        {notif.metadata.type_action && (
+                          <span className={styles.metaTag}>
+                            <i className="fas fa-tag"></i>
+                            {notif.metadata.type_action}
+                          </span>
+                        )}
+                      </div>
                     )}
+                </div>
+
+                {!notif.read && (
+                  <div className={styles.unreadIndicator}>
+                    <span className={styles.unreadDot}></span>
                   </div>
                 )}
               </div>
-
-              {!notif.read && (
-                <div className={styles.unreadIndicator}>
-                  <span className={styles.unreadDot}></span>
-                </div>
-              )}
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
