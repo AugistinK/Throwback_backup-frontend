@@ -712,6 +712,14 @@
   font-size: 14px;
 }
 
+/* Nouveau conteneur pour le bouton/menu du message
+   pour correspondre au comportement de MessageContextMenu */
+.messageActions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
 .messageMenuButton {
   position: absolute;
   top: 4px;
