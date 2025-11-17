@@ -1,14 +1,11 @@
 // src/components/Dashboard/UserDashboard/Chat/MessageItem.jsx
-import React, { useState } from 'react';
+import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faCheck,
-  faCheckDouble,
-  faEllipsisVertical,
-  faCopy,
-  faTrash
-} from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faCheckDouble } from '@fortawesome/free-solid-svg-icons';
 import styles from './Chat.module.css';
+
+// On réutilise le menu déjà fonctionnel
+import MessageContextMenu from '../Friends/MessageContextMenu';
 
 const MessageItem = ({
   message,
@@ -16,10 +13,12 @@ const MessageItem = ({
   showAvatar,
   participant,
   currentUser,
-  isGroup
+  isGroup,
+  // callbacks fournis par le parent pour utiliser les bons endpoints
+  onEditMessage,
+  onCopyMessage,
+  onDeleteMessage
 }) => {
-  const [showMenu, setShowMenu] = useState(false);
-
   const formatTime = (date) => {
     if (!date) return '';
     return new Date(date).toLocaleTimeString('en-US', {
@@ -31,8 +30,8 @@ const MessageItem = ({
 
   const getInitialsFromUser = (user) => {
     if (!user) return '';
-    const first = user.prenom || user.firstName || user.name || '';
-    const last = user.nom || user.lastName || '';
+    const first = user?.prenom || user?.firstName || user?.name || '';
+    const last = user?.nom || user?.lastName || '';
     const text = `${first} ${last}`.trim();
     if (!text) return '';
     return text
@@ -49,13 +48,6 @@ const MessageItem = ({
     ? currentUser
     : participant;
 
-  const handleCopyMessage = () => {
-    if (message.content) {
-      navigator.clipboard.writeText(message.content);
-    }
-    setShowMenu(false);
-  };
-
   const senderDisplayName = (() => {
     const u = message.sender;
     if (!u) return '';
@@ -63,6 +55,23 @@ const MessageItem = ({
     const last = u.nom || u.lastName || '';
     return `${first} ${last}`.trim() || first || last;
   })();
+
+  // Fallback pour la copie si le parent ne fournit pas de handler
+  const handleCopy = (msg) => {
+    if (onCopyMessage) {
+      onCopyMessage(msg);
+    } else if (msg?.content) {
+      navigator.clipboard.writeText(msg.content);
+    }
+  };
+
+  const handleEdit = () => {
+    if (onEditMessage) onEditMessage(message);
+  };
+
+  const handleDelete = (msg, isOwnMessage) => {
+    if (onDeleteMessage) onDeleteMessage(msg, isOwnMessage);
+  };
 
   return (
     <div
@@ -89,10 +98,6 @@ const MessageItem = ({
         className={`${styles.messageBubble} ${
           isOwn ? styles.messageBubbleOwn : styles.messageBubbleOther
         } ${message.tempId ? styles.messageSending : ''}`}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          setShowMenu(true);
-        }}
       >
         {isGroup && !isOwn && senderDisplayName && (
           <div className={styles.messageAuthor}>{senderDisplayName}</div>
@@ -139,47 +144,14 @@ const MessageItem = ({
           )}
         </div>
 
-        <button
-          className={styles.messageMenuButton}
-          onClick={() => setShowMenu(!showMenu)}
-        >
-          <FontAwesomeIcon icon={faEllipsisVertical} />
-        </button>
-
-        {showMenu && (
-          <>
-            <div
-              className={styles.menuOverlay}
-              onClick={() => setShowMenu(false)}
-            />
-            <div
-              className={`${styles.messageDropdown} ${
-                isOwn ? styles.messageDropdownOwn : ''
-              }`}
-            >
-              {/* Reply & Forward retirés – il reste seulement Copy + Delete */}
-              <button
-                className={styles.dropdownItem}
-                onClick={handleCopyMessage}
-              >
-                <FontAwesomeIcon icon={faCopy} />
-                Copy
-              </button>
-
-              {isOwn && (
-                <>
-                  <div className={styles.dropdownDivider} />
-                  <button
-                    className={`${styles.dropdownItem} ${styles.dangerItem}`}
-                  >
-                    <FontAwesomeIcon icon={faTrash} />
-                    Delete
-                  </button>
-                </>
-              )}
-            </div>
-          </>
-        )}
+        {/* Menu contextuel réutilisé (sans Reply / Forward) */}
+        <MessageContextMenu
+          message={message}
+          isOwnMessage={isOwn}
+          onEdit={onEditMessage ? handleEdit : undefined}
+          onCopy={handleCopy}
+          onDelete={onDeleteMessage ? handleDelete : undefined}
+        />
       </div>
     </div>
   );
