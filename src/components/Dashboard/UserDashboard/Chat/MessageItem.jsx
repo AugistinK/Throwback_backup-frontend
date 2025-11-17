@@ -351,8 +351,7 @@ const MessageItem = ({
                     position: 'fixed',
                     top: `${menuPosition.top}px`,
                     left: `${menuPosition.left}px`,
-                    zIndex: 9999,
-                    background: '#ffffff'
+                    zIndex: 9999
                   }}
                 >
                   {isOwn && (

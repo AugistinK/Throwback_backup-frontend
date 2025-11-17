@@ -5,10 +5,11 @@ import playlistAPI from './playlistAPI';
 import searchAPI from './searchAPI';
 import socialAPI from './socialAPI';
 import { adminAPI } from './adminAPI';
-import friendsAPI from './friendsAPI'; 
+import friendsAPIBase from './friendsAPI';
 
-//  Configuration de base (espace en trop supprimé à la fin de l'URL)
-const BASE_URL = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
+//  Configuration de base
+const BASE_URL =
+  process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
 
 // Créer une instance axios avec configuration par défaut
 const api = axios.create({
@@ -17,7 +18,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true 
+  withCredentials: true,
 });
 
 // ============================================
@@ -31,16 +32,18 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     // Logging sélectif pour debug
     if (
-      config.url.includes('/videos/') || 
-      config.url.includes('/memories') || 
-      config.url.includes('/like') || 
+      config.url.includes('/videos/') ||
+      config.url.includes('/memories') ||
+      config.url.includes('/like') ||
       config.url.includes('/profile') ||
-      config.url.includes('/friends') 
+      config.url.includes('/friends')
     ) {
-      console.log(` API Request: ${config.method?.toUpperCase()} ${config.url}`);
+      console.log(
+        ` API Request: ${config.method?.toUpperCase()} ${config.url}`,
+      );
       if (config.data && typeof config.data !== 'object') {
         console.log(' Request data:', config.data);
       }
@@ -50,7 +53,7 @@ api.interceptors.request.use(
   (error) => {
     console.error(' Request error:', error);
     return Promise.reject(error);
-  }
+  },
 );
 
 // Intercepteur de réponse
@@ -58,13 +61,17 @@ api.interceptors.response.use(
   (response) => {
     // Logging sélectif pour debug
     if (
-      response.config.url.includes('/videos/') || 
-      response.config.url.includes('/memories') || 
-      response.config.url.includes('/like') || 
+      response.config.url.includes('/videos/') ||
+      response.config.url.includes('/memories') ||
+      response.config.url.includes('/like') ||
       response.config.url.includes('/profile') ||
-      response.config.url.includes('/friends') 
+      response.config.url.includes('/friends')
     ) {
-      console.log(` API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`);
+      console.log(
+        ` API Response: ${response.config.method?.toUpperCase()} ${
+          response.config.url
+        }`,
+      );
       console.log(' Response data:', response.data);
     }
     return response;
@@ -78,26 +85,25 @@ api.interceptors.response.use(
         statusText: error.response.statusText,
         url: error.config?.url,
         method: error.config?.method?.toUpperCase(),
-        data: error.response.data
+        data: error.response.data,
       });
-      
+
       //  Gestion spéciale pour 401 (non authentifié)
       if (error.response.status === 401) {
         console.warn(' Unauthorized - Token may be invalid');
-        // Optionnel : rediriger vers login
+        // Optionnel : redirection possible ici si besoin
         // window.location.href = '/login';
       }
-      
+
       //  Gestion spéciale pour 403 (interdit)
       if (error.response.status === 403) {
         console.warn(' Forbidden - Insufficient permissions');
       }
-      
+
       //  Gestion spéciale pour 404 (non trouvé)
       if (error.response.status === 404) {
         console.warn(' Not Found:', error.config?.url);
       }
-      
     } else if (error.request) {
       // La requête a été envoyée mais pas de réponse
       console.error(' No response received:', error.request);
@@ -105,9 +111,9 @@ api.interceptors.response.use(
       // Erreur lors de la configuration de la requête
       console.error(' Request setup error:', error.message);
     }
-    
+
     return Promise.reject(error);
-  }
+  },
 );
 
 // ============================================
@@ -121,16 +127,20 @@ const videoAPI = {
       const queryParams = new URLSearchParams({
         type: 'music',
         limit: '50',
-        ...params
+        ...params,
       }).toString();
       const response = await api.get(`/api/public/videos?${queryParams}`);
-      if (response.data.success) return response.data.data || response.data.videos || [];
+      if (response.data.success)
+        return response.data.data || response.data.videos || [];
       if (Array.isArray(response.data)) return response.data;
       return [];
     } catch {
       try {
-        const fallbackResponse = await api.get('/api/videos?type=music&limit=50');
-        if (fallbackResponse.data.success) return fallbackResponse.data.data || [];
+        const fallbackResponse = await api.get(
+          '/api/videos?type=music&limit=50',
+        );
+        if (fallbackResponse.data.success)
+          return fallbackResponse.data.data || [];
       } catch {}
       return [];
     }
@@ -145,7 +155,8 @@ const videoAPI = {
     } catch (error) {
       try {
         const fallbackResponse = await api.get(`/api/videos/${videoId}`);
-        if (fallbackResponse.data.success) return fallbackResponse.data.data || fallbackResponse.data;
+        if (fallbackResponse.data.success)
+          return fallbackResponse.data.data || fallbackResponse.data;
       } catch {}
       throw error;
     }
@@ -162,11 +173,17 @@ const videoAPI = {
         try {
           const cacheJSON = localStorage.getItem('allMemories');
           const cache = cacheJSON ? JSON.parse(cacheJSON) : [];
-          const ids = new Set(cache.map(m => m._id || m.id));
-          const uniq = memories.filter(m => !ids.has(m._id || m.id));
+          const ids = new Set(cache.map((m) => m._id || m.id));
+          const uniq = memories.filter((m) => !ids.has(m._id || m.id));
           if (uniq.length > 0) {
-            localStorage.setItem('allMemories', JSON.stringify([...uniq, ...cache]));
-            localStorage.setItem('memoriesFetchTime', Date.now().toString());
+            localStorage.setItem(
+              'allMemories',
+              JSON.stringify([...uniq, ...cache]),
+            );
+            localStorage.setItem(
+              'memoriesFetchTime',
+              Date.now().toString(),
+            );
           }
         } catch {}
         return memories;
@@ -184,11 +201,12 @@ const videoAPI = {
       const cacheJSON = localStorage.getItem('allMemories');
       if (cacheJSON) {
         const cache = JSON.parse(cacheJSON);
-        return cache.filter(m => {
+        return cache.filter((m) => {
           const vid =
             (m.video && typeof m.video === 'object' ? m.video._id : null) ||
             (typeof m.video === 'string' ? m.video : null) ||
-            m.videoId || m.video_id;
+            m.videoId ||
+            m.video_id;
           return vid && vid.toString() === videoId.toString();
         });
       }
@@ -203,12 +221,17 @@ const videoAPI = {
       contenu: content,
       video_id: videoId,
       videoId: videoId,
-      video: videoId
+      video: videoId,
     };
     try {
       const r = await api.post(`/api/public/videos/${videoId}/memories`, payload);
       if (r.data?.success) {
-        if (r.data.data && !r.data.data.video && !r.data.data.videoId && !r.data.data.video_id) {
+        if (
+          r.data.data &&
+          !r.data.data.video &&
+          !r.data.data.videoId &&
+          !r.data.data.video_id
+        ) {
           r.data.data.video = { _id: videoId };
           r.data.data.videoId = videoId;
         }
@@ -218,7 +241,12 @@ const videoAPI = {
     } catch (e) {
       const fr = await api.post(`/api/videos/${videoId}/memories`, payload);
       if (fr.data?.success) {
-        if (fr.data.data && !fr.data.data.video && !fr.data.data.videoId && !fr.data.data.video_id) {
+        if (
+          fr.data.data &&
+          !fr.data.data.video &&
+          !fr.data.data.videoId &&
+          !fr.data.data.video_id
+        ) {
           fr.data.data.video = { _id: videoId };
           fr.data.data.videoId = videoId;
         }
@@ -284,11 +312,11 @@ const videoAPI = {
         return { success: true, message: 'Partage enregistré' };
       }
     }
-  }
+  },
 };
 
 // ============================================
-// CONVERSATIONS API (NOUVEAU)
+// CONVERSATIONS API (NOUVEAU - côté /api/conversations/*)
 // ============================================
 
 const conversationsAPI = {
@@ -303,8 +331,9 @@ const conversationsAPI = {
       console.error('Error fetching conversations:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to load conversations',
-        data: []
+        message:
+          error.response?.data?.message || 'Failed to load conversations',
+        data: [],
       };
     }
   },
@@ -314,13 +343,16 @@ const conversationsAPI = {
    */
   getOrCreateDirectConversation: async (friendId) => {
     try {
-      const response = await api.post('/api/conversations/direct', { friendId });
+      const response = await api.post('/api/conversations/direct', {
+        friendId,
+      });
       return response.data;
     } catch (error) {
       console.error('Error getting/creating conversation:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to create conversation'
+        message:
+          error.response?.data?.message || 'Failed to create conversation',
       };
     }
   },
@@ -333,14 +365,14 @@ const conversationsAPI = {
       const response = await api.post('/api/conversations/groups', {
         name,
         participants,
-        description
+        description,
       });
       return response.data;
     } catch (error) {
       console.error('Error creating group:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to create group'
+        message: error.response?.data?.message || 'Failed to create group',
       };
     }
   },
@@ -350,13 +382,16 @@ const conversationsAPI = {
    */
   updateGroup: async (groupId, data) => {
     try {
-      const response = await api.put(`/api/conversations/groups/${groupId}`, data);
+      const response = await api.put(
+        `/api/conversations/groups/${groupId}`,
+        data,
+      );
       return response.data;
     } catch (error) {
       console.error('Error updating group:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to update group'
+        message: error.response?.data?.message || 'Failed to update group',
       };
     }
   },
@@ -368,14 +403,15 @@ const conversationsAPI = {
     try {
       const response = await api.post(
         `/api/conversations/groups/${groupId}/participants`,
-        { participantId }
+        { participantId },
       );
       return response.data;
     } catch (error) {
       console.error('Error adding participant:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to add participant'
+        message:
+          error.response?.data?.message || 'Failed to add participant',
       };
     }
   },
@@ -386,14 +422,15 @@ const conversationsAPI = {
   removeParticipantFromGroup: async (groupId, participantId) => {
     try {
       const response = await api.delete(
-        `/api/conversations/groups/${groupId}/participants/${participantId}`
+        `/api/conversations/groups/${groupId}/participants/${participantId}`,
       );
       return response.data;
     } catch (error) {
       console.error('Error removing participant:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to remove participant'
+        message:
+          error.response?.data?.message || 'Failed to remove participant',
       };
     }
   },
@@ -403,13 +440,16 @@ const conversationsAPI = {
    */
   archiveConversation: async (conversationId) => {
     try {
-      const response = await api.put(`/api/conversations/${conversationId}/archive`);
+      const response = await api.put(
+        `/api/conversations/${conversationId}/archive`,
+      );
       return response.data;
     } catch (error) {
       console.error('Error archiving conversation:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to archive conversation'
+        message:
+          error.response?.data?.message || 'Failed to archive conversation',
       };
     }
   },
@@ -419,13 +459,16 @@ const conversationsAPI = {
    */
   unarchiveConversation: async (conversationId) => {
     try {
-      const response = await api.put(`/api/conversations/${conversationId}/unarchive`);
+      const response = await api.put(
+        `/api/conversations/${conversationId}/unarchive`,
+      );
       return response.data;
     } catch (error) {
       console.error('Error unarchiving conversation:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to unarchive conversation'
+        message:
+          error.response?.data?.message || 'Failed to unarchive conversation',
       };
     }
   },
@@ -435,13 +478,16 @@ const conversationsAPI = {
    */
   pinConversation: async (conversationId) => {
     try {
-      const response = await api.put(`/api/conversations/${conversationId}/pin`);
+      const response = await api.put(
+        `/api/conversations/${conversationId}/pin`,
+      );
       return response.data;
     } catch (error) {
       console.error('Error pinning conversation:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to pin conversation'
+        message:
+          error.response?.data?.message || 'Failed to pin conversation',
       };
     }
   },
@@ -451,13 +497,16 @@ const conversationsAPI = {
    */
   unpinConversation: async (conversationId) => {
     try {
-      const response = await api.put(`/api/conversations/${conversationId}/unpin`);
+      const response = await api.put(
+        `/api/conversations/${conversationId}/unpin`,
+      );
       return response.data;
     } catch (error) {
       console.error('Error unpinning conversation:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to unpin conversation'
+        message:
+          error.response?.data?.message || 'Failed to unpin conversation',
       };
     }
   },
@@ -467,15 +516,19 @@ const conversationsAPI = {
    */
   muteConversation: async (conversationId, duration = null) => {
     try {
-      const response = await api.put(`/api/conversations/${conversationId}/mute`, {
-        duration
-      });
+      const response = await api.put(
+        `/api/conversations/${conversationId}/mute`,
+        {
+          duration,
+        },
+      );
       return response.data;
     } catch (error) {
       console.error('Error muting conversation:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to mute conversation'
+        message:
+          error.response?.data?.message || 'Failed to mute conversation',
       };
     }
   },
@@ -485,19 +538,23 @@ const conversationsAPI = {
    */
   unmuteConversation: async (conversationId) => {
     try {
-      const response = await api.put(`/api/conversations/${conversationId}/unmute`);
+      const response = await api.put(
+        `/api/conversations/${conversationId}/unmute`,
+      );
       return response.data;
     } catch (error) {
       console.error('Error unmuting conversation:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to unmute conversation'
+        message:
+          error.response?.data?.message || 'Failed to unmute conversation',
       };
     }
-  }
+  },
 };
+
 // ============================================
-// NOTIFICATIONS API (NOUVEAU)
+// NOTIFICATIONS API
 // ============================================
 
 const notificationsAPI = {
@@ -510,9 +567,10 @@ const notificationsAPI = {
       console.error('Error fetching notifications:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to load notifications',
+        message:
+          error.response?.data?.message || 'Failed to load notifications',
         data: [],
-        unreadCount: 0
+        unreadCount: 0,
       };
     }
   },
@@ -525,7 +583,9 @@ const notificationsAPI = {
       console.error('Error marking all notifications as read:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to mark notifications as read'
+        message:
+          error.response?.data?.message ||
+          'Failed to mark notifications as read',
       };
     }
   },
@@ -538,13 +598,15 @@ const notificationsAPI = {
       console.error('Error marking notification as read:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to mark notification as read'
+        message:
+          error.response?.data?.message ||
+          'Failed to mark notification as read',
       };
     }
-  }
+  },
 };
 
-// =================Admin FRIENDS CAHT API==========================
+// ================= Admin FRIENDS CHAT API ==========================
 
 const adminFriendsChatAPI = {
   getOverview() {
@@ -574,13 +636,13 @@ const adminFriendsChatAPI = {
   getConversationMessages(conversationId, params = {}) {
     return api.get(
       `/api/admin/friends-chat/conversations/${conversationId}/messages`,
-      { params }
+      { params },
     );
   },
 
   getDirectMessages(userA, userB, params = {}) {
     return api.get('/api/admin/friends-chat/direct-messages', {
-      params: { userA, userB, ...params }
+      params: { userA, userB, ...params },
     });
   },
 
@@ -594,9 +656,371 @@ const adminFriendsChatAPI = {
 
   updateReport(reportId, payload) {
     return api.put(`/api/admin/friends-chat/reports/${reportId}`, payload);
-  }
+  },
 };
 
+// ============================================
+// FRIENDS / MESSAGERIE API (fusion avec New_api.js)
+// ============================================
+
+const friendsAPI = {
+  ...(friendsAPIBase || {}),
+
+  // ==================== CONVERSATIONS ====================
+
+  /**
+   * Récupérer toutes les conversations de l'utilisateur (routes /api/messages/*)
+   */
+  getConversations: async () => {
+    try {
+      const response = await api.get('/api/messages/conversations');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      throw error;
+    }
+  },
+
+  // ==================== MESSAGES DIRECTS ====================
+
+  /**
+   * Récupérer les messages d'une conversation directe
+   */
+  getMessages: async (friendId, page = 1, limit = 50) => {
+    try {
+      const response = await api.get(`/api/messages/${friendId}`, {
+        params: { page, limit },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Envoyer un message direct
+   */
+  sendMessage: async (receiverId, content, type = 'text') => {
+    try {
+      const response = await api.post('/api/messages', {
+        receiverId,
+        content,
+        type,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Marquer un message comme lu
+   */
+  markMessageAsRead: async (messageId) => {
+    try {
+      const response = await api.put(`/api/messages/${messageId}/read`);
+      return response.data;
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Éditer un message
+   */
+  editMessage: async (messageId, newContent) => {
+    try {
+      const response = await api.put(`/api/messages/${messageId}`, {
+        content: newContent,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error editing message:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Supprimer un message
+   */
+  deleteMessage: async (messageId, forEveryone = false) => {
+    try {
+      const response = await api.delete(`/api/messages/${messageId}`, {
+        data: { forEveryone },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtenir le nombre de messages non lus
+   */
+  getUnreadCount: async () => {
+    try {
+      const response = await api.get('/api/messages/unread/count');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Effacer l'historique de conversation
+   */
+  clearChatHistory: async (friendId) => {
+    try {
+      const response = await api.delete(
+        `/api/messages/conversation/${friendId}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error clearing chat history:', error);
+      throw error;
+    }
+  },
+
+  // ==================== GROUPES ====================
+
+  /**
+   * Créer un nouveau groupe (routes /api/groups)
+   */
+  createGroup: async (name, participants, description = '') => {
+    try {
+      const response = await api.post('/api/groups', {
+        name,
+        participants,
+        description,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating group:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Récupérer tous les groupes de l'utilisateur
+   */
+  getFriendGroups: async () => {
+    try {
+      const response = await api.get('/api/groups');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Récupérer les détails d'un groupe
+   */
+  getGroupDetails: async (groupId) => {
+    try {
+      const response = await api.get(`/api/groups/${groupId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching group details:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Récupérer les messages d'un groupe
+   */
+  getGroupMessages: async (groupId, page = 1, limit = 50) => {
+    try {
+      const response = await api.get(`/api/groups/${groupId}/messages`, {
+        params: { page, limit },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching group messages:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Envoyer un message dans un groupe
+   */
+  sendGroupMessage: async (
+    groupId,
+    content,
+    type = 'text',
+    replyTo = null,
+  ) => {
+    try {
+      const response = await api.post(`/api/groups/${groupId}/messages`, {
+        content,
+        type,
+        replyTo,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error sending group message:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Ajouter des membres à un groupe
+   */
+  addGroupMembers: async (groupId, userIds) => {
+    try {
+      const response = await api.post(`/api/groups/${groupId}/members`, {
+        userIds,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error adding group members:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Retirer un membre d'un groupe
+   */
+  removeGroupMember: async (groupId, memberId) => {
+    try {
+      const response = await api.delete(
+        `/api/groups/${groupId}/members/${memberId}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error removing group member:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Quitter un groupe
+   */
+  leaveGroup: async (groupId) => {
+    try {
+      const response = await api.post(`/api/groups/${groupId}/leave`);
+      return response.data;
+    } catch (error) {
+      console.error('Error leaving group:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Supprimer un groupe
+   */
+  deleteGroup: async (groupId) => {
+    try {
+      const response = await api.delete(`/api/groups/${groupId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Mettre à jour les informations du groupe
+   */
+  updateGroup: async (groupId, updates) => {
+    try {
+      const response = await api.put(`/api/groups/${groupId}`, updates);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating group:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Promouvoir un membre en admin
+   */
+  promoteToAdmin: async (groupId, memberId) => {
+    try {
+      const response = await api.post(
+        `/api/groups/${groupId}/admins/${memberId}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error promoting to admin:', error);
+      throw error;
+    }
+  },
+
+  // ==================== AMIS ====================
+
+  /**
+   * Récupérer la liste des amis
+   */
+  getFriends: async () => {
+    try {
+      const response = await api.get('/api/friends');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Bloquer un utilisateur
+   */
+  blockUser: async (userId) => {
+    try {
+      const response = await api.post(`/api/friends/block/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Débloquer un utilisateur
+   */
+  unblockUser: async (userId) => {
+    try {
+      const response = await api.delete(`/api/friends/block/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtenir la liste des utilisateurs bloqués
+   */
+  getBlockedUsers: async () => {
+    try {
+      const response = await api.get('/api/friends/blocked');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching blocked users:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Rechercher des utilisateurs pour les ajouter à un groupe
+   */
+  searchUsers: async (query) => {
+    try {
+      const response = await api.get('/api/users/search', {
+        params: { q: query },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error searching users:', error);
+      throw error;
+    }
+  },
+};
 
 // ============================================
 // EXPORTS
@@ -611,6 +1035,7 @@ export { adminAPI };
 export { friendsAPI };
 export { conversationsAPI };
 export { notificationsAPI };
-export {adminFriendsChatAPI};
+export { adminFriendsChatAPI };
+
 // Export par défaut de l'instance axios
 export default api;

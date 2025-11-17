@@ -1,27 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import styles from './Friends.module.css';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faEllipsisVertical,
   faMessage,
   faUser,
-  faUserMinus,
   faMusic
 } from '@fortawesome/free-solid-svg-icons';
 
 const FriendCard = ({ friend, onRemove, onMessage, onViewProfile }) => {
-  const [showMenu, setShowMenu] = useState(false);
-
   const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
-  const handleMenuClick = (e, action) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowMenu(false);
-    action();
   };
 
   return (
@@ -30,40 +19,31 @@ const FriendCard = ({ friend, onRemove, onMessage, onViewProfile }) => {
         <div className={styles.avatarWrapper}>
           <div className={styles.avatar}>
             {friend.avatar ? (
-              <img src={friend.avatar} alt={friend.name} className={styles.avatarImg} />
+              <img
+                src={friend.avatar}
+                alt={friend.name}
+                className={styles.avatarImg}
+              />
             ) : (
-              <div className={styles.avatarPlaceholder}>{getInitials(friend.name)}</div>
+              <div className={styles.avatarPlaceholder}>
+                {getInitials(friend.name)}
+              </div>
             )}
-            <span 
+            <span
               className={styles.statusDot}
               style={{
-                backgroundColor: friend.status === 'online' ? '#10b981' : '#9ca3af'
+                backgroundColor:
+                  friend.status === 'online' ? '#10b981' : '#9ca3af'
               }}
             />
           </div>
         </div>
-        
-        <button 
-          className={styles.menuButton}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowMenu(!showMenu);
-          }}
-        >
-          <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 20 }} />
-        </button>
-        
-        {showMenu && (
-          <>
-            {/* Menu supprimé (View Profile / Send Message / Unfriend) */}
-          </>
-        )}
       </div>
-      
+
       <div className={styles.cardBody}>
         <h3 className={styles.cardName}>{friend.name}</h3>
         <p className={styles.cardUsername}>{friend.username}</p>
-        
+
         <div className={styles.cardInfo}>
           <span className={styles.infoItem}>
             📍 {friend.location}
@@ -83,21 +63,23 @@ const FriendCard = ({ friend, onRemove, onMessage, onViewProfile }) => {
           <div className={styles.musicTags}>
             <FontAwesomeIcon icon={faMusic} style={{ fontSize: 14 }} />
             {friend.favoriteGenres.map((genre, index) => (
-              <span key={index} className={styles.genreTag}>{genre}</span>
+              <span key={index} className={styles.genreTag}>
+                {genre}
+              </span>
             ))}
           </div>
         )}
       </div>
 
       <div className={styles.cardActions}>
-        <button 
+        <button
           className={styles.messageButton}
           onClick={() => onMessage(friend)}
         >
           <FontAwesomeIcon icon={faMessage} style={{ fontSize: 16 }} />
           Message
         </button>
-        <button 
+        <button
           className={styles.profileButton}
           onClick={() => onViewProfile(friend.id)}
         >
