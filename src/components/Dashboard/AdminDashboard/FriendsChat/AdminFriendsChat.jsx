@@ -1,6 +1,7 @@
-// src/pages/admin/FriendsChat/AdminFriendsChat.jsx
+// src/components/Dashboard/AdminDashboard/FriendsChat/AdminFriendsChat.jsx
 import React, { useEffect, useState } from 'react';
-import adminFriendsChatAPI from '../../../../utils/adminFriendsChatAPI';
+// ✅ On importe depuis utils/api, en export nommé
+import { adminFriendsChatAPI } from '../../../../utils/api';
 import styles from './AdminFriendsChat.module.css';
 
 const TABS = {
