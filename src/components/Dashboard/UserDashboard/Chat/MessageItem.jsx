@@ -11,16 +11,6 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import styles from './Chat.module.css';
 
-/**
- * MessageItem
- *
- * - Affiche un message dans la conversation (texte / image / audio / vidéo)
- * - Gère le menu contextuel (Edit / Copy / Delete)
- * - NE FAIT AUCUN APPEL API DIRECT :
- *   -> onEditMessage(message)
- *   -> onCopyMessage(message)
- *   -> onDeleteMessage(message, isOwn)
- */
 const MessageItem = ({
   message,
   isOwn,
@@ -28,16 +18,16 @@ const MessageItem = ({
   participant,
   currentUser,
   isGroup,
-  onEditMessage,
-  onCopyMessage,
-  onDeleteMessage
+  // mêmes idées que MessageContextMenu : callbacks fournis par le parent
+  onEdit,
+  onCopy,
+  onDelete
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
 
-  // Format de l'heure
   const formatTime = (date) => {
     if (!date) return '';
     return new Date(date).toLocaleTimeString('en-US', {
@@ -70,12 +60,12 @@ const MessageItem = ({
   const senderDisplayName = (() => {
     const u = message.sender;
     if (!u) return '';
-    const first = u.prenom || u.firstName || u.name || '';
-    const last = u.nom || u.lastName || '';
+    const first = u?.prenom || u?.firstName || u?.name || '';
+    const last = u?.nom || u?.lastName || '';
     return `${first} ${last}`.trim() || first || last;
   })();
 
-  // Fermer le menu si on clique à l'extérieur
+  // Fermer le menu quand on clique à l’extérieur (comme MessageContextMenu)
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -91,45 +81,29 @@ const MessageItem = ({
     if (showMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showMenu]);
-
-  const toggleMenu = (e) => {
-    e.stopPropagation();
-
-    if (!showMenu && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + 5,
-        left: isOwn ? rect.left - 150 : rect.right
-      });
-    }
-
-    setShowMenu((prev) => !prev);
-  };
 
   const handleMenuClick = (action) => {
     setShowMenu(false);
     if (action) action();
   };
 
-  // === Actions ===
-  const handleCopy = () => {
-    if (onCopyMessage) {
-      onCopyMessage(message);
-    } else if (message?.content) {
-      navigator.clipboard.writeText(message.content);
+  const toggleMenu = (e) => {
+    e.stopPropagation();
+
+    if (!showMenu && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: buttonRect.bottom + 5,
+        left: isOwn ? buttonRect.left - 150 : buttonRect.right
+      });
     }
-  };
 
-  const handleEdit = () => {
-    if (onEditMessage) onEditMessage(message);
-  };
-
-  const handleDelete = () => {
-    if (onDeleteMessage) onDeleteMessage(message, isOwn);
+    setShowMenu(!showMenu);
   };
 
   return (
@@ -138,14 +112,11 @@ const MessageItem = ({
         isOwn ? styles.messageOwn : styles.messageOther
       }`}
     >
-      {/* Avatar de l'autre utilisateur */}
+      {/* avatar côté gauche pour les messages de l’ami */}
       {!isOwn && showAvatar && (
         <div className={styles.messageAvatar}>
           {senderForAvatar?.photo_profil ? (
-            <img
-              src={senderForAvatar.photo_profil}
-              alt={senderDisplayName}
-            />
+            <img src={senderForAvatar.photo_profil} alt={senderDisplayName} />
           ) : (
             <div className={styles.messageAvatarPlaceholder}>
               {getInitialsFromUser(senderForAvatar)}
@@ -189,7 +160,7 @@ const MessageItem = ({
           </div>
         )}
 
-        {/* Infos (heure + statut) */}
+        {/* footer : heure + statut */}
         <div className={styles.messageInfo}>
           <span className={styles.messageTime}>
             {formatTime(message.created_date || message.createdAt)}
@@ -206,67 +177,76 @@ const MessageItem = ({
           )}
         </div>
 
-        {/* Bouton du menu */}
-        <button
-          ref={buttonRef}
-          className={styles.messageMenuButton}
-          onClick={toggleMenu}
-          title="Message options"
-        >
-          <FontAwesomeIcon icon={faEllipsisVertical} />
-        </button>
+        {/* Bouton du menu (mêmes icône et logique que MessageContextMenu) */}
+        <div className={styles.messageActions}>
+          <button
+            ref={buttonRef}
+            className={styles.messageMenuButton}
+            onClick={toggleMenu}
+            title="Message options"
+          >
+            <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 14 }} />
+          </button>
 
-        {/* Menu contextuel : Edit / Copy / Delete */}
-        {showMenu && (
-          <div>
-            <div
-              className={styles.menuOverlay}
-              onClick={() => setShowMenu(false)}
-            />
-            <div
-              ref={menuRef}
-              className={`${styles.messageDropdown} ${
-                isOwn ? styles.messageDropdownOwn : ''
-              }`}
-              style={{
-                position: 'fixed',
-                top: `${menuPosition.top}px`,
-                left: `${menuPosition.left}px`,
-                zIndex: 9999
-              }}
-            >
-              {isOwn && onEditMessage && (
+          {showMenu && (
+            <>
+              {/* overlay pour fermer en cliquant à l'extérieur */}
+              <div
+                className={styles.menuOverlay}
+                onClick={() => setShowMenu(false)}
+              />
+              <div
+                ref={menuRef}
+                className={styles.messageDropdown}
+                style={{
+                  position: 'fixed',
+                  top: `${menuPosition.top}px`,
+                  left: `${menuPosition.left}px`,
+                  zIndex: 9999
+                }}
+              >
+                {/* EDIT (seulement pour mes messages) */}
+                {isOwn && (
+                  <button
+                    className={styles.dropdownItem}
+                    onClick={() =>
+                      handleMenuClick(() => onEdit && onEdit(message))
+                    }
+                  >
+                    <FontAwesomeIcon icon={faPen} style={{ fontSize: 14 }} />
+                    Edit
+                  </button>
+                )}
+
+                {/* COPY */}
                 <button
                   className={styles.dropdownItem}
-                  onClick={() => handleMenuClick(handleEdit)}
+                  onClick={() =>
+                    handleMenuClick(() => onCopy && onCopy(message))
+                  }
                 >
-                  <FontAwesomeIcon icon={faPen} />
-                  <span>Edit</span>
+                  <FontAwesomeIcon icon={faCopy} style={{ fontSize: 14 }} />
+                  Copy
                 </button>
-              )}
 
-              <button
-                className={styles.dropdownItem}
-                onClick={() => handleMenuClick(handleCopy)}
-              >
-                <FontAwesomeIcon icon={faCopy} />
-                <span>Copy</span>
-              </button>
+                <div className={styles.dropdownDivider} />
 
-              <div className={styles.dropdownDivider} />
-
-              {onDeleteMessage && (
+                {/* DELETE */}
                 <button
                   className={`${styles.dropdownItem} ${styles.dangerItem}`}
-                  onClick={() => handleMenuClick(handleDelete)}
+                  onClick={() =>
+                    handleMenuClick(() =>
+                      onDelete && onDelete(message, isOwn)
+                    )
+                  }
                 >
-                  <FontAwesomeIcon icon={faTrash} />
-                  <span>{isOwn ? 'Delete for everyone' : 'Delete for me'}</span>
+                  <FontAwesomeIcon icon={faTrash} style={{ fontSize: 14 }} />
+                  {isOwn ? 'Delete for everyone' : 'Delete for me'}
                 </button>
-              )}
-            </div>
-          </div>
-        )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
