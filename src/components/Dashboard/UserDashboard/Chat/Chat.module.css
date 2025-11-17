@@ -1041,7 +1041,8 @@
   position: absolute;
   top: 48px;
   right: 0;
-  background: #ffffff;
+  background: #ffffff !important; /* fond blanc forcé */
+  color: #1a1a1a;
   border: 1px solid #e0e0e0;
   border-radius: 12px;
   min-width: 200px;

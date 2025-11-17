@@ -16,7 +16,7 @@ const Chat = () => {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all'); // all, unread, favorites, groups
+  const [activeTab, setActiveTab] = useState('all');
   const [unreadCount, setUnreadCount] = useState(0);
 
   const currentUserId = user?.id || user?._id;
@@ -31,7 +31,6 @@ const Chat = () => {
     return `${backendUrl}${normalizedPath}`;
   };
 
-  // Normalise une conversation venant du backend /api/conversations
   const normalizeBackendConversation = (raw) => {
     if (!raw) return null;
 
@@ -42,7 +41,6 @@ const Chat = () => {
       !!raw.groupId ||
       raw.kind === 'group';
 
-    // === GROUP CHAT ===
     if (isGroup) {
       const group = raw.group || raw;
       const groupId = raw.groupId || group._id || raw._id;
@@ -63,7 +61,7 @@ const Chat = () => {
 
       return {
         ...raw,
-        _id: groupId,              // ⚠️ on utilise le groupId pour charger les messages
+        _id: groupId,
         groupId,
         isGroup: true,
         name,
@@ -76,7 +74,6 @@ const Chat = () => {
       };
     }
 
-    // === DIRECT CHAT (AMI) ===
     let participant = raw.participant || null;
 
     if (!participant && Array.isArray(raw.participants)) {
@@ -90,7 +87,6 @@ const Chat = () => {
     }
 
     if (!participant) {
-      // conversation cassée, on ignore
       return null;
     }
 
@@ -115,7 +111,6 @@ const Chat = () => {
     };
   };
 
-  // Conversation créée à partir d’un ami (si aucune convo backend n’existe)
   const buildConversationFromFriend = (friend) => {
     const participant = {
       ...friend,
@@ -123,7 +118,7 @@ const Chat = () => {
     };
 
     return {
-      _id: `friend-${friend._id}`, // id virtuel
+      _id: `friend-${friend._id}`,
       isGroup: false,
       participant,
       lastMessage: null,
@@ -151,7 +146,6 @@ const Chat = () => {
     try {
       setLoading(true);
 
-      // 1) conversations (backend)
       const [convRes, groupsRes, friendsRes] = await Promise.all([
         friendsAPI.getConversations().catch((e) => {
           console.error('Error fetching conversations:', e);
@@ -169,7 +163,6 @@ const Chat = () => {
 
       let all = [];
 
-      // === Conversations backend (directes + éventuellement groupes) ===
       if (convRes && convRes.success) {
         let rawConvs = [];
 
@@ -188,7 +181,6 @@ const Chat = () => {
         all = all.concat(normalized);
       }
 
-      // === Groupes d'amis (au cas où /api/conversations ne les renvoie pas) ===
       if (groupsRes && groupsRes.success && Array.isArray(groupsRes.data)) {
         const existingGroupIds = new Set(
           all
@@ -204,7 +196,6 @@ const Chat = () => {
         });
       }
 
-      // === Amis : on crée des conversations virtuelles pour ceux qui n’en ont pas ===
       if (friendsRes && friendsRes.success && Array.isArray(friendsRes.data)) {
         const existingFriendIds = new Set(
           all
@@ -221,7 +212,6 @@ const Chat = () => {
         });
       }
 
-      // Tri par dernière activité (les amis sans message vont en bas)
       all.sort((a, b) => {
         const da = new Date(
           a.lastMessage?.created_date || a.updatedAt || a.createdAt || 0
@@ -250,7 +240,6 @@ const Chat = () => {
     loadConversations();
   }, []);
 
-  // Mise à jour temps réel uniquement pour les conversations directes (Socket)
   useEffect(() => {
     if (!socket) return;
 
@@ -279,7 +268,6 @@ const Chat = () => {
           return conv;
         });
 
-        // Si aucune conversation trouvée, on peut en créer une à la volée
         if (!found) {
           const otherUser =
             data.message.sender._id === currentUserId
@@ -294,7 +282,6 @@ const Chat = () => {
           updated.push(newConv);
         }
 
-        // tri par dernière activité
         updated.sort(
           (a, b) =>
             new Date(b.lastMessage?.created_date || 0) -
@@ -369,51 +356,6 @@ const Chat = () => {
     setActiveTab(tab);
   };
 
-  // Archive / unarchive uniquement les conversations réelles (pas les virtuelles créées depuis les amis)
-  const handleToggleArchiveConversation = async () => {
-    if (!selectedConversation?._id) {
-      alert('Please select a conversation first.');
-      return;
-    }
-
-    if (selectedConversation.source !== 'conversation') {
-      alert('Archiving is only available for existing conversations.');
-      return;
-    }
-
-    const conversationId = selectedConversation._id;
-    const currentlyArchived = !!selectedConversation.isArchived;
-
-    try {
-      const res = currentlyArchived
-        ? await friendsAPI.unarchiveChat(conversationId)
-        : await friendsAPI.archiveChat(conversationId);
-
-      if (res?.success === false) {
-        alert(res.message || 'Failed to update archive state.');
-        return;
-      }
-
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv._id === conversationId
-            ? { ...conv, isArchived: !currentlyArchived }
-            : conv
-        )
-      );
-
-      setSelectedConversation((prev) =>
-        prev && prev._id === conversationId
-          ? { ...prev, isArchived: !currentlyArchived }
-          : prev
-      );
-    } catch (error) {
-      console.error('Error toggling archive state:', error);
-      alert('Failed to update archive state. Please try again.');
-    }
-  };
-
-  // Filtre pour la sidebar
   const filteredConversations = conversations.filter((conv) => {
     const q = searchQuery.trim().toLowerCase();
 
@@ -466,7 +408,6 @@ const Chat = () => {
         unreadCount={unreadCount}
         loading={loading}
         onlineUsers={onlineUsers}
-        onToggleArchive={handleToggleArchiveConversation}
       />
 
       {selectedConversation ? (

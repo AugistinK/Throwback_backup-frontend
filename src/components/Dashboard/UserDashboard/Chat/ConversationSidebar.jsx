@@ -4,8 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
   faEllipsisVertical,
-  faMessage,
-  faArchive
+  faMessage
 } from '@fortawesome/free-solid-svg-icons';
 import ConversationItem from './ConversationItem';
 import styles from './Chat.module.css';
@@ -20,8 +19,7 @@ const ConversationSidebar = ({
   onTabChange,
   unreadCount,
   loading,
-  onlineUsers,
-  onToggleArchive
+  onlineUsers
 }) => {
   const tabs = [
     { id: 'all', label: 'All', count: conversations.length },
@@ -29,8 +27,6 @@ const ConversationSidebar = ({
     { id: 'favorites', label: 'Favorites' },
     { id: 'groups', label: 'Groups' }
   ];
-
-  const isArchivedSelected = !!selectedConversation?.isArchived;
 
   return (
     <div className={styles.sidebar}>
@@ -79,23 +75,6 @@ const ConversationSidebar = ({
           </button>
         ))}
       </div>
-
-      {/* Archive / Unarchive current conversation */}
-      <button
-        className={styles.archivedButton}
-        onClick={onToggleArchive}
-        disabled={!selectedConversation}
-        title={
-          selectedConversation
-            ? isArchivedSelected
-              ? 'Unarchive this conversation'
-              : 'Archive this conversation'
-            : 'Select a conversation to archive'
-        }
-      >
-        <FontAwesomeIcon icon={faArchive} />
-        <span>{isArchivedSelected ? 'Unarchive' : 'Archive'}</span>
-      </button>
 
       {/* Conversation list */}
       <div className={styles.conversationList}>
