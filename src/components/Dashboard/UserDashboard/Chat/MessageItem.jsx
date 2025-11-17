@@ -10,6 +10,7 @@ import {
   faTrash
 } from '@fortawesome/free-solid-svg-icons';
 import { friendsAPI } from '../../../../utils/api';
+import CustomModal from './CustomModal';
 import styles from './Chat.module.css';
 
 const MessageItem = ({
@@ -19,22 +20,23 @@ const MessageItem = ({
   participant,
   currentUser,
   isGroup,
-  // callbacks fournis par le parent (comme MessageContextMenu)
   onEdit,
   onCopy,
   onDelete
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-
-  // état local pour pouvoir mettre à jour le message (edit / delete)
   const [localMessage, setLocalMessage] = useState(message);
   const [deletedForMe, setDeletedForMe] = useState(false);
+  
+  // Modals
+  const [successModal, setSuccessModal] = useState({ isOpen: false, message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false });
 
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
 
-  // garder le message local synchronisé avec la prop
   useEffect(() => {
     setLocalMessage(message);
   }, [message]);
@@ -76,7 +78,6 @@ const MessageItem = ({
     return `${first} ${last}`.trim() || first || last;
   })();
 
-  // Fermer le menu quand on clique à l’extérieur (comme MessageContextMenu)
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -117,26 +118,26 @@ const MessageItem = ({
     setShowMenu(!showMenu);
   };
 
-  // ======== FALLBACKS LOCAUX, MÊME IDÉE QUE DANS ChatModal.jsx ========
-
   const getMessageId = () =>
     localMessage._id || localMessage.id || message._id || message.id;
 
   const handleEditInternal = async () => {
     const currentText = localMessage.content || localMessage.text || '';
     const next = window.prompt('Edit your message', currentText);
-    if (next == null) return; // cancel
+    if (next == null) return;
     const trimmed = next.trim();
     if (!trimmed || trimmed === currentText) return;
 
     const id = getMessageId();
     if (!id) {
-      console.error('Cannot edit message: missing id');
+      setErrorModal({
+        isOpen: true,
+        message: 'Cannot edit message: missing ID'
+      });
       return;
     }
 
     try {
-      // même endpoint que dans ChatModal / MessageContextMenu
       await friendsAPI.editMessage(id, trimmed);
 
       setLocalMessage((prev) => ({
@@ -145,47 +146,60 @@ const MessageItem = ({
         text: trimmed,
         edited: true
       }));
+      
+      setSuccessModal({
+        isOpen: true,
+        message: 'Message edited successfully'
+      });
     } catch (err) {
       console.error('Error editing message:', err);
-      alert('Failed to edit message. Please try again.');
+      setErrorModal({
+        isOpen: true,
+        message: 'Failed to edit message. Please try again.'
+      });
     }
   };
 
   const handleCopyInternal = async () => {
-    const textToCopy =
-      localMessage.content || localMessage.text || '';
+    const textToCopy = localMessage.content || localMessage.text || '';
 
     if (!textToCopy) return;
 
     try {
       await navigator.clipboard.writeText(textToCopy);
-      // simple feedback (pas de ConfirmModal côté Chat)
-      // tu pourras remplacer ça par un toast plus tard
-      alert('Message copied to clipboard');
+      setSuccessModal({
+        isOpen: true,
+        message: 'Message copied to clipboard'
+      });
     } catch (err) {
       console.error('Error copying message:', err);
+      setErrorModal({
+        isOpen: true,
+        message: 'Failed to copy message'
+      });
     }
   };
 
   const handleDeleteInternal = async () => {
     const id = getMessageId();
     if (!id) {
-      console.error('Cannot delete message: missing id');
+      setErrorModal({
+        isOpen: true,
+        message: 'Cannot delete message: missing ID'
+      });
       return;
     }
 
-    const confirmMsg = isOwn
-      ? 'Delete this message for everyone? This cannot be undone.'
-      : 'Delete this message for you?';
+    setDeleteModal({ isOpen: true });
+  };
 
-    if (!window.confirm(confirmMsg)) return;
-
+  const confirmDelete = async () => {
+    const id = getMessageId();
+    
     try {
-      // même signature que dans ChatModal: (messageId, isOwnMessage)
       await friendsAPI.deleteMessage(id, !!isOwn);
 
       if (isOwn) {
-        // Delete for everyone : on affiche le message comme supprimé
         setLocalMessage((prev) => ({
           ...prev,
           content: 'This message was deleted',
@@ -193,16 +207,22 @@ const MessageItem = ({
           deleted: true
         }));
       } else {
-        // Delete for me : on masque simplement ce message côté UI
         setDeletedForMe(true);
       }
+      
+      setSuccessModal({
+        isOpen: true,
+        message: 'Message deleted successfully'
+      });
     } catch (err) {
       console.error('Error deleting message:', err);
-      alert('Failed to delete message. Please try again.');
+      setErrorModal({
+        isOpen: true,
+        message: 'Failed to delete message. Please try again.'
+      });
     }
   };
 
-  // wrappers qui utilisent soit les callbacks parent, soit les fallbacks locaux
   const handleEditClick = () => {
     if (onEdit) {
       onEdit(localMessage);
@@ -227,154 +247,183 @@ const MessageItem = ({
     }
   };
 
-  // Si l’utilisateur a fait "Delete for me", on ne rend plus rien
   if (deletedForMe) return null;
 
   return (
-    <div
-      className={`${styles.messageWrapper} ${
-        isOwn ? styles.messageOwn : styles.messageOther
-      }`}
-    >
-      {/* avatar côté gauche pour les messages de l’ami */}
-      {!isOwn && showAvatar && (
-        <div className={styles.messageAvatar}>
-          {senderForAvatar?.photo_profil ? (
-            <img src={senderForAvatar.photo_profil} alt={senderDisplayName} />
-          ) : (
-            <div className={styles.messageAvatarPlaceholder}>
-              {getInitialsFromUser(senderForAvatar)}
-            </div>
-          )}
-        </div>
-      )}
-
+    <>
       <div
-        className={`${styles.messageBubble} ${
-          isOwn ? styles.messageBubbleOwn : styles.messageBubbleOther
-        } ${localMessage.tempId ? styles.messageSending : ''}`}
+        className={`${styles.messageWrapper} ${
+          isOwn ? styles.messageOwn : styles.messageOther
+        }`}
       >
-        {isGroup && !isOwn && senderDisplayName && (
-          <div className={styles.messageAuthor}>{senderDisplayName}</div>
+        {!isOwn && showAvatar && (
+          <div className={styles.messageAvatar}>
+            {senderForAvatar?.photo_profil ? (
+              <img src={senderForAvatar.photo_profil} alt={senderDisplayName} />
+            ) : (
+              <div className={styles.messageAvatarPlaceholder}>
+                {getInitialsFromUser(senderForAvatar)}
+              </div>
+            )}
+          </div>
         )}
 
-        {/* Contenu du message (texte / image / audio / vidéo) */}
-        {localMessage.deleted ? (
-          <p className={styles.messageContent}>
-            <em>This message was deleted</em>
-          </p>
-        ) : (
-          <>
-            {localMessage.type === 'text' && (
-              <p className={styles.messageContent}>{localMessage.content}</p>
-            )}
-
-            {localMessage.type === 'image' && (
-              <div className={styles.messageImage}>
-                <img src={localMessage.content} alt="Shared" />
-                {localMessage.caption && (
-                  <p className={styles.imageCaption}>{localMessage.caption}</p>
-                )}
-              </div>
-            )}
-
-            {localMessage.type === 'audio' && (
-              <div className={styles.messageAudio}>
-                <audio controls src={localMessage.content}></audio>
-              </div>
-            )}
-
-            {localMessage.type === 'video' && (
-              <div className={styles.messageVideo}>
-                <video controls src={localMessage.content}></video>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* footer : heure + statut */}
-        <div className={styles.messageInfo}>
-          <span className={styles.messageTime}>
-            {formatTime(
-              localMessage.created_date || localMessage.createdAt
-            )}
-          </span>
-          {isOwn && (
-            <span className={styles.messageStatus}>
-              <FontAwesomeIcon
-                icon={localMessage.read ? faCheckDouble : faCheck}
-                className={
-                  localMessage.read ? styles.readIcon : styles.sentIcon
-                }
-              />
-            </span>
+        <div
+          className={`${styles.messageBubble} ${
+            isOwn ? styles.messageBubbleOwn : styles.messageBubbleOther
+          } ${localMessage.tempId ? styles.messageSending : ''}`}
+        >
+          {isGroup && !isOwn && senderDisplayName && (
+            <div className={styles.messageAuthor}>{senderDisplayName}</div>
           )}
-        </div>
 
-        {/* Bouton du menu (mêmes icône et logique que MessageContextMenu) */}
-        <div className={styles.messageActions}>
-          <button
-            ref={buttonRef}
-            className={styles.messageMenuButton}
-            onClick={toggleMenu}
-            title="Message options"
-          >
-            <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 14 }} />
-          </button>
-
-          {showMenu && (
+          {localMessage.deleted ? (
+            <p className={styles.messageContent}>
+              <em>This message was deleted</em>
+            </p>
+          ) : (
             <>
-              {/* overlay pour fermer en cliquant à l'extérieur */}
-              <div
-                className={styles.menuOverlay}
-                onClick={() => setShowMenu(false)}
-              />
-              <div
-                ref={menuRef}
-                className={styles.messageDropdown}
-                style={{
-                  position: 'fixed',
-                  top: `${menuPosition.top}px`,
-                  left: `${menuPosition.left}px`,
-                  zIndex: 9999
-                }}
-              >
-                {/* EDIT (seulement pour mes messages) */}
-                {isOwn && (
-                  <button
-                    className={styles.dropdownItem}
-                    onClick={() => handleMenuClick(handleEditClick)}
-                  >
-                    <FontAwesomeIcon icon={faPen} style={{ fontSize: 14 }} />
-                    Edit
-                  </button>
-                )}
+              {localMessage.type === 'text' && (
+                <p className={styles.messageContent}>{localMessage.content}</p>
+              )}
 
-                {/* COPY */}
-                <button
-                  className={styles.dropdownItem}
-                  onClick={() => handleMenuClick(handleCopyClick)}
-                >
-                  <FontAwesomeIcon icon={faCopy} style={{ fontSize: 14 }} />
-                  Copy
-                </button>
+              {localMessage.type === 'image' && (
+                <div className={styles.messageImage}>
+                  <img src={localMessage.content} alt="Shared" />
+                  {localMessage.caption && (
+                    <p className={styles.imageCaption}>{localMessage.caption}</p>
+                  )}
+                </div>
+              )}
 
-                <div className={styles.dropdownDivider} />
+              {localMessage.type === 'audio' && (
+                <div className={styles.messageAudio}>
+                  <audio controls src={localMessage.content}></audio>
+                </div>
+              )}
 
-                {/* DELETE */}
-                <button
-                  className={`${styles.dropdownItem} ${styles.dangerItem}`}
-                  onClick={() => handleMenuClick(handleDeleteClick)}
-                >
-                  <FontAwesomeIcon icon={faTrash} style={{ fontSize: 14 }} />
-                  {isOwn ? 'Delete for everyone' : 'Delete for me'}
-                </button>
-              </div>
+              {localMessage.type === 'video' && (
+                <div className={styles.messageVideo}>
+                  <video controls src={localMessage.content}></video>
+                </div>
+              )}
             </>
           )}
+
+          <div className={styles.messageInfo}>
+            <span className={styles.messageTime}>
+              {formatTime(
+                localMessage.created_date || localMessage.createdAt
+              )}
+            </span>
+            {isOwn && (
+              <span className={styles.messageStatus}>
+                <FontAwesomeIcon
+                  icon={localMessage.read ? faCheckDouble : faCheck}
+                  className={
+                    localMessage.read ? styles.readIcon : styles.sentIcon
+                  }
+                />
+              </span>
+            )}
+          </div>
+
+          <div className={styles.messageActions}>
+            <button
+              ref={buttonRef}
+              className={styles.messageMenuButton}
+              onClick={toggleMenu}
+              title="Message options"
+            >
+              <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 14 }} />
+            </button>
+
+            {showMenu && (
+              <>
+                <div
+                  className={styles.menuOverlay}
+                  onClick={() => setShowMenu(false)}
+                />
+                <div
+                  ref={menuRef}
+                  className={styles.messageDropdown}
+                  style={{
+                    position: 'fixed',
+                    top: `${menuPosition.top}px`,
+                    left: `${menuPosition.left}px`,
+                    zIndex: 9999,
+                    background: '#ffffff'
+                  }}
+                >
+                  {isOwn && (
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => handleMenuClick(handleEditClick)}
+                    >
+                      <FontAwesomeIcon icon={faPen} style={{ fontSize: 14 }} />
+                      Edit
+                    </button>
+                  )}
+
+                  <button
+                    className={styles.dropdownItem}
+                    onClick={() => handleMenuClick(handleCopyClick)}
+                  >
+                    <FontAwesomeIcon icon={faCopy} style={{ fontSize: 14 }} />
+                    Copy
+                  </button>
+
+                  <div className={styles.dropdownDivider} />
+
+                  <button
+                    className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                    onClick={() => handleMenuClick(handleDeleteClick)}
+                  >
+                    <FontAwesomeIcon icon={faTrash} style={{ fontSize: 14 }} />
+                    {isOwn ? 'Delete for everyone' : 'Delete for me'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Modals */}
+      <CustomModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false })}
+        title="Delete Message"
+        message={
+          isOwn
+            ? 'Delete this message for everyone? This cannot be undone.'
+            : 'Delete this message for you?'
+        }
+        onConfirm={confirmDelete}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDanger={true}
+      />
+
+      <CustomModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, message: '' })}
+        title="Success"
+        message={successModal.message}
+        type="alert"
+        confirmText="OK"
+      />
+
+      <CustomModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, message: '' })}
+        title="Error"
+        message={errorModal.message}
+        type="alert"
+        confirmText="OK"
+        isDanger={true}
+      />
+    </>
   );
 };
 

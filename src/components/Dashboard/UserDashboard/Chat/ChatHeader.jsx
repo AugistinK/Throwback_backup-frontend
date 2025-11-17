@@ -1,26 +1,26 @@
 // src/components/Dashboard/UserDashboard/Chat/ChatHeader.jsx
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowLeft,
   faEllipsisVertical,
   faCircle,
-  faUser,
   faBan,
   faTrash,
-  faBellSlash
+  faBellSlash,
+  faUnlock
 } from '@fortawesome/free-solid-svg-icons';
 import { friendsAPI } from '../../../../utils/api';
 import CustomModal from './CustomModal';
 import styles from './Chat.module.css';
 
 const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
-  const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   
   // États pour les différents modals
   const [blockModal, setBlockModal] = useState({ isOpen: false });
+  const [unblockModal, setUnblockModal] = useState({ isOpen: false });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false });
   const [muteModal, setMuteModal] = useState({ isOpen: false });
   const [successModal, setSuccessModal] = useState({ isOpen: false, message: '' });
@@ -52,26 +52,30 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
     ? 'Online'
     : 'Offline';
 
-  // Voir le profil de l'utilisateur
-  const handleViewProfile = () => {
-    if (isGroup || !participant?._id) {
-      setErrorModal({
-        isOpen: true,
-        message: 'Profile viewing is not available for groups.'
-      });
-      setShowMenu(false);
-      return;
-    }
+  // Vérifier si l'utilisateur est bloqué
+  useEffect(() => {
+    const checkBlockStatus = async () => {
+      if (!participant?._id) return;
+      
+      try {
+        const res = await friendsAPI.getBlockedUsers();
+        if (res.success && Array.isArray(res.data)) {
+          const blocked = res.data.some(
+            (blocked) => blocked._id === participant._id
+          );
+          setIsBlocked(blocked);
+        }
+      } catch (error) {
+        console.error('Error checking block status:', error);
+      }
+    };
 
-    setShowMenu(false);
-    // Naviguer vers la page de profil de l'utilisateur
-    navigate(`/profile/${participant._id}`);
-  };
+    checkBlockStatus();
+  }, [participant]);
 
   // Bloquer un utilisateur
-  const handleBlockUser = async () => {
+  const handleBlockUser = () => {
     if (isGroup || !participant?._id) return;
-
     setShowMenu(false);
     setBlockModal({ isOpen: true });
   };
@@ -81,12 +85,12 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
       const res = await friendsAPI.blockUser(participant._id);
       
       if (res.success) {
+        setIsBlocked(true);
         setSuccessModal({
           isOpen: true,
           message: `${userName} has been blocked successfully. They can no longer send you messages.`
         });
         
-        // Retourner à la liste des conversations après un délai
         setTimeout(() => {
           onBack();
         }, 2000);
@@ -105,10 +109,41 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
     }
   };
 
+  // Débloquer un utilisateur
+  const handleUnblockUser = () => {
+    if (isGroup || !participant?._id) return;
+    setShowMenu(false);
+    setUnblockModal({ isOpen: true });
+  };
+
+  const confirmUnblockUser = async () => {
+    try {
+      const res = await friendsAPI.unblockUser(participant._id);
+      
+      if (res.success) {
+        setIsBlocked(false);
+        setSuccessModal({
+          isOpen: true,
+          message: `${userName} has been unblocked successfully. You can now send messages.`
+        });
+      } else {
+        setErrorModal({
+          isOpen: true,
+          message: res.message || 'Failed to unblock this user. Please try again.'
+        });
+      }
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+      setErrorModal({
+        isOpen: true,
+        message: 'An error occurred while unblocking this user. Please try again.'
+      });
+    }
+  };
+
   // Supprimer la conversation
   const handleClearConversation = () => {
     if (isGroup || !participant?._id) return;
-
     setShowMenu(false);
     setDeleteModal({ isOpen: true });
   };
@@ -123,7 +158,6 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
           message: 'Conversation history has been deleted successfully.'
         });
         
-        // Retourner à la liste des conversations après un délai
         setTimeout(() => {
           onBack();
         }, 2000);
@@ -150,7 +184,6 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
 
   const confirmMuteNotifications = async () => {
     try {
-      // API call pour mute - à implémenter
       setSuccessModal({
         isOpen: true,
         message: 'Notifications have been muted for this conversation.'
@@ -219,13 +252,6 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
               <div className={styles.headerDropdown}>
                 <button
                   className={styles.dropdownItem}
-                  onClick={handleViewProfile}
-                >
-                  <FontAwesomeIcon icon={faUser} />
-                  {isGroup ? 'View group details' : 'View profile'}
-                </button>
-                <button
-                  className={styles.dropdownItem}
                   onClick={handleToggleNotifications}
                 >
                   <FontAwesomeIcon icon={faBellSlash} />
@@ -235,13 +261,25 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
                 {!isGroup && (
                   <>
                     <div className={styles.dropdownDivider} />
-                    <button
-                      className={`${styles.dropdownItem} ${styles.dangerItem}`}
-                      onClick={handleBlockUser}
-                    >
-                      <FontAwesomeIcon icon={faBan} />
-                      Block user
-                    </button>
+                    
+                    {isBlocked ? (
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={handleUnblockUser}
+                      >
+                        <FontAwesomeIcon icon={faUnlock} />
+                        Unblock user
+                      </button>
+                    ) : (
+                      <button
+                        className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                        onClick={handleBlockUser}
+                      >
+                        <FontAwesomeIcon icon={faBan} />
+                        Block user
+                      </button>
+                    )}
+                    
                     <button
                       className={`${styles.dropdownItem} ${styles.dangerItem}`}
                       onClick={handleClearConversation}
@@ -267,6 +305,16 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
         confirmText="Block"
         cancelText="Cancel"
         isDanger={true}
+      />
+
+      <CustomModal
+        isOpen={unblockModal.isOpen}
+        onClose={() => setUnblockModal({ isOpen: false })}
+        title="Unblock User"
+        message={`Are you sure you want to unblock ${userName}? They will be able to send you messages again.`}
+        onConfirm={confirmUnblockUser}
+        confirmText="Unblock"
+        cancelText="Cancel"
       />
 
       <CustomModal

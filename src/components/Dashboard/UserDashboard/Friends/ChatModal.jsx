@@ -5,9 +5,6 @@ import { friendsAPI } from '../../../../utils/api';
 import MessageContextMenu from './MessageContextMenu';
 import EmojiPicker from './EmojiPicker';
 import ConfirmModal from './ConfirmModal';
-import styles from './Friends.module.css';
-
-// Font Awesome
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faXmark,
@@ -15,9 +12,11 @@ import {
   faSmile,
   faEllipsisVertical,
   faTrash,
-  faFlag,
-  faUserMinus
+  faBan,
+  faUnlock,
+  faBellSlash
 } from '@fortawesome/free-solid-svg-icons';
+import styles from './Friends.module.css';
 
 const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
   const {
@@ -38,6 +37,7 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
   const [typing, setTyping] = useState(false);
   const [editingMessage, setEditingMessage] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', data: null });
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -55,6 +55,25 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     inputRef.current?.focus();
   }, []);
 
+  // Vérifier si l'utilisateur est bloqué
+  useEffect(() => {
+    const checkBlockStatus = async () => {
+      try {
+        const res = await friendsAPI.getBlockedUsers();
+        if (res.success && Array.isArray(res.data)) {
+          const blocked = res.data.some(
+            (blocked) => blocked._id === friend.id
+          );
+          setIsBlocked(blocked);
+        }
+      } catch (error) {
+        console.error('Error checking block status:', error);
+      }
+    };
+
+    checkBlockStatus();
+  }, [friend.id]);
+
   // Charger les messages
   useEffect(() => {
     loadMessages();
@@ -68,7 +87,6 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     if (!socket) return;
 
     const handleNewMessage = (data) => {
-      // Afficher nos messages ET ceux de l’ami
       const senderId = data.message?.sender?._id || data.message?.sender;
       const receiverId = data.message?.receiver?._id || data.message?.receiver;
       if (senderId === friend.id || receiverId === friend.id) {
@@ -148,6 +166,16 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
       }
     } catch (err) {
       console.error('Error loading messages:', err);
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'Failed to load messages. Please try again.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
     } finally {
       setLoading(false);
     }
@@ -160,7 +188,6 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
     });
   };
 
-  // Fallback d'avatar (initiales)
   const getInitials = (name) =>
     (name || '')
       .split(' ')
@@ -184,10 +211,8 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
         await friendsAPI.editMessage(editingMessage.id, content);
         setEditingMessage(null);
       } else {
-        // Envoi serveur
         await sendMessage(friend.id, content, 'text');
 
-        // ✅ APPEND OPTIMISTE : on ajoute immédiatement notre message
         const localMsg = {
           id: `local-${Date.now()}`,
           sender: 'self',
@@ -257,14 +282,24 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
         isOpen: true,
         type: 'success',
         data: {
-          title: 'Copied!',
+          title: 'Success',
           message: 'Message copied to clipboard',
           showCancel: false,
           confirmText: 'OK'
         }
       });
     } catch (err) {
-      console.error('Error copying message:', err);
+      console.error('Copy error:', err);
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'Failed to copy message',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
     }
   };
 
@@ -294,91 +329,187 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
               setMessages((prev) => prev.filter((m) => m.id !== msg.id));
             }
           } catch (err) {
-            console.error('Error deleting message:', err);
+            console.error('Delete error:', err);
+            setConfirmModal({
+              isOpen: true,
+              type: 'error',
+              data: {
+                title: 'Error',
+                message: 'Failed to delete message',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
           }
         }
       }
     });
   };
 
-  // Actions de chat
+  // Bloquer l'utilisateur
+  const handleBlockUser = () => {
+    setShowOptionsMenu(false);
+    setConfirmModal({
+      isOpen: true,
+      type: 'warning',
+      data: {
+        title: 'Block User',
+        message: `Are you sure you want to block ${friend.name}? They will no longer be able to send you messages.`,
+        confirmText: 'Block',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+          try {
+            const res = await friendsAPI.blockUser(friend.id);
+            if (res.success) {
+              setIsBlocked(true);
+              setConfirmModal({
+                isOpen: true,
+                type: 'success',
+                data: {
+                  title: 'Success',
+                  message: `${friend.name} has been blocked successfully.`,
+                  showCancel: false,
+                  confirmText: 'OK',
+                  onConfirm: () => onClose()
+                }
+              });
+            } else {
+              throw new Error(res.message || 'Failed to block user');
+            }
+          } catch (err) {
+            console.error('Block error:', err);
+            setConfirmModal({
+              isOpen: true,
+              type: 'error',
+              data: {
+                title: 'Error',
+                message: 'Failed to block user. Please try again.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          }
+        }
+      }
+    });
+  };
+
+  // Débloquer l'utilisateur
+  const handleUnblockUser = () => {
+    setShowOptionsMenu(false);
+    setConfirmModal({
+      isOpen: true,
+      type: 'info',
+      data: {
+        title: 'Unblock User',
+        message: `Are you sure you want to unblock ${friend.name}? They will be able to send you messages again.`,
+        confirmText: 'Unblock',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+          try {
+            const res = await friendsAPI.unblockUser(friend.id);
+            if (res.success) {
+              setIsBlocked(false);
+              setConfirmModal({
+                isOpen: true,
+                type: 'success',
+                data: {
+                  title: 'Success',
+                  message: `${friend.name} has been unblocked successfully.`,
+                  showCancel: false,
+                  confirmText: 'OK'
+                }
+              });
+            } else {
+              throw new Error(res.message || 'Failed to unblock user');
+            }
+          } catch (err) {
+            console.error('Unblock error:', err);
+            setConfirmModal({
+              isOpen: true,
+              type: 'error',
+              data: {
+                title: 'Error',
+                message: 'Failed to unblock user. Please try again.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          }
+        }
+      }
+    });
+  };
+
+  // Désactiver les notifications
+  const handleMuteNotifications = () => {
+    setShowOptionsMenu(false);
+    setConfirmModal({
+      isOpen: true,
+      type: 'info',
+      data: {
+        title: 'Mute Notifications',
+        message: 'Do you want to mute notifications for this conversation?',
+        confirmText: 'Mute',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          setConfirmModal({
+            isOpen: true,
+            type: 'success',
+            data: {
+              title: 'Success',
+              message: 'Notifications have been muted for this conversation.',
+              showCancel: false,
+              confirmText: 'OK'
+            }
+          });
+        }
+      }
+    });
+  };
+
+  // Effacer l'historique
   const handleClearHistory = () => {
+    setShowOptionsMenu(false);
     setConfirmModal({
       isOpen: true,
       type: 'warning',
       data: {
         title: 'Clear Chat History',
-        message: 'Delete all messages in this conversation? This cannot be undone.',
-        confirmText: 'Clear',
+        message: 'Are you sure you want to delete your conversation history? This action cannot be undone.',
+        confirmText: 'Delete',
         cancelText: 'Cancel',
         onConfirm: async () => {
           try {
-            await friendsAPI.clearChatHistory(friend.id);
-            setMessages([]);
+            const res = await friendsAPI.clearChatHistory(friend.id);
+            if (res.success) {
+              setMessages([]);
+              setConfirmModal({
+                isOpen: true,
+                type: 'success',
+                data: {
+                  title: 'Success',
+                  message: 'Conversation history has been deleted.',
+                  showCancel: false,
+                  confirmText: 'OK'
+                }
+              });
+            } else {
+              throw new Error(res.message || 'Failed to clear history');
+            }
+          } catch (err) {
+            console.error('Clear history error:', err);
             setConfirmModal({
               isOpen: true,
-              type: 'success',
+              type: 'error',
               data: {
-                title: 'Chat Cleared',
-                message: 'Chat history has been cleared.',
+                title: 'Error',
+                message: 'Failed to delete conversation history. Please try again.',
                 showCancel: false,
                 confirmText: 'OK'
               }
             });
-          } catch (err) {
-            console.error('Error clearing history:', err);
           }
-        }
-      }
-    });
-  };
-
-  const handleReportUser = () => {
-    setConfirmModal({
-      isOpen: true,
-      type: 'warning',
-      data: {
-        title: 'Report User',
-        message: 'Report this user for inappropriate behavior?',
-        confirmText: 'Report',
-        cancelText: 'Cancel',
-        onConfirm: async () => {
-          try {
-            await friendsAPI.reportUser(
-              friend.id,
-              'inappropriate_content',
-              'Reported from chat'
-            );
-            setConfirmModal({
-              isOpen: true,
-              type: 'success',
-              data: {
-                title: 'Report Sent',
-                message: 'Thank you for your report. We will review it shortly.',
-                showCancel: false,
-                confirmText: 'OK'
-              }
-            });
-          } catch (err) {
-            console.error('Error reporting user:', err);
-          }
-        }
-      }
-    });
-  };
-
-  const handleRemoveFriend = () => {
-    setConfirmModal({
-      isOpen: true,
-      type: 'error',
-      data: {
-        title: 'Remove Friend',
-        message: `Remove ${friend.name} from your friends? This will also archive your conversation.`,
-        confirmText: 'Remove',
-        cancelText: 'Cancel',
-        onConfirm: () => {
-          onRemoveFriend(friend.id);
-          onClose();
         }
       }
     });
@@ -437,25 +568,38 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                   <div className={styles.chatOptionsMenu}>
                     <button
                       className={styles.chatOptionItem}
+                      onClick={handleMuteNotifications}
+                    >
+                      <FontAwesomeIcon icon={faBellSlash} style={{ fontSize: 16 }} />
+                      Mute notifications
+                    </button>
+                    
+                    <div className={styles.dropdownDivider} />
+                    
+                    {isBlocked ? (
+                      <button
+                        className={styles.chatOptionItem}
+                        onClick={handleUnblockUser}
+                      >
+                        <FontAwesomeIcon icon={faUnlock} style={{ fontSize: 16 }} />
+                        Unblock user
+                      </button>
+                    ) : (
+                      <button
+                        className={`${styles.chatOptionItem} ${styles.dangerItem}`}
+                        onClick={handleBlockUser}
+                      >
+                        <FontAwesomeIcon icon={faBan} style={{ fontSize: 16 }} />
+                        Block user
+                      </button>
+                    )}
+                    
+                    <button
+                      className={`${styles.chatOptionItem} ${styles.dangerItem}`}
                       onClick={handleClearHistory}
                     >
                       <FontAwesomeIcon icon={faTrash} style={{ fontSize: 16 }} />
-                      Clear Chat History
-                    </button>
-                    <div className={styles.dropdownDivider} />
-                    <button
-                      className={`${styles.chatOptionItem} ${styles.dangerItem}`}
-                      onClick={handleReportUser}
-                    >
-                      <FontAwesomeIcon icon={faFlag} style={{ fontSize: 16 }} />
-                      Report User
-                    </button>
-                    <button
-                      className={`${styles.chatOptionItem} ${styles.dangerItem}`}
-                      onClick={handleRemoveFriend}
-                    >
-                      <FontAwesomeIcon icon={faUserMinus} style={{ fontSize: 16 }} />
-                      Remove Friend
+                      Delete conversation
                     </button>
                   </div>
                 </>
@@ -476,7 +620,6 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
             </div>
           )}
 
-          {/* Edit indicator */}
           {editingMessage && (
             <div className={styles.editIndicator}>
               <span>Editing message</span>
@@ -500,7 +643,6 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
                   isOwnMessage ? styles.messageRight : styles.messageLeft
                 }`}
               >
-                {/* Avatar à côté des messages de l'ami */}
                 {!isOwnMessage && (
                   <div className={styles.messageAvatar}>
                     {friend.avatar ? (
@@ -593,7 +735,6 @@ const ChatModal = ({ friend, onClose, onRemoveFriend }) => {
           </button>
         </form>
 
-        {/* Emoji Picker */}
         {showEmojiPicker && (
           <EmojiPicker
             onEmojiSelect={handleEmojiSelect}
