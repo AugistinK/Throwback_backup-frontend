@@ -544,6 +544,60 @@ const notificationsAPI = {
   }
 };
 
+// =================Admin FRIENDS CAHT API==========================
+
+const adminFriendsChatAPI = {
+  getOverview() {
+    return api.get('/api/admin/friends-chat/overview');
+  },
+
+  getUserSummary(userId) {
+    return api.get(`/api/admin/friends-chat/users/${userId}`);
+  },
+
+  getFriendships(params = {}) {
+    return api.get('/api/admin/friends-chat/friendships', { params });
+  },
+
+  deleteFriendship(friendshipId) {
+    return api.delete(`/api/admin/friends-chat/friendships/${friendshipId}`);
+  },
+
+  getBlocks() {
+    return api.get('/api/admin/friends-chat/blocks');
+  },
+
+  getConversations(params = {}) {
+    return api.get('/api/admin/friends-chat/conversations', { params });
+  },
+
+  getConversationMessages(conversationId, params = {}) {
+    return api.get(
+      `/api/admin/friends-chat/conversations/${conversationId}/messages`,
+      { params }
+    );
+  },
+
+  getDirectMessages(userA, userB, params = {}) {
+    return api.get('/api/admin/friends-chat/direct-messages', {
+      params: { userA, userB, ...params }
+    });
+  },
+
+  adminDeleteMessage(messageId) {
+    return api.delete(`/api/admin/friends-chat/messages/${messageId}`);
+  },
+
+  getReports(params = {}) {
+    return api.get('/api/admin/friends-chat/reports', { params });
+  },
+
+  updateReport(reportId, payload) {
+    return api.put(`/api/admin/friends-chat/reports/${reportId}`, payload);
+  }
+};
+
+
 // ============================================
 // EXPORTS
 // ============================================
@@ -557,6 +611,6 @@ export { adminAPI };
 export { friendsAPI };
 export { conversationsAPI };
 export { notificationsAPI };
-
+export {adminFriendsChatAPI};
 // Export par défaut de l'instance axios
 export default api;

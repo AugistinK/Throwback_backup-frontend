@@ -57,6 +57,9 @@ import Comments from './components/Dashboard/AdminDashboard/Comments/Comments';
 import { AdminLikes } from './components/Dashboard/AdminDashboard/Likes';
 import MyProfile from './components/Dashboard/AdminDashboard/Profile/MyProfile';
 
+// ✅ Nouveau module admin Friends & Chat
+import AdminFriendsChat from './components/Dashboard/AdminDashboard/FriendsChat/AdminFriendsChat';
+
 // Composant temporaire pour les pages admin
 const TempPage = ({ title }) => (
   <div style={{ padding: '20px' }}>
@@ -173,7 +176,11 @@ function App() {
               <Route path="posts/:postId" element={<PostDetails />} />
               <Route path="posts/moderation" element={<PostModeration />} />
               <Route path="likes" element={<AdminLikes />} />
-              <Route path="friends" element={<TempPage title="Gestion des Amis" />} />
+
+              {/* ✅ Nouveau module Friends & Chat côté admin */}
+              <Route path="friends" element={<AdminFriendsChat />} />
+              <Route path="friends-chat" element={<AdminFriendsChat />} />
+
               <Route path="logs" element={<TempPage title="Logs Système" />} />
               <Route path="profile" element={<MyProfile />} />
               <Route path="notifications" element={<TempPage title="Notifications" />} />
