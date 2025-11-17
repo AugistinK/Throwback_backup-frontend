@@ -1,4 +1,4 @@
-// src/components/Dashboard/UserDashboard/Chat/MessageList.jsx
+// src/components/Dashboard/UserDashboard/Chat/MessageList.jsx - AVEC GROUPID
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
@@ -14,7 +14,8 @@ const MessageList = ({
   onLoadMore,
   participant,
   messagesEndRef,
-  isGroup
+  isGroup,
+  groupId // NOUVEAU : ID du groupe
 }) => {
   const getInitials = (nom, prenom) => {
     const text = `${prenom || ''} ${nom || ''}`.trim();
@@ -121,6 +122,7 @@ const MessageList = ({
                   participant={participant}
                   currentUser={currentUser}
                   isGroup={isGroup}
+                  groupId={groupId} // NOUVEAU : Passer le groupId
                 />
               ))}
             </div>
