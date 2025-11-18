@@ -6,6 +6,7 @@ import { friendsAPI } from '../../../../utils/api';
 import ConversationSidebar from './ConversationSidebar';
 import ChatArea from './ChatArea';
 import EmptyChat from './EmptyChat';
+import GroupChatModal from './GroupChatModal';
 import styles from './Chat.module.css';
 
 const Chat = () => {
@@ -18,6 +19,7 @@ const Chat = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showGroupModal, setShowGroupModal] = useState(false);
 
   const currentUserId = user?.id || user?._id;
 
@@ -46,7 +48,9 @@ const Chat = () => {
       const groupId = raw.groupId || group._id || raw._id;
 
       const name =
+        raw.groupName ||
         raw.name ||
+        group.groupName ||
         group.name ||
         raw.title ||
         'Group';
@@ -59,14 +63,16 @@ const Chat = () => {
 
       const unread = raw.unreadCount ?? raw.unread ?? 0;
 
+      const members = raw.members || group.members || raw.participants || [];
+
       return {
         ...raw,
         _id: groupId,
         groupId,
         isGroup: true,
         name,
-        members:
-          raw.members || group.members || raw.participants || [],
+        groupName: name,
+        members,
         lastMessage,
         unreadCount: unread,
         isArchived: !!raw.isArchived,
@@ -133,11 +139,13 @@ const Chat = () => {
       _id: group._id,
       groupId: group._id,
       isGroup: true,
-      name: group.name || group.title || 'Group',
+      name: group.groupName || group.name || group.title || 'Group',
+      groupName: group.groupName || group.name || group.title || 'Group',
       members: group.members || group.participants || [],
-      lastMessage: null,
-      unreadCount: 0,
+      lastMessage: group.lastMessage || null,
+      unreadCount: group.unreadCount || 0,
       isArchived: false,
+      groupCreator: group.groupCreator || group.createdBy,
       source: 'group'
     };
   };
@@ -152,11 +160,11 @@ const Chat = () => {
           return null;
         }),
         friendsAPI.getFriendGroups().catch((e) => {
-          console.warn('Error fetching friend groups (optional):', e);
+          console.warn('Error fetching friend groups:', e);
           return null;
         }),
         friendsAPI.getFriends().catch((e) => {
-          console.warn('Error fetching friends (optional):', e);
+          console.warn('Error fetching friends:', e);
           return null;
         })
       ]);
@@ -356,12 +364,22 @@ const Chat = () => {
     setActiveTab(tab);
   };
 
+  const handleCreateGroup = () => {
+    setShowGroupModal(true);
+  };
+
+  const handleGroupCreated = (newGroup) => {
+    const conversation = buildConversationFromGroup(newGroup);
+    setConversations((prev) => [conversation, ...prev]);
+    setSelectedConversation(conversation);
+  };
+
   const filteredConversations = conversations.filter((conv) => {
     const q = searchQuery.trim().toLowerCase();
 
     let displayName = '';
     if (conv.isGroup) {
-      displayName = conv.name || '';
+      displayName = conv.name || conv.groupName || '';
     } else if (conv.participant) {
       displayName = `${conv.participant.prenom || ''} ${
         conv.participant.nom || ''
@@ -408,6 +426,7 @@ const Chat = () => {
         unreadCount={unreadCount}
         loading={loading}
         onlineUsers={onlineUsers}
+        onCreateGroup={handleCreateGroup}
       />
 
       {selectedConversation ? (
@@ -415,10 +434,17 @@ const Chat = () => {
           conversation={selectedConversation}
           onBack={() => setSelectedConversation(null)}
           isOnline={isSelectedOnline}
+          onConversationUpdated={loadConversations}
         />
       ) : (
         <EmptyChat />
       )}
+
+      <GroupChatModal
+        isOpen={showGroupModal}
+        onClose={() => setShowGroupModal(false)}
+        onGroupCreated={handleGroupCreated}
+      />
     </div>
   );
 };

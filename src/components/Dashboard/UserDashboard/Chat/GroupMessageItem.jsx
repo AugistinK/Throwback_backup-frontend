@@ -1,4 +1,4 @@
-// src/components/Dashboard/UserDashboard/Chat/MessageItem.jsx
+// src/components/Dashboard/UserDashboard/Chat/GroupMessageItem.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -13,23 +13,12 @@ import { friendsAPI } from '../../../../utils/api';
 import CustomModal from './CustomModal';
 import styles from './Chat.module.css';
 
-const MessageItem = ({
-  message,
-  isOwn,
-  showAvatar,
-  participant,
-  currentUser,
-  isGroup,
-  onEdit,
-  onCopy,
-  onDelete
-}) => {
+const GroupMessageItem = ({ message, isOwn, showAvatar, currentUser }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [localMessage, setLocalMessage] = useState(message);
   const [deletedForMe, setDeletedForMe] = useState(false);
-  
-  // Modals
+
   const [successModal, setSuccessModal] = useState({ isOpen: false, message: '' });
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false });
@@ -64,12 +53,6 @@ const MessageItem = ({
       .toUpperCase();
   };
 
-  const senderForAvatar = isGroup
-    ? localMessage.sender
-    : isOwn
-    ? currentUser
-    : participant;
-
   const senderDisplayName = (() => {
     const u = localMessage.sender;
     if (!u) return '';
@@ -99,11 +82,6 @@ const MessageItem = ({
     };
   }, [showMenu]);
 
-  const handleMenuClick = (action) => {
-    setShowMenu(false);
-    if (action) action();
-  };
-
   const toggleMenu = (e) => {
     e.stopPropagation();
 
@@ -121,7 +99,8 @@ const MessageItem = ({
   const getMessageId = () =>
     localMessage._id || localMessage.id || message._id || message.id;
 
-  const handleEditInternal = async () => {
+  const handleEdit = async () => {
+    setShowMenu(false);
     const currentText = localMessage.content || localMessage.text || '';
     const next = window.prompt('Edit your message', currentText);
     if (next == null) return;
@@ -146,7 +125,7 @@ const MessageItem = ({
         text: trimmed,
         edited: true
       }));
-      
+
       setSuccessModal({
         isOpen: true,
         message: 'Message edited successfully'
@@ -160,7 +139,8 @@ const MessageItem = ({
     }
   };
 
-  const handleCopyInternal = async () => {
+  const handleCopy = async () => {
+    setShowMenu(false);
     const textToCopy = localMessage.content || localMessage.text || '';
 
     if (!textToCopy) return;
@@ -180,24 +160,15 @@ const MessageItem = ({
     }
   };
 
-  const handleDeleteInternal = async () => {
-    const id = getMessageId();
-    if (!id) {
-      setErrorModal({
-        isOpen: true,
-        message: 'Cannot delete message: missing ID'
-      });
-      return;
-    }
-
+  const handleDelete = () => {
+    setShowMenu(false);
     setDeleteModal({ isOpen: true });
   };
 
   const confirmDelete = async () => {
     const id = getMessageId();
-    
+
     try {
-      // 🔹 Utilise l’endpoint avancé /api/chat/messages/:id
       await friendsAPI.deleteMessageAdvanced(id, !!isOwn);
 
       if (isOwn) {
@@ -210,7 +181,7 @@ const MessageItem = ({
       } else {
         setDeletedForMe(true);
       }
-      
+
       setSuccessModal({
         isOpen: true,
         message: 'Message deleted successfully'
@@ -221,30 +192,6 @@ const MessageItem = ({
         isOpen: true,
         message: 'Failed to delete message. Please try again.'
       });
-    }
-  };
-
-  const handleEditClick = () => {
-    if (onEdit) {
-      onEdit(localMessage);
-    } else {
-      handleEditInternal();
-    }
-  };
-
-  const handleCopyClick = () => {
-    if (onCopy) {
-      onCopy(localMessage);
-    } else {
-      handleCopyInternal();
-    }
-  };
-
-  const handleDeleteClick = () => {
-    if (onDelete) {
-      onDelete(localMessage, isOwn);
-    } else {
-      handleDeleteInternal();
     }
   };
 
@@ -259,11 +206,14 @@ const MessageItem = ({
       >
         {!isOwn && showAvatar && (
           <div className={styles.messageAvatar}>
-            {senderForAvatar?.photo_profil ? (
-              <img src={senderForAvatar.photo_profil} alt={senderDisplayName} />
+            {localMessage.sender?.photo_profil ? (
+              <img
+                src={localMessage.sender.photo_profil}
+                alt={senderDisplayName}
+              />
             ) : (
               <div className={styles.messageAvatarPlaceholder}>
-                {getInitialsFromUser(senderForAvatar)}
+                {getInitialsFromUser(localMessage.sender)}
               </div>
             )}
           </div>
@@ -274,7 +224,7 @@ const MessageItem = ({
             isOwn ? styles.messageBubbleOwn : styles.messageBubbleOther
           } ${localMessage.tempId ? styles.messageSending : ''}`}
         >
-          {isGroup && !isOwn && senderDisplayName && (
+          {!isOwn && senderDisplayName && (
             <div className={styles.messageAuthor}>{senderDisplayName}</div>
           )}
 
@@ -283,39 +233,12 @@ const MessageItem = ({
               <em>This message was deleted</em>
             </p>
           ) : (
-            <>
-              {localMessage.type === 'text' && (
-                <p className={styles.messageContent}>{localMessage.content}</p>
-              )}
-
-              {localMessage.type === 'image' && (
-                <div className={styles.messageImage}>
-                  <img src={localMessage.content} alt="Shared" />
-                  {localMessage.caption && (
-                    <p className={styles.imageCaption}>{localMessage.caption}</p>
-                  )}
-                </div>
-              )}
-
-              {localMessage.type === 'audio' && (
-                <div className={styles.messageAudio}>
-                  <audio controls src={localMessage.content}></audio>
-                </div>
-              )}
-
-              {localMessage.type === 'video' && (
-                <div className={styles.messageVideo}>
-                  <video controls src={localMessage.content}></video>
-                </div>
-              )}
-            </>
+            <p className={styles.messageContent}>{localMessage.content}</p>
           )}
 
           <div className={styles.messageInfo}>
             <span className={styles.messageTime}>
-              {formatTime(
-                localMessage.created_date || localMessage.createdAt
-              )}
+              {formatTime(localMessage.created_date || localMessage.createdAt)}
             </span>
             {isOwn && (
               <span className={styles.messageStatus}>
@@ -336,7 +259,10 @@ const MessageItem = ({
               onClick={toggleMenu}
               title="Message options"
             >
-              <FontAwesomeIcon icon={faEllipsisVertical} style={{ fontSize: 14 }} />
+              <FontAwesomeIcon
+                icon={faEllipsisVertical}
+                style={{ fontSize: 14 }}
+              />
             </button>
 
             {showMenu && (
@@ -359,17 +285,14 @@ const MessageItem = ({
                   {isOwn && (
                     <button
                       className={styles.dropdownItem}
-                      onClick={() => handleMenuClick(handleEditClick)}
+                      onClick={handleEdit}
                     >
                       <FontAwesomeIcon icon={faPen} style={{ fontSize: 14 }} />
                       Edit
                     </button>
                   )}
 
-                  <button
-                    className={styles.dropdownItem}
-                    onClick={() => handleMenuClick(handleCopyClick)}
-                  >
+                  <button className={styles.dropdownItem} onClick={handleCopy}>
                     <FontAwesomeIcon icon={faCopy} style={{ fontSize: 14 }} />
                     Copy
                   </button>
@@ -378,7 +301,7 @@ const MessageItem = ({
 
                   <button
                     className={`${styles.dropdownItem} ${styles.dangerItem}`}
-                    onClick={() => handleMenuClick(handleDeleteClick)}
+                    onClick={handleDelete}
                   >
                     <FontAwesomeIcon icon={faTrash} style={{ fontSize: 14 }} />
                     {isOwn ? 'Delete for everyone' : 'Delete for me'}
@@ -428,4 +351,4 @@ const MessageItem = ({
   );
 };
 
-export default MessageItem;
+export default GroupMessageItem;

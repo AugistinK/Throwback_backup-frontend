@@ -4,7 +4,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
   faEllipsisVertical,
-  faMessage
+  faMessage,
+  faUserGroup
 } from '@fortawesome/free-solid-svg-icons';
 import ConversationItem from './ConversationItem';
 import styles from './Chat.module.css';
@@ -19,7 +20,8 @@ const ConversationSidebar = ({
   onTabChange,
   unreadCount,
   loading,
-  onlineUsers
+  onlineUsers,
+  onCreateGroup
 }) => {
   const tabs = [
     { id: 'all', label: 'All', count: conversations.length },
@@ -37,8 +39,12 @@ const ConversationSidebar = ({
           <h2 className={styles.sidebarTitle}>Messages</h2>
         </div>
         <div className={styles.sidebarHeaderActions}>
-          <button className={styles.headerButton} title="New message">
-            <FontAwesomeIcon icon={faMessage} />
+          <button
+            className={styles.headerButton}
+            title="New group"
+            onClick={onCreateGroup}
+          >
+            <FontAwesomeIcon icon={faUserGroup} />
           </button>
           <button className={styles.headerButton} title="More options">
             <FontAwesomeIcon icon={faEllipsisVertical} />

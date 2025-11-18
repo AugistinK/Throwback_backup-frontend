@@ -1,7 +1,7 @@
 // src/components/Dashboard/UserDashboard/Chat/ConversationItem.jsx
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck, faCheckDouble, faCircle } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faCheckDouble, faCircle, faUsers } from '@fortawesome/free-solid-svg-icons';
 import styles from './Chat.module.css';
 
 const ConversationItem = ({ conversation, isSelected, onSelect, isOnline }) => {
@@ -54,7 +54,7 @@ const ConversationItem = ({ conversation, isSelected, onSelect, isOnline }) => {
   };
 
   const displayName = isGroup
-    ? conversation.name || 'Group'
+    ? conversation.name || conversation.groupName || 'Group'
     : `${participant?.prenom || ''} ${participant?.nom || ''}`.trim() ||
       'Friend';
 
@@ -84,8 +84,8 @@ const ConversationItem = ({ conversation, isSelected, onSelect, isOnline }) => {
     >
       <div className={styles.conversationAvatar}>
         {isGroup ? (
-          <div className={styles.avatarPlaceholder}>
-            {getInitials(displayName || 'G')}
+          <div className={styles.avatarPlaceholder} style={{ backgroundColor: '#b31217' }}>
+            <FontAwesomeIcon icon={faUsers} style={{ fontSize: 20, color: 'white' }} />
           </div>
         ) : participant?.photo_profil ? (
           <img

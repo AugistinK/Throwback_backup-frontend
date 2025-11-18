@@ -6,9 +6,14 @@ import { friendsAPI } from '../../../../utils/api';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
+import GroupChatHeader from './GroupChatHeader';
+import GroupChatInput from './GroupChatInput';
+import GroupMembersModal from './GroupMembersModal';
+import GroupAddMembersModal from './GroupAddMembersModal';
+import CustomModal from './CustomModal';
 import styles from './Chat.module.css';
 
-const ChatArea = ({ conversation, onBack, isOnline }) => {
+const ChatArea = ({ conversation, onBack, isOnline, onConversationUpdated }) => {
   const { user } = useAuth();
   const {
     socket,
@@ -22,6 +27,17 @@ const ChatArea = ({ conversation, onBack, isOnline }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [conversationReady, setConversationReady] = useState(false);
+
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+  const [friendsToAdd, setFriendsToAdd] = useState([]);
+
+  const [successModal, setSuccessModal] = useState({ isOpen: false, message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
+  const [leaveGroupModal, setLeaveGroupModal] = useState({ isOpen: false });
+  const [deleteGroupModal, setDeleteGroupModal] = useState({ isOpen: false });
+
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
@@ -124,28 +140,26 @@ const ChatArea = ({ conversation, onBack, isOnline }) => {
       setHasMore(false);
     } finally {
       setLoading(false);
+      setConversationReady(true);
     }
   };
 
-  // Initial load when conversation changes
   useEffect(() => {
     setMessages([]);
     setPage(1);
     setHasMore(true);
+    setConversationReady(false);
 
     if (targetId) {
       loadMessages(1);
 
-      // On ne rejoint la room Socket que pour les directs
       if (!isGroup && socket) {
         joinConversation(targetId);
         markMessagesAsRead(targetId);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation._id, isGroup, socket]);
 
-  // Socket events only for direct chat
   useEffect(() => {
     if (!socket || isGroup || !participant) return;
 
@@ -236,7 +250,6 @@ const ChatArea = ({ conversation, onBack, isOnline }) => {
           return;
         }
 
-        // Pour simplifier, on recharge la dernière page après l'envoi
         loadMessages(1);
       } else {
         await socketSendMessage(targetId, content, type, tempId);
@@ -255,32 +268,247 @@ const ChatArea = ({ conversation, onBack, isOnline }) => {
     }
   };
 
+  const handleViewMembers = () => {
+    setShowMembersModal(true);
+  };
+
+  const handleAddMembers = async () => {
+    try {
+      const res = await friendsAPI.getFriends();
+      if (res.success && Array.isArray(res.data)) {
+        const currentMemberIds = conversation.members.map(m => m._id || m.id);
+        const available = res.data.filter(f => !currentMemberIds.includes(f._id));
+        setFriendsToAdd(available);
+        setShowAddMembersModal(true);
+      }
+    } catch (error) {
+      console.error('Error loading friends:', error);
+      setErrorModal({
+        isOpen: true,
+        message: 'Failed to load friends list'
+      });
+    }
+  };
+
+  const handleConfirmAddMembers = async (selectedIds) => {
+    try {
+      const res = await friendsAPI.addMembersToGroup(targetId, selectedIds);
+      if (res.success) {
+        setSuccessModal({
+          isOpen: true,
+          message: 'Members added successfully!'
+        });
+        setShowAddMembersModal(false);
+        onConversationUpdated && onConversationUpdated();
+      } else {
+        setErrorModal({
+          isOpen: true,
+          message: res.message || 'Failed to add members'
+        });
+      }
+    } catch (error) {
+      console.error('Error adding members:', error);
+      setErrorModal({
+        isOpen: true,
+        message: 'An error occurred while adding members'
+      });
+    }
+  };
+
+  const handleLeaveGroup = () => {
+    setLeaveGroupModal({ isOpen: true });
+  };
+
+  const confirmLeaveGroup = async () => {
+    try {
+      const res = await friendsAPI.leaveGroup(targetId);
+      if (res.success) {
+        setSuccessModal({
+          isOpen: true,
+          message: 'You left the group successfully'
+        });
+        setTimeout(() => {
+          onBack();
+          onConversationUpdated && onConversationUpdated();
+        }, 1500);
+      } else {
+        setErrorModal({
+          isOpen: true,
+          message: res.message || 'Failed to leave group'
+        });
+      }
+    } catch (error) {
+      console.error('Error leaving group:', error);
+      setErrorModal({
+        isOpen: true,
+        message: 'An error occurred while leaving the group'
+      });
+    }
+  };
+
+  const handleDeleteGroup = () => {
+    setDeleteGroupModal({ isOpen: true });
+  };
+
+  const confirmDeleteGroup = async () => {
+    try {
+      const res = await friendsAPI.deleteGroup(targetId);
+      if (res.success) {
+        setSuccessModal({
+          isOpen: true,
+          message: 'Group deleted successfully'
+        });
+        setTimeout(() => {
+          onBack();
+          onConversationUpdated && onConversationUpdated();
+        }, 1500);
+      } else {
+        setErrorModal({
+          isOpen: true,
+          message: res.message || 'Failed to delete group'
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      setErrorModal({
+        isOpen: true,
+        message: 'An error occurred while deleting the group'
+      });
+    }
+  };
+
+  const getInitials = (text) => {
+    if (!text) return '';
+    const parts = text.trim().split(' ');
+    return parts
+      .filter(Boolean)
+      .map((p) => p[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getFriendDisplayName = (friend) => {
+    return `${friend.prenom || ''} ${friend.nom || ''}`.trim() || 'Friend';
+  };
+
+  const isCreator = isGroup && conversation.groupCreator === (user?.id || user?._id);
+
   return (
-    <div className={styles.chatArea}>
-      <ChatHeader
-        participant={participant}
-        conversation={conversation}
-        isOnline={!isGroup && isOnline}
-        onBack={onBack}
+    <>
+      <div className={styles.chatArea}>
+        {isGroup ? (
+          <GroupChatHeader
+            groupName={conversation.name || conversation.groupName || 'Group'}
+            memberCount={conversation.members?.length || 0}
+            color="#b31217"
+            isCreator={isCreator}
+            onAddMembers={handleAddMembers}
+            onViewMembers={handleViewMembers}
+            onLeaveGroup={handleLeaveGroup}
+            onDeleteGroup={handleDeleteGroup}
+            onClose={onBack}
+          />
+        ) : (
+          <ChatHeader
+            participant={participant}
+            conversation={conversation}
+            isOnline={isOnline}
+            onBack={onBack}
+          />
+        )}
+
+        <MessageList
+          messages={messages}
+          currentUser={user}
+          isTyping={isTyping}
+          loading={loading}
+          hasMore={hasMore}
+          onLoadMore={handleLoadMore}
+          participant={participant}
+          messagesEndRef={messagesEndRef}
+          isGroup={isGroup}
+        />
+
+        {isGroup ? (
+          <GroupChatInput
+            onSend={handleSendMessage}
+            isConnected={!!socket}
+            conversationReady={conversationReady}
+          />
+        ) : (
+          <MessageInput
+            onSendMessage={handleSendMessage}
+            receiverId={participant?._id}
+          />
+        )}
+      </div>
+
+      {isGroup && (
+        <>
+          <GroupMembersModal
+            isOpen={showMembersModal}
+            onClose={() => setShowMembersModal(false)}
+            members={conversation.members || []}
+            groupCreator={conversation.groupCreator}
+            currentUserId={user?.id || user?._id}
+            getInitials={getInitials}
+            getFriendDisplayName={getFriendDisplayName}
+          />
+
+          <GroupAddMembersModal
+            isOpen={showAddMembersModal}
+            onClose={() => setShowAddMembersModal(false)}
+            friendsToAdd={friendsToAdd}
+            onConfirm={handleConfirmAddMembers}
+            processing={false}
+            getFriendDisplayName={getFriendDisplayName}
+            getInitials={getInitials}
+          />
+        </>
+      )}
+
+      <CustomModal
+        isOpen={leaveGroupModal.isOpen}
+        onClose={() => setLeaveGroupModal({ isOpen: false })}
+        title="Leave Group"
+        message="Are you sure you want to leave this group? You will no longer receive messages from this group."
+        onConfirm={confirmLeaveGroup}
+        confirmText="Leave"
+        cancelText="Cancel"
+        isDanger={true}
       />
 
-      <MessageList
-        messages={messages}
-        currentUser={user}
-        isTyping={isTyping}
-        loading={loading}
-        hasMore={hasMore}
-        onLoadMore={handleLoadMore}
-        participant={participant}
-        messagesEndRef={messagesEndRef}
-        isGroup={isGroup}
+      <CustomModal
+        isOpen={deleteGroupModal.isOpen}
+        onClose={() => setDeleteGroupModal({ isOpen: false })}
+        title="Delete Group"
+        message="Are you sure you want to delete this group? This action cannot be undone and all messages will be lost."
+        onConfirm={confirmDeleteGroup}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDanger={true}
       />
 
-      <MessageInput
-        onSendMessage={handleSendMessage}
-        receiverId={isGroup ? null : participant?._id}
+      <CustomModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, message: '' })}
+        title="Success"
+        message={successModal.message}
+        type="alert"
+        confirmText="OK"
       />
-    </div>
+
+      <CustomModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, message: '' })}
+        title="Error"
+        message={errorModal.message}
+        type="alert"
+        confirmText="OK"
+        isDanger={true}
+      />
+    </>
   );
 };
 
