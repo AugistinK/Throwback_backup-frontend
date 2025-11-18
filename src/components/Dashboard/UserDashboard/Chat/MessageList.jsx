@@ -3,6 +3,7 @@ import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import MessageItem from './MessageItem';
+import GroupMessageItem from './GroupMessageItem';
 import styles from './Chat.module.css';
 
 const MessageList = ({
@@ -105,24 +106,44 @@ const MessageList = ({
                 </span>
               </div>
 
-              {group.messages.map((message, index) => (
-                <MessageItem
-                  key={message.id || message.tempId || index}
-                  message={message}
-                  isOwn={
-                    message.sender._id === currentUser.id ||
-                    message.sender._id === currentUser._id
-                  }
-                  showAvatar={
-                    index === group.messages.length - 1 ||
-                    group.messages[index + 1]?.sender._id !==
-                      message.sender._id
-                  }
-                  participant={participant}
-                  currentUser={currentUser}
-                  isGroup={isGroup}
-                />
-              ))}
+              {group.messages.map((message, index) => {
+                const isOwn =
+                  message.sender._id === currentUser.id ||
+                  message.sender._id === currentUser._id;
+
+                const showAvatar =
+                  index === group.messages.length - 1 ||
+                  group.messages[index + 1]?.sender._id !==
+                    message.sender._id;
+
+                const key = message.id || message._id || message.tempId || index;
+
+                // 🔹 Cas groupe : on passe par le composant dédié
+                if (isGroup) {
+                  return (
+                    <GroupMessageItem
+                      key={key}
+                      message={message}
+                      isOwn={isOwn}
+                      showAvatar={showAvatar}
+                      currentUser={currentUser}
+                    />
+                  );
+                }
+
+                // 🔹 Cas conversation directe
+                return (
+                  <MessageItem
+                    key={key}
+                    message={message}
+                    isOwn={isOwn}
+                    showAvatar={showAvatar}
+                    participant={participant}
+                    currentUser={currentUser}
+                    isGroup={false}
+                  />
+                );
+              })}
             </div>
           ))}
 
