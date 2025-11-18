@@ -23,7 +23,7 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
       group?.chatConversationId ||
       group?.conversation?._id ||
       group?.conversation?.id ||
-      group?.id || // fallback
+      group?.id || 
       null
   );
 

@@ -1,363 +1,469 @@
-// src/components/Dashboard/UserDashboard/Friends/Friends.jsx - VERSION COMPLÈTE CORRIGÉE AVEC GROUP CHATS
-import React, { useState, useEffect } from 'react';
-import FriendCard from './FriendCard';
-import RequestCard from './RequestCard';
-import SuggestionCard from './SuggestionCard';
-import FriendGroupsModal from './FriendGroupsModal';
-import ChatModal from './ChatModal';
-import FriendProfileModal from './FriendProfileModal';
-import GroupChatModal from './GroupChatModal';
-import UserSearchModal from './UserSearchModal';
-import ConfirmModal from './ConfirmModal';
-import { friendsAPI } from '../../../../utils/api';
+// src/components/Dashboard/UserDashboard/Friends/GroupChatModal.jsx
+import React, { useState, useRef, useEffect } from 'react';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { useAuth } from '../../../../contexts/AuthContext';
+import friendsAPI from '../../../../utils/friendsAPI';
 import styles from './Friends.module.css';
+import ConfirmModal from './ConfirmModal';
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faUsers,
-  faUserPlus,
-  faUserCheck,
-  faMagnifyingGlass,
-  faFilter,
-  faMessage
-} from '@fortawesome/free-solid-svg-icons';
+import GroupChatHeader from './GroupChatHeader';
+import GroupChatMessages from './GroupChatMessages';
+import GroupChatInput from './GroupChatInput';
+import GroupAddMembersModal from './GroupAddMembersModal';
 
-/**
- * Petit modal pour lister les conversations de groupe
- * et permettre d’ouvrir le chat de groupe.
- */
-const GroupChatsListModal = ({ groups = [], onClose, onOpenGroupChat }) => {
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>
-            <FontAwesomeIcon icon={faUsers} style={{ fontSize: 24 }} />
-            Group Chats
-          </h2>
-          <button className={styles.closeButton} onClick={onClose}>
-            ✕
-          </button>
-        </div>
-
-        <div className={styles.modalBody}>
-          {groups.length === 0 ? (
-            <div className={styles.emptyState}>
-              <FontAwesomeIcon icon={faUsers} style={{ fontSize: 48, opacity: 0.4 }} />
-              <h3>No group chats</h3>
-              <p>You haven’t joined any group chats yet.</p>
-            </div>
-          ) : (
-            <div className={styles.groupsList}>
-              {groups.map((group) => (
-                <div key={group.id || group._id} className={styles.groupItem}>
-                  <div
-                    className={styles.groupColor}
-                    style={{ backgroundColor: group.color || '#b31217' }}
-                  />
-                  <div className={styles.groupInfo}>
-                    <h4 className={styles.groupName}>{group.name}</h4>
-                    <p className={styles.groupMembers}>
-                      {group.members?.length || 0} members
-                    </p>
-                  </div>
-                  <div className={styles.groupActions}>
-                    <button
-                      className={styles.iconButton}
-                      type="button"
-                      onClick={() => onOpenGroupChat && onOpenGroupChat(group)}
-                      title="Open group chat"
-                    >
-                      <FontAwesomeIcon
-                        icon={faMessage}
-                        style={{ fontSize: 18, color: '#10b981' }}
-                      />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className={styles.modalFooter}>
-          <button className={styles.footerButton} onClick={onClose} type="button">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const Friends = () => {
+const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
+  const { socket, isConnected } = useSocket();
   const { user } = useAuth();
-  const { isUserOnline, notifyFriendRequest, notifyFriendRequestAccepted } = useSocket();
 
   const currentUserId = user?._id || user?.id || null;
 
-  const [activeTab, setActiveTab] = useState('friends');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [showGroupsModal, setShowGroupsModal] = useState(false);
-  const [showGroupChatsModal, setShowGroupChatsModal] = useState(false);
-  const [showChatModal, setShowChatModal] = useState(false);
-  const [selectedChatFriend, setSelectedChatFriend] = useState(null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [selectedProfileFriend, setSelectedProfileFriend] = useState(null);
-  const [showUserSearchModal, setShowUserSearchModal] = useState(false);
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', data: null });
+  // ID "fonctionnel" de la conversation de groupe (Conversation._id)
+  const [conversationId, setConversationId] = useState(
+    group?.conversationId ||
+      group?.chatConversationId ||
+      group?.conversation?._id ||
+      group?.conversation?.id ||
+      null
+  );
 
-  // Group chat modal
-  const [showGroupChatModal, setShowGroupChatModal] = useState(false);
-  const [selectedGroupChat, setSelectedGroupChat] = useState(null);
-
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  // Data
-  const [friends, setFriends] = useState([]);
-  const [requests, setRequests] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
-  const [friendGroups, setFriendGroups] = useState([]);
-  const [chatGroups, setChatGroups] = useState([]); // ✅ conversations de groupe
+  const [members, setMembers] = useState([]);
+  const [participantIds, setParticipantIds] = useState([]);
 
-  const getImageUrl = (path) => {
-    if (!path) return 'https://via.placeholder.com/150';
-    if (path.startsWith('http')) return path;
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    const backendUrl = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
-    return `${backendUrl}${normalizedPath}`;
+  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+  const [processingAction, setProcessingAction] = useState(false);
+
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    type: '',
+    data: null
+  });
+
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    loadAllData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    scrollToBottom();
+  }, [messages]);
 
-  const loadAllData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await Promise.all([
-        loadFriends(),
-        loadRequests(),
-        loadSuggestions(),
-        loadFriendGroups(),
-        loadChatGroups()
-      ]);
-    } catch (err) {
-      setError('Error loading data');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const formatTime = (date) => {
+    const d = date ? new Date(date) : new Date();
+    return d.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  const loadFriends = async () => {
-    try {
-      const response = await friendsAPI.getFriends();
-      if (response.success) {
-        const enrichedFriends = response.data.map((friend) => ({
-          id: friend._id,
-          name: `${friend.prenom} ${friend.nom}`,
-          username: `@${friend.email.split('@')[0]}`,
-          avatar: getImageUrl(friend.photo_profil),
-          status: isUserOnline(friend._id) ? 'online' : 'offline',
-          mutualFriends: 0,
-          location: friend.ville || 'Unknown',
-          favoriteGenres: [],
-          lastActive: isUserOnline(friend._id) ? 'Active now' : '2 hours ago',
-          bio: friend.bio || ''
-        }));
-        setFriends(enrichedFriends);
-      }
-    } catch (err) {
-      console.error('Error loading friends:', err);
-    }
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase();
   };
 
-  const loadRequests = async () => {
-    try {
-      const response = await friendsAPI.getFriendRequests();
-      if (response.success) {
-        const enrichedRequests = response.data.map((req) => ({
-          id: req._id || req.friendshipId,
-          name: req.nom ? `${req.prenom} ${req.nom}` : req.name,
-          username: req.email ? `@${req.email.split('@')[0]}` : req.username,
-          avatar: getImageUrl(req.photo_profil || req.avatar),
-          mutualFriends: 0,
-          location: req.ville || 'Unknown',
-          date: formatDate(req.requestDate || req.created_date),
-          favoriteGenres: []
-        }));
-        setRequests(enrichedRequests);
-      }
-    } catch (err) {
-      console.error('Error loading requests:', err);
-    }
+  const getSenderNameFromUser = (u) => {
+    if (!u) return 'Unknown';
+    if (u.name) return u.name;
+    const full = `${u.prenom || ''} ${u.nom || ''}`.trim();
+    if (full) return full;
+    return u.email || u.username || 'Unknown';
   };
 
-  const loadSuggestions = async () => {
-    try {
-      const response = await friendsAPI.getFriendSuggestions();
-      if (response.success) {
-        // Filtrer pour exclure admin et superadmin
-        const filteredSuggestions = response.data.filter((sug) => {
-          const userRole = sug.role || (sug.roles && sug.roles[0]?.libelle_role);
-          return userRole !== 'admin' && userRole !== 'superadmin';
-        });
-
-        const enrichedSuggestions = filteredSuggestions.map((sug) => ({
-          id: sug._id,
-          name: `${sug.prenom} ${sug.nom}`,
-          username: `@${sug.email.split('@')[0]}`,
-          avatar: getImageUrl(sug.photo_profil),
-          mutualFriends: 0,
-          location: sug.ville || 'Unknown',
-          reason: sug.reason || 'Suggested for you',
-          favoriteGenres: []
-        }));
-        setSuggestions(enrichedSuggestions);
-      }
-    } catch (err) {
-      console.error('Error loading suggestions:', err);
-    }
-  };
-
-  const loadFriendGroups = async () => {
-    try {
-      const response = await friendsAPI.getFriendGroups();
-      if (response.success) {
-        const mappedGroups = response.data.map((group) => ({
-          id: group._id,
-          name: group.name,
-          members: group.members.map((m) => m._id || m),
-          color: group.color || '#b31217',
-          isCreator: group.owner === user?.id || group.owner === user?._id
-        }));
-        setFriendGroups(mappedGroups);
-      }
-    } catch (err) {
-      console.error('Error loading friend groups:', err);
-    }
+  const getFriendDisplayName = (f) => {
+    if (!f) return 'Unknown';
+    if (f.name) return f.name;
+    const full = `${f.prenom || ''} ${f.nom || ''}`.trim();
+    if (full) return full;
+    return f.email || f.username || 'Unknown';
   };
 
   /**
-   * Charger les conversations de groupe auxquelles l’utilisateur participe.
-   * On s’appuie sur /api/conversations qui renvoie déjà uniquement
-   * les conversations dont l’utilisateur est participant.
+   * Construire la liste des membres affichables
    */
-  const loadChatGroups = async () => {
-    try {
-      if (!currentUserId) return;
+  useEffect(() => {
+    if (!group) {
+      setMembers([]);
+      setParticipantIds([]);
+      return;
+    }
 
-      let response;
-      if (typeof friendsAPI.getAllConversations === 'function') {
-        response = await friendsAPI.getAllConversations();
-      } else if (typeof friendsAPI.getConversations === 'function') {
-        response = await friendsAPI.getConversations();
-      } else {
-        console.warn('No getAllConversations/getConversations available on friendsAPI');
+    const participantObjs = Array.isArray(group.participants)
+      ? group.participants
+      : [];
+
+    const memberEntries = Array.isArray(group.members) ? group.members : [];
+
+    const idsFromParticipants = participantObjs
+      .map((p) => p && (p._id || p.id || p))
+      .filter(Boolean);
+
+    const idsFromMembers = memberEntries
+      .map((m) =>
+        typeof m === 'string' || typeof m === 'number'
+          ? m
+          : m?._id || m?.id || null
+      )
+      .filter(Boolean);
+
+    let ids = [...idsFromParticipants, ...idsFromMembers].map((id) =>
+      id.toString()
+    );
+
+    // inclure le user courant si pas déjà dedans
+    if (currentUserId && !ids.some((id) => id === currentUserId.toString())) {
+      ids.push(currentUserId.toString());
+    }
+
+    ids = [...new Set(ids)];
+    setParticipantIds(ids);
+
+    const built = ids.map((id) => {
+      const idStr = id.toString();
+
+      if (currentUserId && idStr === currentUserId.toString()) {
+        return {
+          id: idStr,
+          name: getSenderNameFromUser(user) || 'You',
+          avatar: user?.photo_profil || user?.avatar || null
+        };
+      }
+
+      const fromConv =
+        participantObjs.find(
+          (p) =>
+            p &&
+            (p._id || p.id || p).toString() === idStr
+        ) || null;
+
+      if (fromConv) {
+        return {
+          id: idStr,
+          name: getSenderNameFromUser(fromConv),
+          avatar: fromConv.photo_profil || fromConv.avatar || null
+        };
+      }
+
+      const friend =
+        friends.find(
+          (f) =>
+            (f.id || f._id)?.toString() === idStr
+        ) || null;
+
+      if (friend) {
+        return {
+          id: idStr,
+          name: getFriendDisplayName(friend),
+          avatar: friend.avatar || friend.photo_profil || null
+        };
+      }
+
+      return {
+        id: idStr,
+        name: 'Member',
+        avatar: null
+      };
+    });
+
+    setMembers(built);
+  }, [group, friends, currentUserId, user]);
+
+  const buildMessageFromApi = (m) => {
+    if (!m) return null;
+    const sender = m.sender || m.from;
+    const senderId =
+      typeof sender === 'string' || typeof sender === 'number'
+        ? sender
+        : sender?._id || sender?.id || null;
+
+    const senderName = m.senderName || getSenderNameFromUser(sender) || 'Unknown';
+
+    return {
+      id: m._id || m.id,
+      senderId,
+      senderName,
+      text: m.content || m.text || '',
+      timestamp: formatTime(m.created_date || m.createdAt),
+      type: m.type || 'text',
+      isOwn:
+        !!currentUserId &&
+        !!senderId &&
+        String(senderId) === String(currentUserId)
+    };
+  };
+
+  /**
+   * 1️⃣ S'assurer qu'on a une conversation de groupe côté backend
+   */
+  useEffect(() => {
+    const ensureConversation = async () => {
+      if (!group || !currentUserId) {
+        setLoading(false);
         return;
       }
 
-      if (!response?.success) return;
+      // si on a déjà un id de conversation, on ne recrée pas
+      if (conversationId) return;
 
-      const conversations = response.data || [];
-      const groups = conversations
-        .filter((conv) => conv.type === 'group')
-        .map((conv) => {
-          const participants = Array.isArray(conv.participants)
-            ? conv.participants.map((p) =>
-                typeof p === 'string' || typeof p === 'number'
-                  ? p
-                  : p._id || p.id || null
-              )
-            : [];
+      const existingConvId =
+        group.conversationId ||
+        group.chatConversationId ||
+        (group.conversation &&
+          (group.conversation._id || group.conversation.id));
 
-          const creator =
-            conv.groupCreator &&
-            (conv.groupCreator._id ||
-              conv.groupCreator.id ||
-              conv.groupCreator);
+      if (existingConvId) {
+        setConversationId(existingConvId);
+        return;
+      }
 
-          return {
-            id: conv._id || conv.id,
-            name: conv.groupName || conv.name || 'Group chat',
-            members: participants.filter(Boolean),
-            color: '#b31217',
-            description: conv.groupDescription || '',
-            conversationId: conv._id || conv.id,
-            isCreator:
-              !!creator &&
-              !!currentUserId &&
-              String(creator) === String(currentUserId)
-          };
-        });
+      // Au cas où le groupe vient de FriendGroups (ids simples)
+      const rawMembers = Array.isArray(group.members) ? group.members : [];
+      const memberIds = rawMembers
+        .map((m) => {
+          if (!m) return null;
+          if (typeof m === 'string' || typeof m === 'number') return m;
+          return m._id || m.id || null;
+        })
+        .filter(Boolean);
 
-      setChatGroups(groups);
-    } catch (err) {
-      console.error('Error loading chat groups:', err);
-    }
-  };
+      const participantIds = memberIds.filter(
+        (id) => String(id) !== String(currentUserId)
+      );
 
-  const formatDate = (date) => {
-    if (!date) return 'Recently';
-    const d = new Date(date);
-    const now = new Date();
-    const diffTime = Math.abs(now - d);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return `${Math.floor(diffDays / 30)} months ago`;
-  };
-
-  // Actions avec modals de confirmation
-  const handleAcceptRequest = async (friendshipId) => {
-    try {
-      const response = await friendsAPI.acceptFriendRequest(friendshipId);
-      if (response.success) {
-        const acceptedRequest = requests.find((r) => r.id === friendshipId);
-        setRequests((prev) => prev.filter((r) => r.id !== friendshipId));
-        if (acceptedRequest) {
-          const newFriend = {
-            ...acceptedRequest,
-            status: 'online',
-            lastActive: 'Active now'
-          };
-          setFriends((prev) => [...prev, newFriend]);
-          try {
-            notifyFriendRequestAccepted(acceptedRequest.id);
-          } catch {}
-        } else {
-          loadFriends();
-        }
+      if (participantIds.length < 2) {
+        setLoading(false);
         setConfirmModal({
           isOpen: true,
-          type: 'success',
+          type: 'info',
           data: {
-            title: 'Friend Request Accepted',
-            message: 'You are now friends! You can start chatting.',
+            title: 'Group too small',
+            message:
+              'To create a group chat, you must have at least 3 members in the friend group.',
+            showCancel: false,
+            confirmText: 'OK'
+          }
+        });
+        return;
+      }
+
+      try {
+        const groupName = group.name || group.groupName || 'Group';
+
+        const createRes = await friendsAPI.createGroup(
+          groupName,
+          participantIds,
+          group.description || null
+        );
+
+        if (!createRes?.success || !createRes.data) {
+          console.error(
+            'Error creating group conversation:',
+            createRes?.message
+          );
+          setLoading(false);
+          setConfirmModal({
+            isOpen: true,
+            type: 'error',
+            data: {
+              title: 'Error',
+              message:
+                createRes?.message ||
+                'Unable to create the group chat. Please try again later.',
+              showCancel: false,
+              confirmText: 'OK'
+            }
+          });
+          return;
+        }
+
+        const newConv = createRes.data;
+        const newId = newConv._id || newConv.id;
+
+        setConversationId(newId);
+
+        if (onUpdateGroup) {
+          onUpdateGroup({
+            ...group,
+            conversationId: newId,
+            conversation: newConv
+          });
+        }
+      } catch (err) {
+        console.error('Error creating group conversation:', err);
+        setLoading(false);
+
+        let msg = 'Unable to create the group chat.';
+        if (err?.response?.data?.message) {
+          msg = err.response.data.message;
+        }
+
+        setConfirmModal({
+          isOpen: true,
+          type: 'error',
+          data: {
+            title: 'Error',
+            message: msg,
             showCancel: false,
             confirmText: 'OK'
           }
         });
       }
+    };
+
+    ensureConversation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group, currentUserId, conversationId]);
+
+  /**
+   * 2️⃣ Charger les messages quand on a conversationId
+   */
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!conversationId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await friendsAPI.getGroupMessages(conversationId);
+
+        if (!response?.success) {
+          console.error('Error loading group messages:', response?.message);
+          setMessages([]);
+          return;
+        }
+
+        const container = response.data ?? response;
+        let rawMessages = [];
+
+        if (Array.isArray(container)) {
+          rawMessages = container;
+        } else if (Array.isArray(container.messages)) {
+          rawMessages = container.messages;
+        } else if (container.data) {
+          if (Array.isArray(container.data)) {
+            rawMessages = container.data;
+          } else if (Array.isArray(container.data.messages)) {
+            rawMessages = container.data.messages;
+          }
+        }
+
+        const mapped = rawMessages.map(buildMessageFromApi).filter(Boolean);
+        setMessages(mapped);
+      } catch (err) {
+        console.error('Error loading group messages:', err);
+        setMessages([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMessages();
+
+    if (isConnected && socket && conversationId) {
+      socket.emit('join-group', { groupId: conversationId });
+    }
+
+    return () => {
+      if (socket && conversationId) {
+        socket.emit('leave-group', { groupId: conversationId });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, isConnected]);
+
+  /**
+   * 3️⃣ Temps réel
+   */
+  useEffect(() => {
+    if (!socket || !conversationId) return;
+
+    const handleGroupMessage = (data) => {
+      const incomingGroupId =
+        data.groupId || data.group_id || data.group?._id || data.group?.id;
+
+      if (!incomingGroupId) return;
+      if (String(incomingGroupId) !== String(conversationId)) return;
+
+      const payload = data.message || data;
+      const mapped = buildMessageFromApi(payload);
+      if (!mapped) return;
+
+      setMessages((prev) => {
+        if (prev.some((m) => m.id && m.id === mapped.id)) {
+          return prev;
+        }
+        return [...prev, mapped];
+      });
+    };
+
+    socket.on('group-message', handleGroupMessage);
+
+    return () => {
+      socket.off('group-message', handleGroupMessage);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socket, conversationId, currentUserId]);
+
+  /**
+   * Envoi message (appelé par GroupChatInput)
+   */
+  const handleSendMessage = async (contentToSend) => {
+    if (!contentToSend || !contentToSend.trim()) return;
+    if (!conversationId) {
+      console.error('Missing conversation id, cannot send message.');
+      return;
+    }
+
+    const tempId = Date.now().toString();
+    const senderName = getSenderNameFromUser(user) || 'You';
+
+    const optimisticMessage = {
+      id: tempId,
+      senderId: currentUserId,
+      senderName,
+      text: contentToSend,
+      timestamp: formatTime(new Date()),
+      type: 'text',
+      isOwn: true
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
+
+    try {
+      const response = await friendsAPI.sendGroupMessage(
+        conversationId,
+        contentToSend,
+        'text'
+      );
+
+      if (!response?.success) {
+        throw new Error(response?.message || 'Failed to send group message');
+      }
+
+      const apiMessage = response.data;
+      const finalMessage = buildMessageFromApi(apiMessage) || optimisticMessage;
+
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? finalMessage : m))
+      );
     } catch (err) {
-      console.error('Error accepting request:', err);
+      console.error('Error sending group message:', err);
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setConfirmModal({
         isOpen: true,
         type: 'error',
         data: {
-          title: 'Error',
-          message: 'Failed to accept friend request. Please try again.',
+          title: 'Send Error',
+          message: 'Failed to send your message. Please try again.',
           showCancel: false,
           confirmText: 'OK'
         }
@@ -365,125 +471,195 @@ const Friends = () => {
     }
   };
 
-  const handleRejectRequest = async (friendshipId) => {
-    setConfirmModal({
-      isOpen: true,
-      type: 'warning',
-      data: {
-        title: 'Reject Friend Request',
-        message: 'Are you sure you want to decline this friend request?',
-        confirmText: 'Decline',
-        cancelText: 'Cancel',
-        onConfirm: async () => {
-          try {
-            await friendsAPI.rejectFriendRequest(friendshipId);
-            setRequests((prev) => prev.filter((r) => r.id !== friendshipId));
-            setConfirmModal({
-              isOpen: true,
-              type: 'success',
-              data: {
-                title: 'Request Declined',
-                message: 'Friend request has been declined.',
-                showCancel: false,
-                confirmText: 'OK'
-              }
-            });
-          } catch (err) {
-            console.error('Error rejecting request:', err);
-            setConfirmModal({
-              isOpen: true,
-              type: 'error',
-              data: {
-                title: 'Error',
-                message: 'Failed to decline request. Please try again.',
-                showCancel: false,
-                confirmText: 'OK'
-              }
-            });
-          }
+  // ====== GESTION MEMBRES ======
+
+  const friendsToAdd = friends.filter((f) => {
+    const fid = (f.id || f._id)?.toString();
+    if (!fid) return false;
+    return !participantIds.includes(fid);
+  });
+
+  const handleAddMembersClick = () => {
+    if (!conversationId) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Group not ready',
+          message:
+            'The group chat is not ready yet. Please try again in a few seconds.',
+          showCancel: false,
+          confirmText: 'OK'
         }
-      }
-    });
+      });
+      return;
+    }
+
+    if (friendsToAdd.length === 0) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'info',
+        data: {
+          title: 'No friends to add',
+          message: 'All your friends are already in this group.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+      return;
+    }
+
+    setShowAddMembersModal(true);
   };
 
-  const handleAddFriend = async (userId) => {
+  const handleConfirmAddMembers = async (selectedIds) => {
+    if (!conversationId || !selectedIds.length) {
+      setShowAddMembersModal(false);
+      return;
+    }
+
+    try {
+      setProcessingAction(true);
+
+      const promises = selectedIds.map((id) =>
+        friendsAPI.addParticipantToGroup(conversationId, id)
+      );
+      const results = await Promise.all(promises);
+
+      const hasError = results.some((r) => !r?.success);
+      if (hasError) {
+        throw new Error('One or more participants could not be added.');
+      }
+
+      // mise à jour locale
+      const newlyAddedFriends = friends.filter((f) =>
+        selectedIds.includes((f.id || f._id)?.toString())
+      );
+
+      setParticipantIds((prev) => [
+        ...new Set([
+          ...prev,
+          ...selectedIds.map((id) => id.toString())
+        ])
+      ]);
+
+      setMembers((prev) => [
+        ...prev,
+        ...newlyAddedFriends.map((f) => ({
+          id: (f.id || f._id).toString(),
+          name: getFriendDisplayName(f),
+          avatar: f.avatar || f.photo_profil || null
+        }))
+      ]);
+
+      if (onUpdateGroup) {
+        onUpdateGroup();
+      }
+
+      setShowAddMembersModal(false);
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        data: {
+          title: 'Members added',
+          message: 'New members have been added to the group.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+    } catch (err) {
+      console.error('Error adding members:', err);
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'Unable to add some members. Please try again.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  const handleViewMembers = () => {
+    const names =
+      members.length > 0
+        ? members.map((m) => m.name).join(', ')
+        : 'No members found in this group.';
+
     setConfirmModal({
       isOpen: true,
       type: 'info',
       data: {
-        title: 'Send Friend Request',
-        message: 'Send a friend request to this user?',
-        confirmText: 'Send Request',
-        cancelText: 'Cancel',
-        onConfirm: async () => {
-          try {
-            const response = await friendsAPI.sendFriendRequest(userId);
-            if (response.success) {
-              setSuggestions((prev) => prev.filter((s) => s.id !== userId));
-              try {
-                notifyFriendRequest(userId, `${user?.prenom} ${user?.nom}`);
-              } catch {}
-              setConfirmModal({
-                isOpen: true,
-                type: 'success',
-                data: {
-                  title: 'Request Sent',
-                  message: 'Friend request sent successfully!',
-                  showCancel: false,
-                  confirmText: 'OK'
-                }
-              });
-            }
-          } catch (err) {
-            console.error('Error sending friend request:', err);
-            setConfirmModal({
-              isOpen: true,
-              type: 'error',
-              data: {
-                title: 'Error',
-                message: 'Failed to send friend request. Please try again.',
-                showCancel: false,
-                confirmText: 'OK'
-              }
-            });
-          }
-        }
+        title: `Members (${members.length})`,
+        message: names,
+        showCancel: false,
+        confirmText: 'Close'
       }
     });
   };
 
-  const handleRemoveFriend = async (friendId) => {
-    const friend = friends.find((f) => f.id === friendId);
+  const groupName = group.name || group.groupName || 'Group chat';
+
+  const handleLeaveGroup = () => {
+    if (!conversationId || !currentUserId) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'Missing group or user information.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+      return;
+    }
+
     setConfirmModal({
       isOpen: true,
       type: 'warning',
       data: {
-        title: 'Remove Friend',
-        message: `Are you sure you want to remove ${friend?.name || 'this user'} from your friends?`,
-        confirmText: 'Remove',
+        title: 'Leave Group',
+        message: `Are you sure you want to leave "${groupName}"? You'll no longer receive messages from this group.`,
+        confirmText: 'Leave',
         cancelText: 'Cancel',
         onConfirm: async () => {
           try {
-            await friendsAPI.removeFriend(friendId);
-            setFriends((prev) => prev.filter((f) => f.id !== friendId));
-            setConfirmModal({
-              isOpen: true,
-              type: 'success',
-              data: {
-                title: 'Friend Removed',
-                message: 'Friend has been removed from your list.',
-                showCancel: false,
-                confirmText: 'OK'
-              }
-            });
+            const res = await friendsAPI.removeParticipantFromGroup(
+              conversationId,
+              currentUserId
+            );
+            if (!res?.success) {
+              throw new Error(res?.message || 'Failed to leave group');
+            }
+
+            setParticipantIds((prev) =>
+              prev.filter(
+                (id) => id.toString() !== currentUserId.toString()
+              )
+            );
+            setMembers((prev) =>
+              prev.filter(
+                (m) => m.id.toString() !== currentUserId.toString()
+              )
+            );
+
+            if (onUpdateGroup) {
+              onUpdateGroup();
+            }
+            onClose();
           } catch (err) {
-            console.error('Error removing friend:', err);
+            console.error('Error leaving group:', err);
             setConfirmModal({
               isOpen: true,
               type: 'error',
               data: {
                 title: 'Error',
-                message: 'Failed to remove friend. Please try again.',
+                message: 'Unable to leave the group. Please try again.',
                 showCancel: false,
                 confirmText: 'OK'
               }
@@ -494,348 +670,110 @@ const Friends = () => {
     });
   };
 
-  const handleSendMessage = (friend) => {
-    setSelectedChatFriend(friend);
-    setShowChatModal(true);
-  };
-
-  const handleViewProfile = (friendId) => {
-    const friend = friends.find((f) => f.id === friendId);
-    if (friend) {
-      setSelectedProfileFriend(friend);
-      setShowProfileModal(true);
+  const handleDeleteGroup = () => {
+    if (!conversationId) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'No conversation id for this group.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+      return;
     }
+
+    setConfirmModal({
+      isOpen: true,
+      type: 'error',
+      data: {
+        title: 'Delete Group',
+        message: `Are you sure you want to delete "${groupName}"? This action cannot be undone and all messages will be lost.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+          try {
+            const res = await friendsAPI.deleteGroupConversation(conversationId);
+            if (!res?.success) {
+              throw new Error(res?.message || 'Failed to delete group');
+            }
+
+            if (onUpdateGroup) {
+              onUpdateGroup();
+            }
+            onClose();
+          } catch (err) {
+            console.error('Error deleting group:', err);
+            setConfirmModal({
+              isOpen: true,
+              type: 'error',
+              data: {
+                title: 'Error',
+                message: 'Unable to delete the group. Please try again.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          }
+        }
+      }
+    });
   };
 
-  const handleSaveGroups = async () => {
-    // Les groupes sont déjà sauvegardés via l'API dans FriendGroupsModal
-    await loadFriendGroups();
-  };
-
-  const handleOpenGroupChat = (group) => {
-    console.log('Opening group chat:', group);
-    setSelectedGroupChat(group);
-    setShowGroupChatModal(true);
-  };
-
-  const handleCloseGroupChat = () => {
-    setShowGroupChatModal(false);
-    setSelectedGroupChat(null);
-  };
-
-  const handleGroupUpdated = async () => {
-    await Promise.all([loadFriendGroups(), loadChatGroups()]);
-  };
-
-  // Filtrer les amis
-  const filteredFriends = friends.filter((friend) => {
-    const matchesSearch =
-      friend.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      friend.username.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || friend.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
-
-  // Group chats dont l’utilisateur est membre (normalement tous) :
-  const myChatGroups = chatGroups.filter((group) =>
-    !currentUserId
-      ? true
-      : Array.isArray(group.members) &&
-        group.members.some((id) => String(id) === String(currentUserId))
-  );
-
-  const tabs = [
-    { id: 'friends', label: 'My Friends', icon: faUsers, count: friends.length },
-    { id: 'requests', label: 'Requests', icon: faUserPlus, count: requests.length },
-    { id: 'suggestions', label: 'Suggestions', icon: faUserCheck, count: suggestions.length }
-  ];
-
-  if (loading) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loading}>
-          <div className={styles.spinner}></div>
-          <p>Loading friends...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.error}>
-          <p>❌ {error}</p>
-          <button onClick={loadAllData} className={styles.retryButton}>
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const canSend = !!conversationId; // on ne bloque plus sur isConnected
 
   return (
-    <div className={styles.container}>
-      {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>
-              <FontAwesomeIcon icon={faUsers} style={{ fontSize: 32 }} />
-              Friends
-            </h1>
-            <p className={styles.subtitle}>
-              Connect with people who love the same throwback music
-            </p>
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.chatModal} onClick={(e) => e.stopPropagation()}>
+        <GroupChatHeader
+          groupName={groupName}
+          memberCount={members.length || group.members?.length || 0}
+          color={group.color || '#b31217'}
+          isCreator={group.isCreator}
+          onAddMembers={handleAddMembersClick}
+          onViewMembers={handleViewMembers}
+          onLeaveGroup={handleLeaveGroup}
+          onDeleteGroup={handleDeleteGroup}
+          onClose={onClose}
+        />
+
+        <GroupChatMessages
+          messages={messages}
+          loading={loading}
+          getInitials={getInitials}
+          messagesEndRef={messagesEndRef}
+        />
+
+        <GroupChatInput
+          onSend={handleSendMessage}
+          isConnected={isConnected}
+          conversationReady={canSend}
+        />
+
+        {!isConnected && (
+          <div className={styles.connectionWarning}>
+            Connecting to chat server...
           </div>
-          <div className={styles.headerActions}>
-            <button
-              className={styles.groupsButton}
-              onClick={() => setShowGroupsModal(true)}
-            >
-              <FontAwesomeIcon icon={faUsers} style={{ fontSize: 20 }} />
-              Groups ({friendGroups.length})
-            </button>
-
-            <button
-              className={styles.groupsButton}
-              onClick={() => setShowGroupChatsModal(true)}
-            >
-              <FontAwesomeIcon icon={faMessage} style={{ fontSize: 20 }} />
-              Group Chats ({myChatGroups.length})
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className={styles.tabs}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`${styles.tab} ${
-              activeTab === tab.id ? styles.activeTab : ''
-            }`}
-          >
-            <FontAwesomeIcon icon={tab.icon} style={{ fontSize: 20 }} />
-            <span className={styles.tabLabel}>{tab.label}</span>
-            <span className={styles.badge}>{tab.count}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Search and Filter */}
-      {activeTab === 'friends' && (
-        <div className={styles.searchBar}>
-          <div className={styles.searchInput}>
-            <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: 20 }} />
-            <input
-              type="text"
-              placeholder="Search friends..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={styles.input}
-            />
-          </div>
-          <div className={styles.filterWrapper}>
-            <button
-              className={styles.filterButton}
-              onClick={() => setShowFilterMenu(!showFilterMenu)}
-            >
-              <FontAwesomeIcon icon={faFilter} style={{ fontSize: 20 }} />
-              <span>Filter</span>
-            </button>
-            {showFilterMenu && (
-              <div className={styles.filterMenu}>
-                <button
-                  onClick={() => {
-                    setFilterStatus('all');
-                    setShowFilterMenu(false);
-                  }}
-                  className={styles.filterOption}
-                >
-                  All Friends
-                </button>
-                <button
-                  onClick={() => {
-                    setFilterStatus('online');
-                    setShowFilterMenu(false);
-                  }}
-                  className={styles.filterOption}
-                >
-                  Online Only
-                </button>
-                <button
-                  onClick={() => {
-                    setFilterStatus('offline');
-                    setShowFilterMenu(false);
-                  }}
-                  className={styles.filterOption}
-                >
-                  Offline
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Suggestions Search Bar */}
-      {activeTab === 'suggestions' && (
-        <div className={styles.searchBar}>
-          <button
-            className={styles.searchUsersButton}
-            onClick={() => setShowUserSearchModal(true)}
-          >
-            <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: 20 }} />
-            Search Users to Add as Friends
-          </button>
-        </div>
-      )}
-
-      {/* Content */}
-      <div className={styles.content}>
-        {activeTab === 'friends' && (
-          <>
-            {filteredFriends.length > 0 ? (
-              <div className={styles.grid}>
-                {filteredFriends.map((friend) => (
-                  <FriendCard
-                    key={friend.id}
-                    friend={friend}
-                    onRemove={handleRemoveFriend}
-                    onMessage={handleSendMessage}
-                    onViewProfile={handleViewProfile}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className={styles.emptyState}>
-                <FontAwesomeIcon icon={faUsers} style={{ fontSize: 64, opacity: 0.5 }} />
-                <h3>No friends found</h3>
-                <p>Try adjusting your search or filters</p>
-              </div>
-            )}
-          </>
-        )}
-
-        {activeTab === 'requests' && (
-          <>
-            {requests.length > 0 ? (
-              <div className={styles.list}>
-                {requests.map((request) => (
-                  <RequestCard
-                    key={request.id}
-                    request={request}
-                    onAccept={handleAcceptRequest}
-                    onReject={handleRejectRequest}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className={styles.emptyState}>
-                <FontAwesomeIcon
-                  icon={faUserPlus}
-                  style={{ fontSize: 64, opacity: 0.5 }}
-                />
-                <h3>No friend requests</h3>
-                <p>You're all caught up!</p>
-              </div>
-            )}
-          </>
-        )}
-
-        {activeTab === 'suggestions' && (
-          <>
-            {suggestions.length > 0 ? (
-              <div className={styles.grid}>
-                {suggestions.map((suggestion) => (
-                  <SuggestionCard
-                    key={suggestion.id}
-                    suggestion={suggestion}
-                    onAdd={handleAddFriend}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className={styles.emptyState}>
-                <FontAwesomeIcon
-                  icon={faUserCheck}
-                  style={{ fontSize: 64, opacity: 0.5 }}
-                />
-                <h3>No suggestions</h3>
-                <p>We'll suggest friends based on your interests</p>
-              </div>
-            )}
-          </>
         )}
       </div>
 
-      {/* Modals */}
-      {showGroupsModal && (
-        <FriendGroupsModal
-          groups={friendGroups}
-          friends={friends}
-          onClose={() => setShowGroupsModal(false)}
-          onSave={handleSaveGroups}
-          onOpenGroupChat={handleOpenGroupChat}
-        />
-      )}
-
-      {showGroupChatsModal && (
-        <GroupChatsListModal
-          groups={myChatGroups}
-          onClose={() => setShowGroupChatsModal(false)}
-          onOpenGroupChat={(group) => {
-            setShowGroupChatsModal(false);
-            handleOpenGroupChat(group);
-          }}
-        />
-      )}
-
-      {showGroupChatModal && selectedGroupChat && (
-        <GroupChatModal
-          group={selectedGroupChat}
-          onClose={handleCloseGroupChat}
-          onUpdateGroup={handleGroupUpdated}
-        />
-      )}
-
-      {showChatModal && selectedChatFriend && (
-        <ChatModal
-          friend={selectedChatFriend}
-          onClose={() => {
-            setShowChatModal(false);
-            setSelectedChatFriend(null);
-          }}
-          onRemoveFriend={handleRemoveFriend}
-        />
-      )}
-
-      {showProfileModal && selectedProfileFriend && (
-        <FriendProfileModal
-          friend={selectedProfileFriend}
-          onClose={() => {
-            setShowProfileModal(false);
-            setSelectedProfileFriend(null);
-          }}
-          onMessage={handleSendMessage}
-          onRemove={handleRemoveFriend}
-        />
-      )}
-
-      {showUserSearchModal && (
-        <UserSearchModal
-          onClose={() => setShowUserSearchModal(false)}
-          onSendRequest={handleAddFriend}
-          currentUser={user}
-        />
-      )}
+      <GroupAddMembersModal
+        isOpen={showAddMembersModal}
+        onClose={() => !processingAction && setShowAddMembersModal(false)}
+        friendsToAdd={friendsToAdd}
+        onConfirm={handleConfirmAddMembers}
+        processing={processingAction}
+        getFriendDisplayName={getFriendDisplayName}
+        getInitials={getInitials}
+      />
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false, type: '', data: null })}
+        onClose={() =>
+          setConfirmModal({ isOpen: false, type: '', data: null })
+        }
         onConfirm={confirmModal.data?.onConfirm}
         title={confirmModal.data?.title || ''}
         message={confirmModal.data?.message || ''}
@@ -848,4 +786,4 @@ const Friends = () => {
   );
 };
 
-export default Friends;
+export default GroupChatModal;

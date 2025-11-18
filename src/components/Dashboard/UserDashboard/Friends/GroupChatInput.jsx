@@ -19,7 +19,7 @@ const GroupChatInput = ({ onSend, isConnected, conversationReady }) => {
     if (!message.trim()) return;
 
     if (!conversationReady) {
-      // on laisse juste un garde-fou côté UX, mais on ne bloque pas la saisie
+      // conversation non prête -> on ne tente pas d'envoyer
       return;
     }
 
@@ -40,14 +40,11 @@ const GroupChatInput = ({ onSend, isConnected, conversationReady }) => {
     inputRef.current?.focus();
   };
 
-  const placeholder = !isConnected
-    ? 'Connecting...'
-    : !conversationReady
+  const placeholder = !conversationReady
     ? 'Preparing group chat...'
     : 'Type a message...';
 
-  const disableSend =
-    !message.trim() || !isConnected || !conversationReady;
+  const disableSend = !message.trim() || !conversationReady;
 
   return (
     <>
@@ -58,7 +55,7 @@ const GroupChatInput = ({ onSend, isConnected, conversationReady }) => {
             className={styles.chatInputButton}
             title="Add emoji"
             onClick={() => setShowEmojiPicker((prev) => !prev)}
-            disabled={!isConnected}
+            disabled={!conversationReady}
           >
             <FontAwesomeIcon icon={faSmile} style={{ fontSize: 20 }} />
           </button>
@@ -72,7 +69,7 @@ const GroupChatInput = ({ onSend, isConnected, conversationReady }) => {
           onKeyPress={handleKeyPress}
           placeholder={placeholder}
           className={styles.chatInputField}
-          disabled={!isConnected}
+          disabled={!conversationReady}
         />
 
         <button
