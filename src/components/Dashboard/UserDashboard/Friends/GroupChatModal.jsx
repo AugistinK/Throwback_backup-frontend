@@ -201,6 +201,9 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
 
   /**
    * 1️⃣ S'assurer qu'on a une conversation de groupe côté backend
+   *    - si `conversationId` existe déjà -> on ne fait rien
+   *    - sinon on tente de retrouver une conversation existante via /api/conversations
+   *    - si toujours rien -> on crée le groupe
    */
   useEffect(() => {
     const ensureConversation = async () => {
@@ -209,21 +212,107 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
         return;
       }
 
-      // si on a déjà un id de conversation, on ne recrée pas
+      // 1) On a déjà un id en state → rien à faire
       if (conversationId) return;
 
-      const existingConvId =
+      // 2) Un id est déjà fourni dans le group (cas GroupChatsListModal)
+      const existingConvIdFromProps =
         group.conversationId ||
         group.chatConversationId ||
         (group.conversation &&
           (group.conversation._id || group.conversation.id));
 
-      if (existingConvId) {
-        setConversationId(existingConvId);
+      if (existingConvIdFromProps) {
+        setConversationId(existingConvIdFromProps);
         return;
       }
 
-      // Au cas où le groupe vient de FriendGroups (ids simples)
+      // 3) Tenter de retrouver une conversation existante côté backend
+      try {
+        let convResponse = null;
+        if (typeof friendsAPI.getAllConversations === 'function') {
+          convResponse = await friendsAPI.getAllConversations();
+        } else if (typeof friendsAPI.getConversations === 'function') {
+          convResponse = await friendsAPI.getConversations();
+        }
+
+        if (convResponse?.success && Array.isArray(convResponse.data)) {
+          const allConvs = convResponse.data;
+          const groupNameNorm = (group.name || group.groupName || '')
+            .trim()
+            .toLowerCase();
+
+          // ids du friend group (plus l'utilisateur courant)
+          const fgMembersRaw = Array.isArray(group.members) ? group.members : [];
+          let fgMemberIds = fgMembersRaw
+            .map((m) =>
+              typeof m === 'string' || typeof m === 'number'
+                ? m
+                : m?._id || m?.id || null
+            )
+            .filter(Boolean)
+            .map((id) => id.toString());
+
+          if (currentUserId) {
+            const cur = currentUserId.toString();
+            if (!fgMemberIds.includes(cur)) fgMemberIds.push(cur);
+          }
+
+          const matchingConv = allConvs.find((c) => {
+            if (c.type !== 'group') return false;
+
+            const convNameNorm = (c.groupName || c.name || '')
+              .trim()
+              .toLowerCase();
+
+            // Même nom si possible
+            if (groupNameNorm && convNameNorm && convNameNorm !== groupNameNorm) {
+              return false;
+            }
+
+            const convParticipantsRaw = Array.isArray(c.participants)
+              ? c.participants
+              : [];
+            const convParticipantIds = convParticipantsRaw
+              .map((p) =>
+                typeof p === 'string' || typeof p === 'number'
+                  ? p
+                  : p?._id || p?.id || null
+              )
+              .filter(Boolean)
+              .map((id) => id.toString());
+
+            // Tous les membres du friend group doivent être présents dans la conv
+            const allIncluded = fgMemberIds.every((id) =>
+              convParticipantIds.includes(id)
+            );
+
+            return allIncluded;
+          });
+
+          if (matchingConv) {
+            const foundId = matchingConv._id || matchingConv.id;
+            if (foundId) {
+              setConversationId(foundId);
+
+              // Optionnel : remonter l'info au parent
+              if (onUpdateGroup) {
+                onUpdateGroup({
+                  ...group,
+                  conversationId: foundId,
+                  conversation: matchingConv
+                });
+              }
+              return; // ✅ On a trouvé une conversation existante, on ne recrée pas
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error trying to find existing group conversation:', err);
+        // on continue, on va créer un groupe si besoin
+      }
+
+      // 4) Aucune conversation trouvée → création d'un nouveau groupe de conversation
       const rawMembers = Array.isArray(group.members) ? group.members : [];
       const memberIds = rawMembers
         .map((m) => {
@@ -233,11 +322,11 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
         })
         .filter(Boolean);
 
-      const participantIds = memberIds.filter(
+      const participantIdsForCreation = memberIds.filter(
         (id) => String(id) !== String(currentUserId)
       );
 
-      if (participantIds.length < 2) {
+      if (participantIdsForCreation.length < 2) {
         setLoading(false);
         setConfirmModal({
           isOpen: true,
@@ -258,7 +347,7 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
 
         const createRes = await friendsAPI.createGroup(
           groupName,
-          participantIds,
+          participantIdsForCreation,
           group.description || null
         );
 
