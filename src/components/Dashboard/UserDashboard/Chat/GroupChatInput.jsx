@@ -1,6 +1,6 @@
 // src/components/Dashboard/UserDashboard/Friends/GroupChatInput.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import styles from './Friends.module.css';
+import styles from './Chat.module.css';
 import EmojiPicker from './EmojiPicker';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperPlane, faSmile } from '@fortawesome/free-solid-svg-icons';

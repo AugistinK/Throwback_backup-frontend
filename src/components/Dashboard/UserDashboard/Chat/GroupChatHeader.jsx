@@ -1,6 +1,6 @@
 // src/components/Dashboard/UserDashboard/Friends/GroupChatHeader.jsx
 import React, { useState } from 'react';
-import styles from './Friends.module.css';
+import styles from './Chat.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faXmark,
