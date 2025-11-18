@@ -138,9 +138,7 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
 
       const fromConv =
         participantObjs.find(
-          (p) =>
-            p &&
-            (p._id || p.id || p).toString() === idStr
+          (p) => p && (p._id || p.id || p).toString() === idStr
         ) || null;
 
       if (fromConv) {
@@ -152,10 +150,7 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
       }
 
       const friend =
-        friends.find(
-          (f) =>
-            (f.id || f._id)?.toString() === idStr
-        ) || null;
+        friends.find((f) => (f.id || f._id)?.toString() === idStr) || null;
 
       if (friend) {
         return {
@@ -183,7 +178,8 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
         ? sender
         : sender?._id || sender?.id || null;
 
-    const senderName = m.senderName || getSenderNameFromUser(sender) || 'Unknown';
+    const senderName =
+      m.senderName || getSenderNameFromUser(sender) || 'Unknown';
 
     return {
       id: m._id || m.id,
@@ -626,10 +622,7 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
       );
 
       setParticipantIds((prev) => [
-        ...new Set([
-          ...prev,
-          ...selectedIds.map((id) => id.toString())
-        ])
+        ...new Set([...prev, ...selectedIds.map((id) => id.toString())])
       ]);
 
       setMembers((prev) => [

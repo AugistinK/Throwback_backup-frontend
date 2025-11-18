@@ -43,7 +43,13 @@ const normalizeGroup = (group) => {
   };
 };
 
-const FriendGroupsModal = ({ groups = [], friends = [], onClose, onSave, onOpenGroupChat }) => {
+const FriendGroupsModal = ({
+  groups = [],
+  friends = [],
+  onClose,
+  onSave,
+  onOpenGroupChat
+}) => {
   const [localGroups, setLocalGroups] = useState(() =>
     (groups || []).map(normalizeGroup).filter(Boolean)
   );
@@ -55,8 +61,14 @@ const FriendGroupsModal = ({ groups = [], friends = [], onClose, onSave, onOpenG
   const [loading, setLoading] = useState(false);
 
   const colors = [
-    '#b31217', '#3b82f6', '#10b981', '#f59e0b',
-    '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'
+    '#b31217',
+    '#3b82f6',
+    '#10b981',
+    '#f59e0b',
+    '#8b5cf6',
+    '#ec4899',
+    '#14b8a6',
+    '#f97316'
   ];
 
   // Re-synchroniser quand la prop groups change (refresh global)
@@ -202,9 +214,7 @@ const FriendGroupsModal = ({ groups = [], friends = [], onClose, onSave, onOpenG
   const getMemberNames = (memberIds = []) => {
     return memberIds
       .map((id) => {
-        const friend = friends.find(
-          (f) => f.id === id || f._id === id
-        );
+        const friend = friends.find((f) => f.id === id || f._id === id);
         if (!friend) return null;
         return getFriendDisplayName(friend);
       })
@@ -290,10 +300,7 @@ const FriendGroupsModal = ({ groups = [], friends = [], onClose, onSave, onOpenG
                     const avatar = friend.avatar || friend.photo_profil;
 
                     return (
-                      <label
-                        key={friendId}
-                        className={styles.memberItem}
-                      >
+                      <label key={friendId} className={styles.memberItem}>
                         <input
                           type="checkbox"
                           checked={selectedMembers.includes(friendId)}
@@ -344,15 +351,16 @@ const FriendGroupsModal = ({ groups = [], friends = [], onClose, onSave, onOpenG
               {/* Liste des groupes */}
               <div className={styles.groupsList}>
                 {localGroups.map((group) => (
-                  <div key={group._id || group.id} className={styles.groupItem}>
+                  <div
+                    key={group._id || group.id}
+                    className={styles.groupItem}
+                  >
                     <div
                       className={styles.groupColor}
                       style={{ backgroundColor: group.color || '#b31217' }}
                     />
                     <div className={styles.groupInfo}>
-                      <h4 className={styles.groupName}>
-                        {group.name}
-                      </h4>
+                      <h4 className={styles.groupName}>{group.name}</h4>
                       <p className={styles.groupMembers}>
                         {group.members?.length || 0} members:{' '}
                         {getMemberNames(group.members)}
