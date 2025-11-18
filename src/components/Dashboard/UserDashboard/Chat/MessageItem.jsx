@@ -197,7 +197,8 @@ const MessageItem = ({
     const id = getMessageId();
     
     try {
-      await friendsAPI.deleteMessage(id, !!isOwn);
+      // 🔹 Utilise l’endpoint avancé /api/chat/messages/:id
+      await friendsAPI.deleteMessageAdvanced(id, !!isOwn);
 
       if (isOwn) {
         setLocalMessage((prev) => ({

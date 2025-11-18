@@ -237,7 +237,7 @@ export const friendsAPI = {
   },
 
   // ============================================
-  // GROUPES D’AMIS
+  // GROUPES D’AMIS (NON LIÉS AU CHAT)
   // ============================================
 
   getFriendGroups: async () => {
@@ -323,7 +323,7 @@ export const friendsAPI = {
   },
 
   // ============================================
-  // CONVERSATIONS (DIRECTES & GROUPES)
+  // CONVERSATIONS (DIRECTES & GROUPES DE CHAT)
   // ============================================
 
   /** Ancien alias – utilise maintenant le nouveau contrôleur de conversations */
@@ -444,6 +444,111 @@ export const friendsAPI = {
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to remove participant'
+      };
+    }
+  },
+
+  // 🔹 Helpers groupes de chat (pour les modals Add/View members)
+  getGroupDetails: async (groupId) => {
+    try {
+      const res = await api.get(`/api/conversations/groups/${groupId}`);
+      return res.data;
+    } catch (error) {
+      // Fallback éventuel sur /api/conversations/:id si la route n'existe pas
+      if (error.response?.status === 404) {
+        try {
+          const res2 = await api.get(`/api/conversations/${groupId}`);
+          return res2.data;
+        } catch (e2) {
+          console.error('Error fetching group details (fallback failed):', e2);
+        }
+      }
+      console.error('Error fetching group details:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load group details',
+        data: {}
+      };
+    }
+  },
+
+  addGroupMembers: async (groupId, memberIds) => {
+    try {
+      if (!groupId || !Array.isArray(memberIds) || memberIds.length === 0) {
+        throw new Error('Group ID and at least one member are required');
+      }
+
+      // Route bulk si disponible
+      const res = await api.post(
+        `/api/conversations/groups/${groupId}/members`,
+        { memberIds }
+      );
+      return res.data;
+    } catch (error) {
+      console.warn('Error adding members in bulk, trying one by one:', error);
+
+      // Fallback : on utilise addParticipantToGroup un par un
+      try {
+        const results = [];
+        for (const memberId of memberIds) {
+          const r = await friendsAPI.addParticipantToGroup(groupId, memberId);
+          results.push(r);
+        }
+
+        return {
+          success: true,
+          message: 'Members added successfully',
+          results
+        };
+      } catch (e2) {
+        console.error('Error adding members one by one:', e2);
+        return {
+          success: false,
+          message:
+            e2.response?.data?.message ||
+            'Failed to add members to this group'
+        };
+      }
+    }
+  },
+
+  removeGroupMember: async (groupId, memberId) => {
+    try {
+      const res = await api.delete(
+        `/api/conversations/groups/${groupId}/members/${memberId}`
+      );
+      return res.data;
+    } catch (error) {
+      console.warn('Error removing member via /members/, trying participants route:', error);
+
+      // Fallback : on passe par la route participants
+      try {
+        const res2 = await friendsAPI.removeParticipantFromGroup(groupId, memberId);
+        return res2;
+      } catch (e2) {
+        console.error('Error removing group member (fallback failed):', e2);
+        return {
+          success: false,
+          message:
+            e2.response?.data?.message ||
+            'Failed to remove member from this group'
+        };
+      }
+    }
+  },
+
+  promoteToAdmin: async (groupId, memberId) => {
+    try {
+      const res = await api.post(
+        `/api/conversations/groups/${groupId}/admins`,
+        { memberId }
+      );
+      return res.data;
+    } catch (error) {
+      console.error('Error promoting member to admin:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to promote member'
       };
     }
   },
@@ -699,8 +804,6 @@ export const friendsAPI = {
   // MESSAGES DE GROUPE (CONVOS)
   // ============================================
 
-// src/utils/friendsAPI.js
-
   getGroupMessages: async (groupId, page = 1, limit = 50) => {
     try {
       const res = await api.get(
@@ -743,8 +846,6 @@ export const friendsAPI = {
       };
     }
   },
-
-
 
   sendGroupMessage: async (groupId, content, type = 'text') => {
     try {

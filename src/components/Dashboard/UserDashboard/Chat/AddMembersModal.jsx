@@ -37,7 +37,12 @@ const AddMembersModal = ({ isOpen, onClose, group, onMembersAdded }) => {
       
       if (response.success && Array.isArray(response.data)) {
         // Filtrer les amis qui ne sont pas déjà dans le groupe
-        const currentMemberIds = (group?.participants || []).map((p) => p._id || p);
+        const currentMemberIds = (
+          group?.participants ||
+          group?.members ||
+          []
+        ).map((p) => p._id || p);
+
         const availableFriends = response.data.filter(
           (friend) => !currentMemberIds.includes(friend._id)
         );

@@ -128,31 +128,16 @@ const Chat = () => {
     };
   };
 
-  const buildConversationFromGroup = (group) => {
-    return {
-      _id: group._id,
-      groupId: group._id,
-      isGroup: true,
-      name: group.name || group.title || 'Group',
-      members: group.members || group.participants || [],
-      lastMessage: null,
-      unreadCount: 0,
-      isArchived: false,
-      source: 'group'
-    };
-  };
-
   const loadConversations = async () => {
     try {
       setLoading(true);
 
-      const [convRes, groupsRes, friendsRes] = await Promise.all([
+      // 🔹 On récupère :
+      //  - toutes les conversations (directes + groupes de chat)
+      //  - la liste des amis pour créer des "conversations virtuelles" si besoin
+      const [convRes, friendsRes] = await Promise.all([
         friendsAPI.getConversations().catch((e) => {
           console.error('Error fetching conversations:', e);
-          return null;
-        }),
-        friendsAPI.getFriendGroups().catch((e) => {
-          console.warn('Error fetching friend groups (optional):', e);
           return null;
         }),
         friendsAPI.getFriends().catch((e) => {
@@ -181,20 +166,9 @@ const Chat = () => {
         all = all.concat(normalized);
       }
 
-      if (groupsRes && groupsRes.success && Array.isArray(groupsRes.data)) {
-        const existingGroupIds = new Set(
-          all
-            .filter((c) => c.isGroup)
-            .map((c) => (c.groupId || c._id || '').toString())
-        );
-
-        groupsRes.data.forEach((g) => {
-          const idStr = (g._id || '').toString();
-          if (!existingGroupIds.has(idStr)) {
-            all.push(buildConversationFromGroup(g));
-          }
-        });
-      }
+      // ❌ On NE rajoute plus les "friend groups" ici, sinon on envoie
+      //     des mauvais IDs aux endpoints /api/conversations/groups/:id/messages
+      //     → 404 garantis
 
       if (friendsRes && friendsRes.success && Array.isArray(friendsRes.data)) {
         const existingFriendIds = new Set(
