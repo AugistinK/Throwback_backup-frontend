@@ -14,7 +14,7 @@ import api from './api';
  * - Actions avancées sur messages (éditer, copier, transférer, répondre, suppression globale)
  * - Statistiques & utilitaires de diagnostic
  *
- * @version 2.1.3
+ * @version 2.1.4
  * @date Novembre 2025
  */
 
@@ -444,6 +444,20 @@ export const friendsAPI = {
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to remove participant'
+      };
+    }
+  },
+
+  /** 🔥 NOUVEAU : supprimer complètement un groupe de conversation */
+  deleteGroupConversation: async (groupId) => {
+    try {
+      const res = await api.delete(`/api/conversations/groups/${groupId}`);
+      return res.data;
+    } catch (error) {
+      console.error('Error deleting group conversation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to delete group'
       };
     }
   },

@@ -20,7 +20,7 @@ import {
   faRightFromBracket
 } from '@fortawesome/free-solid-svg-icons';
 
-const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
+const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
   const { socket, isConnected } = useSocket();
   const { user } = useAuth();
 
@@ -40,6 +40,13 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+
+  // membres du groupe (pour View/Add/Leave)
+  const [members, setMembers] = useState([]);
+  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+  const [selectedNewMembers, setSelectedNewMembers] = useState([]);
+  const [processingAction, setProcessingAction] = useState(false);
+
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     type: '',
@@ -88,6 +95,14 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
     return u.email || u.username || 'Unknown';
   };
 
+  const getFriendDisplayName = (f) => {
+    if (!f) return 'Unknown';
+    if (f.name) return f.name;
+    const full = `${f.prenom || ''} ${f.nom || ''}`.trim();
+    if (full) return full;
+    return f.email || f.username || 'Unknown';
+  };
+
   const buildMessageFromApi = (m) => {
     if (!m) return null;
     const sender = m.sender || m.from;
@@ -111,6 +126,68 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
         String(senderId) === String(currentUserId)
     };
   };
+
+  /**
+   * Construire la liste des membres affichables à partir de group.members + friends + user courant
+   */
+  useEffect(() => {
+    const buildMembers = () => {
+      if (!group) {
+        setMembers([]);
+        return;
+      }
+
+      const rawMembers = Array.isArray(group.members) ? group.members : [];
+      const ids = rawMembers
+        .map((m) =>
+          typeof m === 'string' || typeof m === 'number'
+            ? m
+            : m?._id || m?.id || null
+        )
+        .filter(Boolean);
+
+      // inclure le user courant si pas déjà dedans
+      if (currentUserId && !ids.some((id) => String(id) === String(currentUserId))) {
+        ids.push(currentUserId);
+      }
+
+      const uniqueIds = [...new Set(ids.map((id) => String(id)))];
+
+      const built = uniqueIds.map((idStr) => {
+        const id = idStr;
+
+        if (currentUserId && String(id) === String(currentUserId)) {
+          return {
+            id,
+            name: getSenderNameFromUser(user) || 'You',
+            avatar: user?.photo_profil || user?.avatar || null
+          };
+        }
+
+        const friend =
+          friends.find((f) => String(f.id || f._id) === id) || null;
+
+        if (friend) {
+          return {
+            id,
+            name: getFriendDisplayName(friend),
+            avatar: friend.avatar || friend.photo_profil || null
+          };
+        }
+
+        // fallback
+        return {
+          id,
+          name: 'Member',
+          avatar: null
+        };
+      });
+
+      setMembers(built);
+    };
+
+    buildMembers();
+  }, [group, friends, currentUserId, user]);
 
   /**
    * 1️⃣ S'assurer qu'on a une conversation de groupe côté backend
@@ -265,19 +342,23 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
           return;
         }
 
-        const serverData = response.data;
+        // accepter plusieurs formats ({success,data:{messages}}, {success,messages}, etc.)
+        const container = response.data ?? response;
         let rawMessages = [];
 
-        if (Array.isArray(serverData)) {
-          rawMessages = serverData;
-        } else if (serverData && Array.isArray(serverData.messages)) {
-          rawMessages = serverData.messages;
-        } else if (serverData?.data && Array.isArray(serverData.data.messages)) {
-          rawMessages = serverData.data.messages;
+        if (Array.isArray(container)) {
+          rawMessages = container;
+        } else if (Array.isArray(container.messages)) {
+          rawMessages = container.messages;
+        } else if (container.data) {
+          if (Array.isArray(container.data)) {
+            rawMessages = container.data;
+          } else if (Array.isArray(container.data.messages)) {
+            rawMessages = container.data.messages;
+          }
         }
 
         const mapped = rawMessages.map(buildMessageFromApi).filter(Boolean);
-
         setMessages(mapped);
       } catch (err) {
         console.error('Error loading group messages:', err);
@@ -409,51 +490,240 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
     inputRef.current?.focus();
   };
 
+  // ====== GESTION MEMBRES / OPTIONS ======
+
+  const memberIdsSet = new Set(members.map((m) => String(m.id)));
+  const availableFriends = friends.filter(
+    (f) => !memberIdsSet.has(String(f.id || f._id))
+  );
+
+  const toggleSelectNewMember = (friendId) => {
+    setSelectedNewMembers((prev) =>
+      prev.includes(friendId)
+        ? prev.filter((id) => id !== friendId)
+        : [...prev, friendId]
+    );
+  };
+
   const handleAddMembers = () => {
+    if (!conversationId) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Group not ready',
+          message: 'The group chat is not ready yet. Please try again in a few seconds.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+      return;
+    }
+
+    if (availableFriends.length === 0) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'info',
+        data: {
+          title: 'No friends to add',
+          message: 'All your friends are already in this group.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+      setShowOptionsMenu(false);
+      return;
+    }
+
+    setSelectedNewMembers([]);
+    setShowOptionsMenu(false);
+    setShowAddMembersModal(true);
+  };
+
+  const handleConfirmAddMembers = async () => {
+    if (!conversationId || selectedNewMembers.length === 0) {
+      setShowAddMembersModal(false);
+      return;
+    }
+
+    try {
+      setProcessingAction(true);
+      const promises = selectedNewMembers.map((id) =>
+        friendsAPI.addParticipantToGroup(conversationId, id)
+      );
+      const results = await Promise.all(promises);
+
+      const hasError = results.some((r) => !r?.success);
+      if (hasError) {
+        throw new Error('One or more participants could not be added.');
+      }
+
+      // mettre à jour la liste des membres localement
+      const newlyAdded = availableFriends.filter((f) =>
+        selectedNewMembers.includes(f.id)
+      );
+      setMembers((prev) => [
+        ...prev,
+        ...newlyAdded.map((f) => ({
+          id: f.id,
+          name: getFriendDisplayName(f),
+          avatar: f.avatar || f.photo_profil || null
+        }))
+      ]);
+
+      if (onUpdateGroup) {
+        onUpdateGroup(); // refresh côté parent
+      }
+
+      setShowAddMembersModal(false);
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        data: {
+          title: 'Members added',
+          message: 'New members have been added to the group.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+    } catch (err) {
+      console.error('Error adding members:', err);
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'Unable to add some members. Please try again.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  const handleViewMembers = () => {
+    const names =
+      members.length > 0
+        ? members.map((m) => m.name).join(', ')
+        : 'No members found in this group.';
+
+    setShowOptionsMenu(false);
     setConfirmModal({
       isOpen: true,
       type: 'info',
       data: {
-        title: 'Add Members',
-        message: 'Select friends to add to this group (UI to implement).',
-        showCancel: true,
-        confirmText: 'OK',
-        onConfirm: () => {
-          setShowOptionsMenu(false);
-        }
+        title: `Members (${members.length})`,
+        message: names,
+        showCancel: false,
+        confirmText: 'Close'
       }
     });
   };
 
   const handleLeaveGroup = () => {
+    if (!conversationId || !currentUserId) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'Missing group or user information.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+      return;
+    }
+
     setConfirmModal({
       isOpen: true,
       type: 'warning',
       data: {
         title: 'Leave Group',
-        message: `Are you sure you want to leave "${group.name}"? You'll no longer receive messages from this group.`,
+        message: `Are you sure you want to leave "${groupName}"? You'll no longer receive messages from this group.`,
         confirmText: 'Leave',
         cancelText: 'Cancel',
-        onConfirm: () => {
-          // TODO: appeler conversationsController.removeParticipant côté API si nécessaire
-          onClose();
+        onConfirm: async () => {
+          try {
+            const res = await friendsAPI.removeParticipantFromGroup(
+              conversationId,
+              currentUserId
+            );
+            if (!res?.success) {
+              throw new Error(res?.message || 'Failed to leave group');
+            }
+
+            if (onUpdateGroup) {
+              onUpdateGroup();
+            }
+            onClose();
+          } catch (err) {
+            console.error('Error leaving group:', err);
+            setConfirmModal({
+              isOpen: true,
+              type: 'error',
+              data: {
+                title: 'Error',
+                message: 'Unable to leave the group. Please try again.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          }
         }
       }
     });
   };
 
   const handleDeleteGroup = () => {
+    if (!conversationId) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        data: {
+          title: 'Error',
+          message: 'No conversation id for this group.',
+          showCancel: false,
+          confirmText: 'OK'
+        }
+      });
+      return;
+    }
+
     setConfirmModal({
       isOpen: true,
       type: 'error',
       data: {
         title: 'Delete Group',
-        message: `Are you sure you want to delete "${group.name}"? This action cannot be undone and all messages will be lost.`,
+        message: `Are you sure you want to delete "${groupName}"? This action cannot be undone and all messages will be lost.`,
         confirmText: 'Delete',
         cancelText: 'Cancel',
-        onConfirm: () => {
-          // TODO: endpoint dédié pour supprimer un groupe de conversation si tu le prévois
-          onClose();
+        onConfirm: async () => {
+          try {
+            const res = await friendsAPI.deleteGroupConversation(conversationId);
+            if (!res?.success) {
+              throw new Error(res?.message || 'Failed to delete group');
+            }
+
+            if (onUpdateGroup) {
+              onUpdateGroup();
+            }
+            onClose();
+          } catch (err) {
+            console.error('Error deleting group:', err);
+            setConfirmModal({
+              isOpen: true,
+              type: 'error',
+              data: {
+                title: 'Error',
+                message: 'Unable to delete the group. Please try again.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          }
         }
       }
     });
@@ -479,7 +749,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
             <div className={styles.chatHeaderInfo}>
               <h3 className={styles.chatName}>{groupName}</h3>
               <p className={styles.chatStatus}>
-                {group.members?.length || 0} members
+                {members.length || group.members?.length || 0} members
               </p>
             </div>
           </div>
@@ -516,10 +786,7 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
                     </button>
                     <button
                       className={styles.chatOptionItem}
-                      onClick={() => {
-                        setShowOptionsMenu(false);
-                        // TODO: ouvrir un modal "view members"
-                      }}
+                      onClick={handleViewMembers}
                     >
                       <FontAwesomeIcon
                         icon={faUsers}
@@ -650,6 +917,132 @@ const GroupChatModal = ({ group, onClose, onUpdateGroup }) => {
           </div>
         )}
       </div>
+
+      {/* Petit overlay pour ADD MEMBERS (inline, sans CSS global) */}
+      {showAddMembersModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 3000
+          }}
+          onClick={() => !processingAction && setShowAddMembersModal(false)}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '16px',
+              width: '360px',
+              maxHeight: '70vh',
+              overflowY: 'auto',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.25)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginBottom: '8px', fontSize: '18px' }}>Add members</h3>
+            <p style={{ marginBottom: '12px', fontSize: '14px', color: '#555' }}>
+              Select friends to add to this group.
+            </p>
+
+            {availableFriends.length === 0 ? (
+              <p style={{ fontSize: '14px' }}>No available friends to add.</p>
+            ) : (
+              <div>
+                {availableFriends.map((f) => (
+                  <label
+                    key={f.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '4px 0'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedNewMembers.includes(f.id)}
+                      onChange={() => toggleSelectNewMember(f.id)}
+                    />
+                    <div
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '999px',
+                        background: '#eee',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        fontSize: '14px'
+                      }}
+                    >
+                      {f.avatar ? (
+                        <img
+                          src={f.avatar}
+                          alt={getFriendDisplayName(f)}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        getInitials(getFriendDisplayName(f))
+                      )}
+                    </div>
+                    <span style={{ fontSize: '14px' }}>{getFriendDisplayName(f)}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '8px',
+                marginTop: '16px'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => !processingAction && setShowAddMembersModal(false)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '999px',
+                  border: '1px solid #ddd',
+                  background: '#fff',
+                  cursor: processingAction ? 'not-allowed' : 'pointer'
+                }}
+                disabled={processingAction}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAddMembers}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '999px',
+                  border: 'none',
+                  background: '#b31217',
+                  color: '#fff',
+                  cursor:
+                    processingAction || selectedNewMembers.length === 0
+                      ? 'not-allowed'
+                      : 'pointer',
+                  opacity:
+                    processingAction || selectedNewMembers.length === 0 ? 0.6 : 1
+                }}
+                disabled={processingAction || selectedNewMembers.length === 0}
+              >
+                {processingAction ? 'Adding...' : 'Add'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirm Modal */}
       <ConfirmModal
