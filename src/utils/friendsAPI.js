@@ -699,32 +699,38 @@ export const friendsAPI = {
   // MESSAGES DE GROUPE (CONVOS)
   // ============================================
 
+// src/utils/friendsAPI.js
+
   getGroupMessages: async (groupId, page = 1, limit = 50) => {
     try {
-      const res = await api.get(`/api/conversations/groups/${groupId}/messages`, {
-        params: {
-          page,
-          limit,
-          _ts: Date.now(), // 👉 évite tout cache HTTP (304)
-        },
-        headers: {
-          'Cache-Control': 'no-cache',
-          Pragma: 'no-cache',
-        },
-      });
+      const res = await api.get(
+        `/api/conversations/groups/${groupId}/messages`,
+        {
+          params: {
+            page,
+            limit,
+            // petit cache-buster pour éviter les 304 avec body vide
+            _ts: Date.now()
+          }
+        }
+      );
 
-      // L'API renvoie déjà { success, data } dans res.data
       if (res.data && typeof res.data === 'object') {
         return res.data;
       }
 
-      // Fallback très défensif
+      // Fallback défensif
       return {
         success: true,
         data: {
           messages: [],
-          pagination: { page, limit, total: 0, totalPages: 0 },
-        },
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0
+          }
+        }
       };
     } catch (error) {
       console.error('Error fetching group messages:', error);
@@ -733,10 +739,11 @@ export const friendsAPI = {
         message:
           error.response?.data?.message ||
           `Failed to load group messages (status ${error.response?.status || 'unknown'})`,
-        data: { messages: [] },
+        data: { messages: [] }
       };
     }
   },
+
 
 
   sendGroupMessage: async (groupId, content, type = 'text') => {
