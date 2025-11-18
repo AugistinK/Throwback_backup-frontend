@@ -23,7 +23,6 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
       group?.chatConversationId ||
       group?.conversation?._id ||
       group?.conversation?.id ||
-      group?.id || 
       null
   );
 
@@ -88,8 +87,6 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
 
   /**
    * Construire la liste des membres affichables
-   * → on utilise en priorité group.participants (viens de /api/conversations, déjà peuplé)
-   *    puis group.members (ids simples) + friends + user courant
    */
   useEffect(() => {
     if (!group) {
@@ -121,10 +118,7 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
     );
 
     // inclure le user courant si pas déjà dedans
-    if (
-      currentUserId &&
-      !ids.some((id) => id === currentUserId.toString())
-    ) {
+    if (currentUserId && !ids.some((id) => id === currentUserId.toString())) {
       ids.push(currentUserId.toString());
     }
 
@@ -215,12 +209,14 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
         return;
       }
 
+      // si on a déjà un id de conversation, on ne recrée pas
       if (conversationId) return;
 
       const existingConvId =
         group.conversationId ||
         group.chatConversationId ||
-        (group.conversation && (group.conversation._id || group.conversation.id));
+        (group.conversation &&
+          (group.conversation._id || group.conversation.id));
 
       if (existingConvId) {
         setConversationId(existingConvId);
@@ -726,7 +722,7 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
     });
   };
 
-  const canSend = !!conversationId && isConnected;
+  const canSend = !!conversationId; // on ne bloque plus sur isConnected
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
@@ -753,7 +749,7 @@ const GroupChatModal = ({ group, friends = [], onClose, onUpdateGroup }) => {
         <GroupChatInput
           onSend={handleSendMessage}
           isConnected={isConnected}
-          conversationReady={!!conversationId}
+          conversationReady={canSend}
         />
 
         {!isConnected && (
