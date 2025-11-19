@@ -1,5 +1,5 @@
 // src/components/Dashboard/UserDashboard/Chat/ChatHeader.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowLeft,
@@ -17,8 +17,9 @@ import styles from './Chat.module.css';
 const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const menuRef = useRef(null);
+  const buttonRef = useRef(null);
   
-  // Ã‰tats pour les diffÃ©rents modals
   const [blockModal, setBlockModal] = useState({ isOpen: false });
   const [unblockModal, setUnblockModal] = useState({ isOpen: false });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false });
@@ -52,7 +53,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
     ? 'Online'
     : 'Offline';
 
-  // VÃ©rifier si l'utilisateur est bloquÃ©
+  // Vérifier si l'utilisateur est bloqué
   useEffect(() => {
     const checkBlockStatus = async () => {
       if (!participant?._id) return;
@@ -73,7 +74,28 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
     checkBlockStatus();
   }, [participant]);
 
-  // Bloquer un utilisateur
+  // Fermer menu si clic en dehors
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target)
+      ) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
+
   const handleBlockUser = () => {
     if (isGroup || !participant?._id) return;
     setShowMenu(false);
@@ -88,7 +110,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
         setIsBlocked(true);
         setSuccessModal({
           isOpen: true,
-          message: `${userName} has been blocked successfully. They can no longer send you messages.`
+          message: `${userName} has been blocked successfully.`
         });
         
         setTimeout(() => {
@@ -97,19 +119,18 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
       } else {
         setErrorModal({
           isOpen: true,
-          message: res.message || 'Failed to block this user. Please try again.'
+          message: res.message || 'Failed to block this user.'
         });
       }
     } catch (error) {
       console.error('Error blocking user:', error);
       setErrorModal({
         isOpen: true,
-        message: 'An error occurred while blocking this user. Please try again.'
+        message: 'An error occurred while blocking this user.'
       });
     }
   };
 
-  // DÃ©bloquer un utilisateur
   const handleUnblockUser = () => {
     if (isGroup || !participant?._id) return;
     setShowMenu(false);
@@ -124,24 +145,23 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
         setIsBlocked(false);
         setSuccessModal({
           isOpen: true,
-          message: `${userName} has been unblocked successfully. You can now send messages.`
+          message: `${userName} has been unblocked successfully.`
         });
       } else {
         setErrorModal({
           isOpen: true,
-          message: res.message || 'Failed to unblock this user. Please try again.'
+          message: res.message || 'Failed to unblock this user.'
         });
       }
     } catch (error) {
       console.error('Error unblocking user:', error);
       setErrorModal({
         isOpen: true,
-        message: 'An error occurred while unblocking this user. Please try again.'
+        message: 'An error occurred while unblocking this user.'
       });
     }
   };
 
-  // Supprimer la conversation
   const handleClearConversation = () => {
     if (isGroup || !participant?._id) return;
     setShowMenu(false);
@@ -164,19 +184,18 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
       } else {
         setErrorModal({
           isOpen: true,
-          message: res.message || 'Failed to delete conversation history. Please try again.'
+          message: res.message || 'Failed to delete conversation history.'
         });
       }
     } catch (error) {
       console.error('Error clearing conversation history:', error);
       setErrorModal({
         isOpen: true,
-        message: 'An error occurred while deleting the conversation. Please try again.'
+        message: 'An error occurred while deleting the conversation.'
       });
     }
   };
 
-  // DÃ©sactiver les notifications
   const handleToggleNotifications = () => {
     setShowMenu(false);
     setMuteModal({ isOpen: true });
@@ -192,7 +211,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
       console.error('Error muting notifications:', error);
       setErrorModal({
         isOpen: true,
-        message: 'Failed to mute notifications. Please try again.'
+        message: 'Failed to mute notifications.'
       });
     }
   };
@@ -236,8 +255,12 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
 
         <div className={styles.chatHeaderActions}>
           <button
+            ref={buttonRef}
             className={styles.headerActionButton}
-            onClick={() => setShowMenu(!showMenu)}
+            onClick={() => {
+              console.log('Menu toggle:', !showMenu);
+              setShowMenu(!showMenu);
+            }}
             title="More options"
           >
             <FontAwesomeIcon icon={faEllipsisVertical} />
@@ -246,47 +269,58 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
           {showMenu && (
             <>
               <div
-                className={styles.menuOverlay}
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 9998
+                }}
                 onClick={() => setShowMenu(false)}
               />
-              <div className={styles.headerDropdown}>
-                <button
-                  className={styles.dropdownItem}
+              <div
+                ref={menuRef}
+                style={{
+                  position: 'fixed',
+                  top: buttonRef.current ? buttonRef.current.getBoundingClientRect().bottom + 8 : 60,
+                  right: '20px',
+                  background: 'white',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                  minWidth: '200px',
+                  zIndex: 9999,
+                  overflow: 'hidden'
+                }}
+              >
+                <MenuItem
+                  icon={faBellSlash}
+                  label="Mute notifications"
                   onClick={handleToggleNotifications}
-                >
-                  <FontAwesomeIcon icon={faBellSlash} />
-                  Mute notifications
-                </button>
+                />
 
                 {!isGroup && (
                   <>
-                    <div className={styles.dropdownDivider} />
+                    <MenuDivider />
                     
                     {isBlocked ? (
-                      <button
-                        className={styles.dropdownItem}
+                      <MenuItem
+                        icon={faUnlock}
+                        label="Unblock user"
                         onClick={handleUnblockUser}
-                      >
-                        <FontAwesomeIcon icon={faUnlock} />
-                        Unblock user
-                      </button>
+                      />
                     ) : (
-                      <button
-                        className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                      <MenuItem
+                        icon={faBan}
+                        label="Block user"
                         onClick={handleBlockUser}
-                      >
-                        <FontAwesomeIcon icon={faBan} />
-                        Block user
-                      </button>
+                        danger
+                      />
                     )}
                     
-                    <button
-                      className={`${styles.dropdownItem} ${styles.dangerItem}`}
+                    <MenuItem
+                      icon={faTrash}
+                      label="Delete conversation"
                       onClick={handleClearConversation}
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                      Delete conversation
-                    </button>
+                      danger
+                    />
                   </>
                 )}
               </div>
@@ -295,12 +329,12 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
         </div>
       </div>
 
-      {/* Modals de confirmation */}
+      {/* Modals */}
       <CustomModal
         isOpen={blockModal.isOpen}
         onClose={() => setBlockModal({ isOpen: false })}
         title="Block User"
-        message={`Are you sure you want to block ${userName}? They will no longer be able to send you messages or see your profile.`}
+        message={`Are you sure you want to block ${userName}? They will no longer be able to send you messages.`}
         onConfirm={confirmBlockUser}
         confirmText="Block"
         cancelText="Cancel"
@@ -311,7 +345,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
         isOpen={unblockModal.isOpen}
         onClose={() => setUnblockModal({ isOpen: false })}
         title="Unblock User"
-        message={`Are you sure you want to unblock ${userName}? They will be able to send you messages again.`}
+        message={`Are you sure you want to unblock ${userName}?`}
         onConfirm={confirmUnblockUser}
         confirmText="Unblock"
         cancelText="Cancel"
@@ -332,13 +366,12 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
         isOpen={muteModal.isOpen}
         onClose={() => setMuteModal({ isOpen: false })}
         title="Mute Notifications"
-        message={`Do you want to mute notifications for this conversation? You will stop receiving alerts for new messages.`}
+        message={`Do you want to mute notifications for this conversation?`}
         onConfirm={confirmMuteNotifications}
         confirmText="Mute"
         cancelText="Cancel"
       />
 
-      {/* Modals de succÃ¨s et d'erreur */}
       <CustomModal
         isOpen={successModal.isOpen}
         onClose={() => setSuccessModal({ isOpen: false, message: '' })}
@@ -360,5 +393,35 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
     </>
   );
 };
+
+// Composants helper pour le menu
+const MenuItem = ({ icon, label, onClick, danger = false }) => (
+  <button
+    style={{
+      width: '100%',
+      padding: '12px 16px',
+      border: 'none',
+      background: 'white',
+      cursor: 'pointer',
+      textAlign: 'left',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      fontSize: '14px',
+      color: danger ? '#dc3545' : '#333',
+      transition: 'background 0.2s'
+    }}
+    onMouseEnter={(e) => e.currentTarget.style.background = danger ? '#fee' : '#f5f5f5'}
+    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+    onClick={onClick}
+  >
+    <FontAwesomeIcon icon={icon} />
+    {label}
+  </button>
+);
+
+const MenuDivider = () => (
+  <div style={{ height: '1px', background: '#e0e0e0', margin: '4px 0' }} />
+);
 
 export default ChatHeader;
