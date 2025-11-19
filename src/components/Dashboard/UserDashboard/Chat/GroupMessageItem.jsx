@@ -19,8 +19,14 @@ const GroupMessageItem = ({ message, isOwn, showAvatar, currentUser }) => {
   const [localMessage, setLocalMessage] = useState(message);
   const [deletedForMe, setDeletedForMe] = useState(false);
 
-  const [successModal, setSuccessModal] = useState({ isOpen: false, message: '' });
-  const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
+  const [successModal, setSuccessModal] = useState({
+    isOpen: false,
+    message: ''
+  });
+  const [errorModal, setErrorModal] = useState({
+    isOpen: false,
+    message: ''
+  });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false });
 
   const menuRef = useRef(null);
@@ -51,6 +57,28 @@ const GroupMessageItem = ({ message, isOwn, showAvatar, currentUser }) => {
       .map((p) => p[0])
       .join('')
       .toUpperCase();
+  };
+
+  const getImageUrl = (photoPath) => {
+    if (!photoPath) return null;
+    if (typeof photoPath !== 'string') return null;
+    if (photoPath.startsWith('http')) return photoPath;
+
+    const backendUrl =
+      process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
+
+    if (photoPath.startsWith('/uploads')) {
+      return `${backendUrl}${photoPath}`;
+    }
+
+    if (!photoPath.includes('/')) {
+      return `${backendUrl}/uploads/profiles/${photoPath}`;
+    }
+
+    const normalizedPath = photoPath.startsWith('/')
+      ? photoPath
+      : `/${photoPath}`;
+    return `${backendUrl}${normalizedPath}`;
   };
 
   const senderDisplayName = (() => {
@@ -197,6 +225,10 @@ const GroupMessageItem = ({ message, isOwn, showAvatar, currentUser }) => {
 
   if (deletedForMe) return null;
 
+  const avatarUrl = getImageUrl(
+    localMessage.sender?.photo_profil || localMessage.sender?.avatar
+  );
+
   return (
     <>
       <div
@@ -206,10 +238,17 @@ const GroupMessageItem = ({ message, isOwn, showAvatar, currentUser }) => {
       >
         {!isOwn && showAvatar && (
           <div className={styles.messageAvatar}>
-            {localMessage.sender?.photo_profil ? (
+            {avatarUrl ? (
               <img
-                src={localMessage.sender.photo_profil}
+                src={avatarUrl}
                 alt={senderDisplayName}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  if (e.target.parentElement) {
+                    e.target.parentElement.textContent =
+                      getInitialsFromUser(localMessage.sender);
+                  }
+                }}
               />
             ) : (
               <div className={styles.messageAvatarPlaceholder}>

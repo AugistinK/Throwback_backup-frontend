@@ -6,9 +6,7 @@ import {
   faXmark,
   faEllipsisVertical,
   faUsers,
-  faUserPlus,
-  faTrash,
-  faRightFromBracket
+  faTrash
 } from '@fortawesome/free-solid-svg-icons';
 
 const GroupChatHeader = ({
@@ -16,9 +14,7 @@ const GroupChatHeader = ({
   memberCount,
   color,
   isCreator,
-  onAddMembers,
   onViewMembers,
-  onLeaveGroup,
   onDeleteGroup,
   onClose
 }) => {
@@ -68,47 +64,30 @@ const GroupChatHeader = ({
                   className={styles.chatOptionItem}
                   onClick={() => {
                     setShowOptionsMenu(false);
-                    onAddMembers && onAddMembers();
-                  }}
-                >
-                  <FontAwesomeIcon icon={faUserPlus} style={{ fontSize: 16 }} />
-                  Add Members
-                </button>
-                <button
-                  className={styles.chatOptionItem}
-                  onClick={() => {
-                    setShowOptionsMenu(false);
                     onViewMembers && onViewMembers();
                   }}
                 >
                   <FontAwesomeIcon icon={faUsers} style={{ fontSize: 16 }} />
                   View Members
                 </button>
-                <div className={styles.dropdownDivider} />
-                <button
-                  className={`${styles.chatOptionItem} ${styles.dangerItem}`}
-                  onClick={() => {
-                    setShowOptionsMenu(false);
-                    onLeaveGroup && onLeaveGroup();
-                  }}
-                >
-                  <FontAwesomeIcon
-                    icon={faRightFromBracket}
-                    style={{ fontSize: 16 }}
-                  />
-                  Leave Group
-                </button>
+
                 {isCreator && (
-                  <button
-                    className={`${styles.chatOptionItem} ${styles.dangerItem}`}
-                    onClick={() => {
-                      setShowOptionsMenu(false);
-                      onDeleteGroup && onDeleteGroup();
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faTrash} style={{ fontSize: 16 }} />
-                    Delete Group
-                  </button>
+                  <>
+                    <div className={styles.dropdownDivider} />
+                    <button
+                      className={`${styles.chatOptionItem} ${styles.dangerItem}`}
+                      onClick={() => {
+                        setShowOptionsMenu(false);
+                        onDeleteGroup && onDeleteGroup();
+                      }}
+                    >
+                      <FontAwesomeIcon
+                        icon={faTrash}
+                        style={{ fontSize: 16 }}
+                      />
+                      Delete Group
+                    </button>
+                  </>
                 )}
               </div>
             </>

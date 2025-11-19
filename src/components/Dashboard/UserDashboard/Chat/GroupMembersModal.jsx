@@ -15,6 +15,39 @@ const GroupMembersModal = ({
 }) => {
   if (!isOpen) return null;
 
+  const buildImageUrl = (photoPath) => {
+    if (!photoPath) return null;
+    if (typeof photoPath !== 'string') return null;
+    if (photoPath.startsWith('http')) return photoPath;
+
+    const backendUrl =
+      process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
+
+    if (photoPath.startsWith('/uploads')) {
+      return `${backendUrl}${photoPath}`;
+    }
+
+    if (!photoPath.includes('/')) {
+      return `${backendUrl}/uploads/profiles/${photoPath}`;
+    }
+
+    const normalizedPath = photoPath.startsWith('/')
+      ? photoPath
+      : `/${photoPath}`;
+    return `${backendUrl}${normalizedPath}`;
+  };
+
+  const fallbackInitials = (name) => {
+    if (!name) return '';
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .map((p) => p[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <div
       style={{
@@ -59,7 +92,12 @@ const GroupMembersModal = ({
                 : `${member.prenom || ''} ${member.nom || ''}`.trim() ||
                   'Member';
 
-              const avatar = member.avatar || member.photo_profil || null;
+              const rawAvatar = member.avatar || member.photo_profil || null;
+              const avatarUrl = buildImageUrl(rawAvatar);
+
+              const initials = getInitials
+                ? getInitials(member.prenom || name, member.nom)
+                : fallbackInitials(name);
 
               return (
                 <div
@@ -85,18 +123,24 @@ const GroupMembersModal = ({
                       fontSize: '16px'
                     }}
                   >
-                    {avatar ? (
+                    {avatarUrl ? (
                       <img
-                        src={avatar}
+                        src={avatarUrl}
                         alt={name}
                         style={{
                           width: '100%',
                           height: '100%',
                           objectFit: 'cover'
                         }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          if (e.target.parentElement) {
+                            e.target.parentElement.textContent = initials;
+                          }
+                        }}
                       />
                     ) : (
-                      getInitials(name)
+                      initials
                     )}
                   </div>
 
