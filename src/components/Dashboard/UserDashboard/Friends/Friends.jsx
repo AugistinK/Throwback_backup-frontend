@@ -123,7 +123,7 @@ const Friends = () => {
   const [requests, setRequests] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [friendGroups, setFriendGroups] = useState([]);
-  const [chatGroups, setChatGroups] = useState([]); // conversations de groupe
+  const [chatGroups, setChatGroups] = useState([]);
 
   const getImageUrl = (path) => {
     if (!path) return 'https://via.placeholder.com/150';
@@ -131,30 +131,6 @@ const Friends = () => {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     const backendUrl = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
     return `${backendUrl}${normalizedPath}`;
-  };
-
-  useEffect(() => {
-    loadAllData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadAllData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await Promise.all([
-        loadFriends(),
-        loadRequests(),
-        loadSuggestions(),
-        loadFriendGroups(),
-        loadChatGroups()
-      ]);
-    } catch (err) {
-      setError('Error loading data');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const loadFriends = async () => {
@@ -205,7 +181,7 @@ const Friends = () => {
     try {
       const response = await friendsAPI.getFriendSuggestions();
       if (response.success) {
-        // Filtrer pour exclure admin et superadmin
+        // Filtrer pour exclure admin et superadmin (double sécurité avec le backend)
         const filteredSuggestions = response.data.filter((sug) => {
           const userRole = sug.role || (sug.roles && sug.roles[0]?.libelle_role);
           return userRole !== 'admin' && userRole !== 'superadmin';
@@ -291,10 +267,10 @@ const Friends = () => {
             id: conv._id || conv.id,
             name: conv.groupName || conv.name || 'Group chat',
             members: participantIds,
-            participants: participantsRaw, // 🔥 on garde les objets pour les noms
-            color: '#b31217',
-            description: conv.groupDescription || '',
+            color: conv.color || '#b31217',
             conversationId: conv._id || conv.id,
+            description: conv.description || '',
+            updatedAt: conv.updatedAt || conv.modified_date || conv.createdAt,
             isCreator:
               !!creator &&
               !!currentUserId &&
@@ -321,8 +297,6 @@ const Friends = () => {
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
     return `${Math.floor(diffDays / 30)} months ago`;
   };
-
-  // --- Actions (accept/reject/add/remove) inchangées, je laisse tout tel quel ---
 
   const handleAcceptRequest = async (friendshipId) => {
     try {
@@ -353,6 +327,17 @@ const Friends = () => {
             confirmText: 'OK'
           }
         });
+      } else {
+        setConfirmModal({
+          isOpen: true,
+          type: 'error',
+          data: {
+            title: 'Error',
+            message: response.message || 'Failed to accept friend request. Please try again.',
+            showCancel: false,
+            confirmText: 'OK'
+          }
+        });
       }
     } catch (err) {
       console.error('Error accepting request:', err);
@@ -374,24 +359,37 @@ const Friends = () => {
       isOpen: true,
       type: 'warning',
       data: {
-        title: 'Reject Friend Request',
+        title: 'Decline Friend Request',
         message: 'Are you sure you want to decline this friend request?',
         confirmText: 'Decline',
         cancelText: 'Cancel',
         onConfirm: async () => {
           try {
-            await friendsAPI.rejectFriendRequest(friendshipId);
-            setRequests((prev) => prev.filter((r) => r.id !== friendshipId));
-            setConfirmModal({
-              isOpen: true,
-              type: 'success',
-              data: {
-                title: 'Request Declined',
-                message: 'Friend request has been declined.',
-                showCancel: false,
-                confirmText: 'OK'
-              }
-            });
+            const response = await friendsAPI.rejectFriendRequest(friendshipId);
+            if (response.success) {
+              setRequests((prev) => prev.filter((r) => r.id !== friendshipId));
+              setConfirmModal({
+                isOpen: true,
+                type: 'success',
+                data: {
+                  title: 'Request Declined',
+                  message: 'Friend request declined successfully.',
+                  showCancel: false,
+                  confirmText: 'OK'
+                }
+              });
+            } else {
+              setConfirmModal({
+                isOpen: true,
+                type: 'error',
+                data: {
+                  title: 'Error',
+                  message: response.message || 'Failed to decline request. Please try again.',
+                  showCancel: false,
+                  confirmText: 'OK'
+                }
+              });
+            }
           } catch (err) {
             console.error('Error rejecting request:', err);
             setConfirmModal({
@@ -410,6 +408,7 @@ const Friends = () => {
     });
   };
 
+  // 🔴 ICI : intégration des validations backend sur l’envoi de demande d’ami
   const handleAddFriend = async (userId) => {
     setConfirmModal({
       isOpen: true,
@@ -422,17 +421,33 @@ const Friends = () => {
         onConfirm: async () => {
           try {
             const response = await friendsAPI.sendFriendRequest(userId);
+
             if (response.success) {
+              // On enlève la suggestion localement
               setSuggestions((prev) => prev.filter((s) => s.id !== userId));
+
               try {
                 notifyFriendRequest(userId, `${user?.prenom} ${user?.nom}`);
               } catch {}
+
               setConfirmModal({
                 isOpen: true,
                 type: 'success',
                 data: {
                   title: 'Request Sent',
                   message: 'Friend request sent successfully!',
+                  showCancel: false,
+                  confirmText: 'OK'
+                }
+              });
+            } else {
+              // Message renvoyé par le backend (déjà amis, pending, admin, etc.)
+              setConfirmModal({
+                isOpen: true,
+                type: 'error',
+                data: {
+                  title: 'Cannot Send Request',
+                  message: response.message || 'Failed to send friend request.',
                   showCancel: false,
                   confirmText: 'OK'
                 }
@@ -470,12 +485,13 @@ const Friends = () => {
           try {
             await friendsAPI.removeFriend(friendId);
             setFriends((prev) => prev.filter((f) => f.id !== friendId));
+
             setConfirmModal({
               isOpen: true,
               type: 'success',
               data: {
                 title: 'Friend Removed',
-                message: 'Friend has been removed from your list.',
+                message: 'The friend has been removed successfully.',
                 showCancel: false,
                 confirmText: 'OK'
               }
@@ -498,9 +514,12 @@ const Friends = () => {
     });
   };
 
-  const handleSendMessage = (friend) => {
-    setSelectedChatFriend(friend);
-    setShowChatModal(true);
+  const handleSendMessage = (friendId) => {
+    const friend = friends.find((f) => f.id === friendId);
+    if (friend) {
+      setSelectedChatFriend(friend);
+      setShowChatModal(true);
+    }
   };
 
   const handleViewProfile = (friendId) => {
@@ -511,13 +530,12 @@ const Friends = () => {
     }
   };
 
-  const handleSaveGroups = async () => {
-    // Les groupes sont déjà sauvegardés via l'API dans FriendGroupsModal
+  const handleSaveGroups = async (updatedGroups) => {
+    setFriendGroups(updatedGroups);
     await loadFriendGroups();
   };
 
   const handleOpenGroupChat = (group) => {
-    console.log('Opening group chat:', group);
     setSelectedGroupChat(group);
     setShowGroupChatModal(true);
   };
@@ -540,7 +558,6 @@ const Friends = () => {
     return matchesSearch && matchesStatus;
   });
 
-  // Group chats dont l’utilisateur est membre :
   const myChatGroups = chatGroups.filter((group) =>
     !currentUserId
       ? true
@@ -554,10 +571,34 @@ const Friends = () => {
     { id: 'suggestions', label: 'Suggestions', icon: faUserCheck, count: suggestions.length }
   ];
 
+  useEffect(() => {
+    const loadAll = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        await Promise.all([
+          loadFriends(),
+          loadRequests(),
+          loadSuggestions(),
+          loadFriendGroups(),
+          loadChatGroups()
+        ]);
+      } catch (err) {
+        console.error('Error loading friends module:', err);
+        setError('Failed to load friends data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (loading) {
     return (
       <div className={styles.container}>
-        <div className={styles.loading}>
+        <div className={styles.centeredContent}>
           <div className={styles.spinner}></div>
           <p>Loading friends...</p>
         </div>
@@ -568,9 +609,22 @@ const Friends = () => {
   if (error) {
     return (
       <div className={styles.container}>
-        <div className={styles.error}>
-          <p>❌ {error}</p>
-          <button onClick={loadAllData} className={styles.retryButton}>
+        <div className={styles.centeredContent}>
+          <p className={styles.error}>❌ {error}</p>
+          <button
+            className={styles.primaryButton}
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              Promise.all([
+                loadFriends(),
+                loadRequests(),
+                loadSuggestions(),
+                loadFriendGroups(),
+                loadChatGroups()
+              ]).finally(() => setLoading(false));
+            }}
+          >
             Retry
           </button>
         </div>
@@ -582,33 +636,49 @@ const Friends = () => {
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>
-              <FontAwesomeIcon icon={faUsers} style={{ fontSize: 32 }} />
-              Friends
-            </h1>
-            <p className={styles.subtitle}>
-              Connect with people who love the same throwback music
-            </p>
-          </div>
-          <div className={styles.headerActions}>
-            <button
-              className={styles.groupsButton}
-              onClick={() => setShowGroupsModal(true)}
-            >
-              <FontAwesomeIcon icon={faUsers} style={{ fontSize: 20 }} />
-              Groups ({friendGroups.length})
-            </button>
+        <div>
+          <h1 className={styles.title}>Friends</h1>
+          <p className={styles.subtitle}>Manage your social circle and discover new friends.</p>
+        </div>
 
-            <button
-              className={styles.groupsButton}
-              onClick={() => setShowGroupChatsModal(true)}
-            >
-              <FontAwesomeIcon icon={faMessage} style={{ fontSize: 20 }} />
-              Group Chats ({myChatGroups.length})
-            </button>
-          </div>
+        <div className={styles.headerActions}>
+          <button
+            className={styles.secondaryButton}
+            onClick={() => setShowUserSearchModal(true)}
+          >
+            <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: 16 }} />
+            Find Friends
+          </button>
+          <button
+            className={styles.secondaryButton}
+            onClick={() => setShowGroupsModal(true)}
+          >
+            <FontAwesomeIcon icon={faUsers} style={{ fontSize: 16 }} />
+            Friend Groups
+          </button>
+          <button
+            className={styles.secondaryButton}
+            onClick={() => setShowGroupChatsModal(true)}
+          >
+            <FontAwesomeIcon icon={faMessage} style={{ fontSize: 16 }} />
+            Group Chats
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className={styles.statsRow}>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>Friends</span>
+          <span className={styles.statValue}>{friends.length}</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>Requests</span>
+          <span className={styles.statValue}>{requests.length}</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>Suggestions</span>
+          <span className={styles.statValue}>{suggestions.length}</span>
         </div>
       </div>
 
@@ -617,162 +687,137 @@ const Friends = () => {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
             className={`${styles.tab} ${
-              activeTab === tab.id ? styles.activeTab : ''
+              activeTab === tab.id ? styles.tabActive : ''
             }`}
+            onClick={() => setActiveTab(tab.id)}
           >
-            <FontAwesomeIcon icon={tab.icon} style={{ fontSize: 20 }} />
-            <span className={styles.tabLabel}>{tab.label}</span>
-            <span className={styles.badge}>{tab.count}</span>
+            <FontAwesomeIcon icon={tab.icon} style={{ fontSize: 16 }} />
+            <span>{tab.label}</span>
+            <span className={styles.tabBadge}>{tab.count}</span>
           </button>
         ))}
+
+        <div className={styles.filterWrapper}>
+          <button
+            className={styles.filterButton}
+            onClick={() => setShowFilterMenu((prev) => !prev)}
+          >
+            <FontAwesomeIcon icon={faFilter} style={{ fontSize: 14 }} />
+            Filter
+          </button>
+          {showFilterMenu && (
+            <div className={styles.filterMenu}>
+              <button
+                className={filterStatus === 'all' ? styles.filterOptionActive : styles.filterOption}
+                onClick={() => {
+                  setFilterStatus('all');
+                  setShowFilterMenu(false);
+                }}
+              >
+                All
+              </button>
+              <button
+                className={
+                  filterStatus === 'online' ? styles.filterOptionActive : styles.filterOption
+                }
+                onClick={() => {
+                  setFilterStatus('online');
+                  setShowFilterMenu(false);
+                }}
+              >
+                Online
+              </button>
+              <button
+                className={
+                  filterStatus === 'offline' ? styles.filterOptionActive : styles.filterOption
+                }
+                onClick={() => {
+                  setFilterStatus('offline');
+                  setShowFilterMenu(false);
+                }}
+              >
+                Offline
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Search and Filter */}
-      {activeTab === 'friends' && (
-        <div className={styles.searchBar}>
-          <div className={styles.searchInput}>
-            <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: 20 }} />
-            <input
-              type="text"
-              placeholder="Search friends..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={styles.input}
-            />
-          </div>
-          <div className={styles.filterWrapper}>
-            <button
-              className={styles.filterButton}
-              onClick={() => setShowFilterMenu(!showFilterMenu)}
-            >
-              <FontAwesomeIcon icon={faFilter} style={{ fontSize: 20 }} />
-              <span>Filter</span>
-            </button>
-            {showFilterMenu && (
-              <div className={styles.filterMenu}>
-                <button
-                  onClick={() => {
-                    setFilterStatus('all');
-                    setShowFilterMenu(false);
-                  }}
-                  className={styles.filterOption}
-                >
-                  All Friends
-                </button>
-                <button
-                  onClick={() => {
-                    setFilterStatus('online');
-                    setShowFilterMenu(false);
-                  }}
-                  className={styles.filterOption}
-                >
-                  Online Only
-                </button>
-                <button
-                  onClick={() => {
-                    setFilterStatus('offline');
-                    setShowFilterMenu(false);
-                  }}
-                  className={styles.filterOption}
-                >
-                  Offline
-                </button>
-              </div>
-            )}
-          </div>
+      {/* Search bar */}
+      <div className={styles.searchBar}>
+        <div className={styles.searchInput}>
+          <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: 20 }} />
+          <input
+            type="text"
+            placeholder="Search friends..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={styles.input}
+          />
         </div>
-      )}
-
-      {/* Suggestions Search Bar */}
-      {activeTab === 'suggestions' && (
-        <div className={styles.searchBar}>
-          <button
-            className={styles.searchUsersButton}
-            onClick={() => setShowUserSearchModal(true)}
-          >
-            <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: 20 }} />
-            Search Users to Add as Friends
-          </button>
-        </div>
-      )}
+      </div>
 
       {/* Content */}
       <div className={styles.content}>
         {activeTab === 'friends' && (
-          <>
-            {filteredFriends.length > 0 ? (
-              <div className={styles.grid}>
-                {filteredFriends.map((friend) => (
-                  <FriendCard
-                    key={friend.id}
-                    friend={friend}
-                    onRemove={handleRemoveFriend}
-                    onMessage={handleSendMessage}
-                    onViewProfile={handleViewProfile}
-                  />
-                ))}
+          <div className={styles.grid}>
+            {filteredFriends.length === 0 ? (
+              <div className={styles.emptyState}>
+                <h3>No friends found</h3>
+                <p>Try adjusting your search or add new friends.</p>
               </div>
             ) : (
-              <div className={styles.emptyState}>
-                <FontAwesomeIcon icon={faUsers} style={{ fontSize: 64, opacity: 0.5 }} />
-                <h3>No friends found</h3>
-                <p>Try adjusting your search or filters</p>
-              </div>
+              filteredFriends.map((friend) => (
+                <FriendCard
+                  key={friend.id}
+                  friend={friend}
+                  onRemove={handleRemoveFriend}
+                  onMessage={handleSendMessage}
+                  onViewProfile={handleViewProfile}
+                />
+              ))
             )}
-          </>
+          </div>
         )}
 
         {activeTab === 'requests' && (
-          <>
-            {requests.length > 0 ? (
-              <div className={styles.list}>
-                {requests.map((request) => (
-                  <RequestCard
-                    key={request.id}
-                    request={request}
-                    onAccept={handleAcceptRequest}
-                    onReject={handleRejectRequest}
-                  />
-                ))}
+          <div className={styles.grid}>
+            {requests.length === 0 ? (
+              <div className={styles.emptyState}>
+                <h3>No pending requests</h3>
+                <p>You don’t have any friend requests at the moment.</p>
               </div>
             ) : (
-              <div className={styles.emptyState}>
-                <FontAwesomeIcon
-                  icon={faUserPlus}
-                  style={{ fontSize: 64, opacity: 0.5 }}
+              requests.map((request) => (
+                <RequestCard
+                  key={request.id}
+                  request={request}
+                  onAccept={handleAcceptRequest}
+                  onReject={handleRejectRequest}
                 />
-                <h3>No friend requests</h3>
-                <p>You're all caught up!</p>
-              </div>
+              ))
             )}
-          </>
+          </div>
         )}
 
         {activeTab === 'suggestions' && (
-          <>
-            {suggestions.length > 0 ? (
-              <div className={styles.grid}>
-                {suggestions.map((suggestion) => (
-                  <SuggestionCard
-                    key={suggestion.id}
-                    suggestion={suggestion}
-                    onAdd={handleAddFriend}
-                  />
-                ))}
+          <div className={styles.grid}>
+            {suggestions.length === 0 ? (
+              <div className={styles.emptyState}>
+                <h3>No suggestions</h3>
+                <p>We couldn’t find any suggestions for now.</p>
               </div>
             ) : (
-              <div className={styles.emptyState}>
-                <FontAwesomeIcon
-                  icon={faUserCheck}
-                  style={{ fontSize: 64, opacity: 0.5 }}
+              suggestions.map((suggestion) => (
+                <SuggestionCard
+                  key={suggestion.id}
+                  suggestion={suggestion}
+                  onAdd={handleAddFriend}
                 />
-                <h3>No suggestions</h3>
-                <p>We'll suggest friends based on your interests</p>
-              </div>
+              ))
             )}
-          </>
+          </div>
         )}
       </div>
 
@@ -801,7 +846,7 @@ const Friends = () => {
       {showGroupChatModal && selectedGroupChat && (
         <GroupChatModal
           group={selectedGroupChat}
-          friends={friends}          // ✅ on passe la liste des amis
+          friends={friends}          // on passe la liste des amis
           onClose={handleCloseGroupChat}
           onUpdateGroup={handleGroupUpdated}
         />
