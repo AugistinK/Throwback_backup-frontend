@@ -24,12 +24,24 @@ const Chat = () => {
   const currentUserId = user?.id || user?._id;
 
   const getImageUrl = (path) => {
-    if (!path) return 'https://via.placeholder.com/150';
+    if (!path) return null; // Retourner null pour ne pas afficher d'image cassée
     if (path.startsWith('http')) return path;
 
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     const backendUrl =
       process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
+    
+    // Si le path commence déjà par /uploads, l'utiliser tel quel
+    if (path.startsWith('/uploads')) {
+      return `${backendUrl}${path}`;
+    }
+    
+    // Si c'est juste un nom de fichier, essayer /uploads/profiles/
+    if (!path.includes('/')) {
+      return `${backendUrl}/uploads/profiles/${path}`;
+    }
+    
+    // Sinon, normaliser le path
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     return `${backendUrl}${normalizedPath}`;
   };
 

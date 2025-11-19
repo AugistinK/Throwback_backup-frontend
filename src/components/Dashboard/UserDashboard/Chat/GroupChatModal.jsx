@@ -71,10 +71,25 @@ const GroupChatModal = ({ isOpen, onClose, onGroupCreated }) => {
 
     try {
       setProcessing(true);
-      const res = await friendsAPI.createFriendGroup({
+      
+      console.log('🚀 Starting group creation...');
+      console.log('📝 Group name:', groupName.trim());
+      console.log('👥 Selected friends IDs:', selectedFriends);
+      console.log('🔢 Number of friends:', selectedFriends.length);
+      
+      // Essayer différents formats
+      const requestData = {
+        groupName: groupName.trim(),
         name: groupName.trim(),
+        members: selectedFriends,
         memberIds: selectedFriends
-      });
+      };
+      
+      console.log('📦 Request data:', JSON.stringify(requestData, null, 2));
+      
+      const res = await friendsAPI.createFriendGroup(requestData);
+
+      console.log('✅ Response received:', res);
 
       if (res.success) {
         setSuccessModal({
@@ -83,20 +98,31 @@ const GroupChatModal = ({ isOpen, onClose, onGroupCreated }) => {
         });
 
         setTimeout(() => {
-          onGroupCreated && onGroupCreated(res.data);
+          if (res.data) {
+            console.log('🎉 Group created:', res.data);
+            onGroupCreated && onGroupCreated(res.data);
+          }
           onClose();
         }, 1500);
       } else {
+        console.error('❌ Creation failed:', res);
         setErrorModal({
           isOpen: true,
           message: res.message || 'Failed to create group'
         });
       }
     } catch (error) {
-      console.error('Error creating group:', error);
+      console.error('❌ Error:', error);
+      console.error('📄 Response:', error.response?.data);
+      
+      const errorMsg = error.response?.data?.message || 
+                       error.response?.data?.error ||
+                       error.message ||
+                       'An unexpected error occurred';
+      
       setErrorModal({
         isOpen: true,
-        message: 'An error occurred while creating the group'
+        message: `Error: ${errorMsg}`
       });
     } finally {
       setProcessing(false);
@@ -113,6 +139,25 @@ const GroupChatModal = ({ isOpen, onClose, onGroupCreated }) => {
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  // Fonction pour obtenir l'URL de l'image correctement
+  const getImageUrl = (photoPath) => {
+    if (!photoPath) return null;
+    if (photoPath.startsWith('http')) return photoPath;
+    
+    const backendUrl = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
+    
+    if (photoPath.startsWith('/uploads')) {
+      return `${backendUrl}${photoPath}`;
+    }
+    
+    if (!photoPath.includes('/')) {
+      return `${backendUrl}/uploads/profiles/${photoPath}`;
+    }
+    
+    const normalizedPath = photoPath.startsWith('/') ? photoPath : `/${photoPath}`;
+    return `${backendUrl}${normalizedPath}`;
   };
 
   if (!isOpen) return null;
@@ -212,6 +257,7 @@ const GroupChatModal = ({ isOpen, onClose, onGroupCreated }) => {
                 {friends.map((friend) => {
                   const friendId = friend._id || friend.id;
                   const isSelected = selectedFriends.includes(friendId);
+                  const imageUrl = getImageUrl(friend.photo_profil);
 
                   return (
                     <label
@@ -256,14 +302,18 @@ const GroupChatModal = ({ isOpen, onClose, onGroupCreated }) => {
                           fontSize: '14px'
                         }}
                       >
-                        {friend.photo_profil ? (
+                        {imageUrl ? (
                           <img
-                            src={friend.photo_profil}
+                            src={imageUrl}
                             alt={friend.prenom}
                             style={{
                               width: '100%',
                               height: '100%',
                               objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.parentElement.textContent = getInitials(friend.prenom, friend.nom);
                             }}
                           />
                         ) : (

@@ -92,6 +92,13 @@ const ConversationItem = ({ conversation, isSelected, onSelect, isOnline }) => {
             src={participant.photo_profil}
             alt={displayName}
             className={styles.avatarImage}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              const placeholder = document.createElement('div');
+              placeholder.className = styles.avatarPlaceholder;
+              placeholder.textContent = getInitials(displayName);
+              e.target.parentNode.appendChild(placeholder);
+            }}
           />
         ) : (
           <div className={styles.avatarPlaceholder}>
