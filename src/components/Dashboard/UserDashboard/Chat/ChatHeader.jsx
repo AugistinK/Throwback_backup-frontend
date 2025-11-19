@@ -19,15 +19,33 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
   const [isBlocked, setIsBlocked] = useState(false);
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
-  
+
   const [blockModal, setBlockModal] = useState({ isOpen: false });
   const [unblockModal, setUnblockModal] = useState({ isOpen: false });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false });
   const [muteModal, setMuteModal] = useState({ isOpen: false });
-  const [successModal, setSuccessModal] = useState({ isOpen: false, message: '' });
-  const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
+  const [successModal, setSuccessModal] = useState({
+    isOpen: false,
+    message: ''
+  });
+  const [errorModal, setErrorModal] = useState({
+    isOpen: false,
+    message: ''
+  });
 
   const isGroup = !!conversation?.isGroup;
+
+  // ✅ Helper robuste pour récupérer l'ID du user
+  const getParticipantId = () => {
+    return (
+      participant?._id ||
+      participant?.id ||
+      participant?.userId ||
+      conversation?.friendId ||
+      conversation?.otherUserId ||
+      null
+    );
+  };
 
   const getInitials = (text) => {
     if (!text) return '';
@@ -53,16 +71,20 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
     ? 'Online'
     : 'Offline';
 
-  // Vérifier si l'utilisateur est bloqué
+  // ✅ Vérifier si l'utilisateur est bloqué (avec ID robuste)
   useEffect(() => {
     const checkBlockStatus = async () => {
-      if (!participant?._id) return;
-      
+      const userId = getParticipantId();
+      if (!userId) return;
+
       try {
         const res = await friendsAPI.getBlockedUsers();
         if (res.success && Array.isArray(res.data)) {
           const blocked = res.data.some(
-            (blocked) => blocked._id === participant._id
+            (blocked) =>
+              blocked._id === userId ||
+              blocked.id === userId ||
+              String(blocked._id) === String(userId)
           );
           setIsBlocked(blocked);
         }
@@ -72,7 +94,8 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
     };
 
     checkBlockStatus();
-  }, [participant]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participant, conversation]);
 
   // Fermer menu si clic en dehors
   useEffect(() => {
@@ -96,26 +119,37 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
     };
   }, [showMenu]);
 
+  // ---------- Actions ----------
+
   const handleBlockUser = () => {
-    if (isGroup || !participant?._id) return;
+    if (isGroup) return;
+    const userId = getParticipantId();
+    if (!userId) {
+      console.warn('No participant ID found for blockUser');
+      return;
+    }
     setShowMenu(false);
     setBlockModal({ isOpen: true });
   };
 
   const confirmBlockUser = async () => {
+    const userId = getParticipantId();
+    if (!userId) return;
+
     try {
-      const res = await friendsAPI.blockUser(participant._id);
-      
+      const res = await friendsAPI.blockUser(userId);
+
       if (res.success) {
         setIsBlocked(true);
         setSuccessModal({
           isOpen: true,
           message: `${userName} has been blocked successfully.`
         });
-        
+
+        // On revient à la liste de conversations comme dans Friends
         setTimeout(() => {
-          onBack();
-        }, 2000);
+          onBack && onBack();
+        }, 1500);
       } else {
         setErrorModal({
           isOpen: true,
@@ -132,15 +166,23 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
   };
 
   const handleUnblockUser = () => {
-    if (isGroup || !participant?._id) return;
+    if (isGroup) return;
+    const userId = getParticipantId();
+    if (!userId) {
+      console.warn('No participant ID found for unblockUser');
+      return;
+    }
     setShowMenu(false);
     setUnblockModal({ isOpen: true });
   };
 
   const confirmUnblockUser = async () => {
+    const userId = getParticipantId();
+    if (!userId) return;
+
     try {
-      const res = await friendsAPI.unblockUser(participant._id);
-      
+      const res = await friendsAPI.unblockUser(userId);
+
       if (res.success) {
         setIsBlocked(false);
         setSuccessModal({
@@ -163,24 +205,33 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
   };
 
   const handleClearConversation = () => {
-    if (isGroup || !participant?._id) return;
+    if (isGroup) return; // ici tu peux plus tard gérer les groupes si besoin
+    const userId = getParticipantId();
+    if (!userId) {
+      console.warn('No participant ID found for clearConversation');
+      return;
+    }
     setShowMenu(false);
     setDeleteModal({ isOpen: true });
   };
 
   const confirmClearConversation = async () => {
+    const userId = getParticipantId();
+    if (!userId) return;
+
     try {
-      const res = await friendsAPI.clearChatHistory(participant._id);
-      
+      const res = await friendsAPI.clearChatHistory(userId);
+
       if (res.success) {
         setSuccessModal({
           isOpen: true,
           message: 'Conversation history has been deleted successfully.'
         });
-        
+
+        // On revient à la liste et, au prochain open, les messages seront vides
         setTimeout(() => {
-          onBack();
-        }, 2000);
+          onBack && onBack();
+        }, 1500);
       } else {
         setErrorModal({
           isOpen: true,
@@ -203,6 +254,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
 
   const confirmMuteNotifications = async () => {
     try {
+      // Pour l’instant juste feedback comme dans Friends
       setSuccessModal({
         isOpen: true,
         message: 'Notifications have been muted for this conversation.'
@@ -215,6 +267,8 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
       });
     }
   };
+
+  // ---------- Render ----------
 
   return (
     <>
@@ -257,10 +311,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
           <button
             ref={buttonRef}
             className={styles.headerActionButton}
-            onClick={() => {
-              console.log('Menu toggle:', !showMenu);
-              setShowMenu(!showMenu);
-            }}
+            onClick={() => setShowMenu(!showMenu)}
             title="More options"
           >
             <FontAwesomeIcon icon={faEllipsisVertical} />
@@ -268,6 +319,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
 
           {showMenu && (
             <>
+              {/* overlay pour fermer en cliquant à côté */}
               <div
                 style={{
                   position: 'fixed',
@@ -280,7 +332,9 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
                 ref={menuRef}
                 style={{
                   position: 'fixed',
-                  top: buttonRef.current ? buttonRef.current.getBoundingClientRect().bottom + 8 : 60,
+                  top: buttonRef.current
+                    ? buttonRef.current.getBoundingClientRect().bottom + 8
+                    : 60,
                   right: '20px',
                   background: 'white',
                   borderRadius: '8px',
@@ -299,7 +353,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
                 {!isGroup && (
                   <>
                     <MenuDivider />
-                    
+
                     {isBlocked ? (
                       <MenuItem
                         icon={faUnlock}
@@ -314,7 +368,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
                         danger
                       />
                     )}
-                    
+
                     <MenuItem
                       icon={faTrash}
                       label="Delete conversation"
@@ -366,7 +420,7 @@ const ChatHeader = ({ participant, conversation, isOnline, onBack }) => {
         isOpen={muteModal.isOpen}
         onClose={() => setMuteModal({ isOpen: false })}
         title="Mute Notifications"
-        message={`Do you want to mute notifications for this conversation?`}
+        message="Do you want to mute notifications for this conversation?"
         onConfirm={confirmMuteNotifications}
         confirmText="Mute"
         cancelText="Cancel"
@@ -411,8 +465,10 @@ const MenuItem = ({ icon, label, onClick, danger = false }) => (
       color: danger ? '#dc3545' : '#333',
       transition: 'background 0.2s'
     }}
-    onMouseEnter={(e) => e.currentTarget.style.background = danger ? '#fee' : '#f5f5f5'}
-    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+    onMouseEnter={(e) =>
+      (e.currentTarget.style.background = danger ? '#fee' : '#f5f5f5')
+    }
+    onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
     onClick={onClick}
   >
     <FontAwesomeIcon icon={icon} />
