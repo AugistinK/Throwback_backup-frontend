@@ -496,6 +496,7 @@ const conversationsAPI = {
     }
   }
 };
+
 // ============================================
 // NOTIFICATIONS API (NOUVEAU)
 // ============================================
@@ -544,7 +545,36 @@ const notificationsAPI = {
   }
 };
 
-// =================Admin FRIENDS CAHT API==========================
+// ============================================
+// SUPPORT API (Contact / Help & Support)
+// ============================================
+
+const supportAPI = {
+  /**
+   * Envoyer un message au support
+   * payload: { email, subject, message }
+   */
+  contactSupport: async ({ email, subject, message }) => {
+    try {
+      const res = await api.post('/api/support/contact', {
+        email,
+        subject,
+        message
+      });
+      return res.data; // { success, message }
+    } catch (error) {
+      console.error('Error sending support message:', error);
+      return {
+        success: false,
+        message:
+          error.response?.data?.message ||
+          'An error occurred while sending your message. Please try again.'
+      };
+    }
+  }
+};
+
+// =================Admin FRIENDS CHAT API==========================
 
 const adminFriendsChatAPI = {
   getOverview() {
@@ -611,6 +641,7 @@ export { adminAPI };
 export { friendsAPI };
 export { conversationsAPI };
 export { notificationsAPI };
-export {adminFriendsChatAPI};
+export { supportAPI };
+export { adminFriendsChatAPI };
 // Export par défaut de l'instance axios
 export default api;
