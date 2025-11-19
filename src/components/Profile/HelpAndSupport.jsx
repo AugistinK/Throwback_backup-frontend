@@ -25,7 +25,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import styles from './HelpAndSupport.module.css';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../utils/api'; 
+import { supportAPI } from '../../utils/api';
+ 
 
 // FAQ items
 const faqItems = [
@@ -162,60 +163,61 @@ const HelpAndSupport = () => {
   };
 
   // Submit contact form -> appel API backend
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    // Form validation
-    if (!contactForm.subject.trim()) {
-      setFormError("Please enter a subject for your request");
+  // Validation
+  if (!contactForm.subject.trim()) {
+    setFormError("Please enter a subject for your request");
+    return;
+  }
+
+  if (!contactForm.message.trim()) {
+    setFormError("Please enter a message");
+    return;
+  }
+
+  if (!contactForm.email.trim() || !contactForm.email.includes('@')) {
+    setFormError("Please enter a valid email address");
+    return;
+  }
+
+  setFormError(null);
+  setIsSubmitting(true);
+
+  try {
+    const res = await supportAPI.contactSupport({
+      email: contactForm.email.trim(),
+      subject: contactForm.subject.trim(),
+      message: contactForm.message.trim(),
+    });
+
+    if (!res.success) {
+      setFormError(res.message || 'Unable to send your message.');
       return;
     }
 
-    if (!contactForm.message.trim()) {
-      setFormError("Please enter a message");
-      return;
-    }
+    setFormSubmitted(true);
 
-    if (!contactForm.email.trim() || !contactForm.email.includes('@')) {
-      setFormError("Please enter a valid email address");
-      return;
-    }
+    // Reset form
+    setContactForm({
+      subject: '',
+      message: '',
+      email: contactForm.email, // ou user?.email si tu veux
+    });
 
-    try {
-      setFormError(null);
-      setIsSubmitting(true);
-
-      const payload = {
-        subject: contactForm.subject.trim(),
-        message: contactForm.message.trim(),
-        email: contactForm.email.trim()
-      };
-
-      await api.post('/support/contact', payload);
-
-      setFormSubmitted(true);
-
-      // Reset form après succès
-      setContactForm({
-        subject: '',
-        message: '',
-        email: user?.email || ''
-      });
-
-      // Optionnel : cacher le message de succès après quelques secondes
-      setTimeout(() => {
-        setFormSubmitted(false);
-      }, 4000);
-    } catch (error) {
-      console.error('Error sending support message:', error);
-      const msg =
-        error?.response?.data?.message ||
-        'An error occurred while sending your message. Please try again.';
-      setFormError(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    setTimeout(() => setFormSubmitted(false), 4000);
+  } catch (err) {
+    console.error('Error sending support message:', err);
+    setFormError(
+      err?.response?.data?.message ||
+        'An error occurred while sending your message. Please try again.'
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+ 
 
   // Scroll functions with smooth behavior
   const scrollToContactForm = () => {

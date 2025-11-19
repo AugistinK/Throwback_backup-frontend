@@ -559,20 +559,22 @@ const supportAPI = {
       const res = await api.post('/api/support/contact', {
         email,
         subject,
-        message
+        message,
       });
-      return res.data; // { success, message }
+      // backend: { success: true/false, message: '...' }
+      return res.data;
     } catch (error) {
       console.error('Error sending support message:', error);
       return {
         success: false,
         message:
-          error.response?.data?.message ||
-          'An error occurred while sending your message. Please try again.'
+          error?.response?.data?.message ||
+          'An error occurred while sending your message. Please try again.',
       };
     }
-  }
+  },
 };
+
 
 // =================Admin FRIENDS CHAT API==========================
 
@@ -641,7 +643,7 @@ export { adminAPI };
 export { friendsAPI };
 export { conversationsAPI };
 export { notificationsAPI };
-export { supportAPI };
+export { supportAPI };  
 export { adminFriendsChatAPI };
 // Export par défaut de l'instance axios
 export default api;
