@@ -25,7 +25,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import styles from './HelpAndSupport.module.css';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../api/api'; // 🔥 utilisation de ton instance Axios
+import api from '../../utils/api'; // 🔥 utilisation de ton instance Axios
 
 // FAQ items
 const faqItems = [
