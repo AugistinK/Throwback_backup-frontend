@@ -25,6 +25,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import styles from './HelpAndSupport.module.css';
 import { useAuth } from '../../contexts/AuthContext';
+import api from '../../api/api'; // 🔥 utilisation de ton instance Axios
 
 // FAQ items
 const faqItems = [
@@ -118,24 +119,12 @@ const guideItems = [
     icon: faMusic,
     link: "/dashboard/search"
   },
-  // {
-  //   title: "Your History",
-  //   description: "View your recently played videos and activity",
-  //   icon: faHistory,
-  //   link: "/dashboard/history"
-  // },
   {
     title: "Chat with Friends",
     description: "Connect and chat with other ThrowBack users",
     icon: faComments,
     link: "/dashboard/chat"
   }
-  // {
-  //   title: "Your Favorites",
-  //   description: "Access all your liked and saved content",
-  //   icon: faHeart,
-  //   link: "/dashboard/favorites"
-  // }
 ];
 
 const HelpAndSupport = () => {
@@ -149,13 +138,14 @@ const HelpAndSupport = () => {
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formError, setFormError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const contactFormRef = useRef(null);
   const missionRef = useRef(null);
   const faqRef = useRef(null);
   const guideRef = useRef(null);
 
-  // Variable pour contrôler l'état de la section Contact
-  const contactFormEnabled = false;
+  // La section Contact est maintenant activée
+  const contactFormEnabled = true;
 
   // Toggle FAQ item
   const toggleFaq = (index) => {
@@ -165,48 +155,66 @@ const HelpAndSupport = () => {
   // Handle contact form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setContactForm({
-      ...contactForm,
+    setContactForm((prev) => ({
+      ...prev,
       [name]: value
-    });
+    }));
   };
 
-  // Submit contact form
-  const handleSubmit = (e) => {
+  // Submit contact form -> appel API backend
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Form validation
     if (!contactForm.subject.trim()) {
       setFormError("Please enter a subject for your request");
       return;
     }
-    
+
     if (!contactForm.message.trim()) {
       setFormError("Please enter a message");
       return;
     }
-    
+
     if (!contactForm.email.trim() || !contactForm.email.includes('@')) {
       setFormError("Please enter a valid email address");
       return;
     }
-    
-    // Simulate form submission
-    setFormError(null);
-    setFormSubmitted(true);
-    
-    // In a real app, you would send the form data to your backend here
-    console.log('Form submitted:', contactForm);
-    
-    // Reset form after delay to simulate success
-    setTimeout(() => {
+
+    try {
+      setFormError(null);
+      setIsSubmitting(true);
+
+      const payload = {
+        subject: contactForm.subject.trim(),
+        message: contactForm.message.trim(),
+        email: contactForm.email.trim()
+      };
+
+      await api.post('/support/contact', payload);
+
+      setFormSubmitted(true);
+
+      // Reset form après succès
       setContactForm({
         subject: '',
         message: '',
         email: user?.email || ''
       });
-      setFormSubmitted(false);
-    }, 3000);
+
+      // Optionnel : cacher le message de succès après quelques secondes
+      setTimeout(() => {
+        setFormSubmitted(false);
+      }, 4000);
+    } catch (error) {
+      console.error('Error sending support message:', error);
+      const msg =
+        error?.response?.data?.message ||
+        'An error occurred while sending your message. Please try again.';
+      setFormError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Scroll functions with smooth behavior
@@ -229,56 +237,74 @@ const HelpAndSupport = () => {
   return (
     <div className={styles.helpContainer}>
       <div className={styles.helpHeader}>
-       <button onClick={() => navigate(-1)} className={styles.backButton}>← Back</button>
+        <button onClick={() => navigate(-1)} className={styles.backButton}>
+          ← Back
+        </button>
         <h1 className={styles.pageTitle}>Help and Support</h1>
       </div>
-      
+
       <div className={styles.helpContent}>
         <div className={styles.helpSidebar}>
           <div className={styles.sidebarSection}>
             <h3 className={styles.sidebarTitle}>Resources</h3>
             <ul className={styles.sidebarLinks}>
               <li>
-                <a href="#mission" className={styles.sidebarLink} onClick={(e) => {
-                  e.preventDefault();
-                  scrollToMission();
-                }}>
+                <a
+                  href="#mission"
+                  className={styles.sidebarLink}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToMission();
+                  }}
+                >
                   <FontAwesomeIcon icon={faGlobe} />
                   <span>Our Mission</span>
                 </a>
               </li>
               <li>
-                <a href="#faq" className={styles.sidebarLink} onClick={(e) => {
-                  e.preventDefault();
-                  scrollToFaq();
-                }}>
+                <a
+                  href="#faq"
+                  className={styles.sidebarLink}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToFaq();
+                  }}
+                >
                   <FontAwesomeIcon icon={faQuestionCircle} />
                   <span>FAQ</span>
                 </a>
               </li>
               <li>
-                <a href="#guide" className={styles.sidebarLink} onClick={(e) => {
-                  e.preventDefault();
-                  scrollToGuide();
-                }}>
+                <a
+                  href="#guide"
+                  className={styles.sidebarLink}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToGuide();
+                  }}
+                >
                   <FontAwesomeIcon icon={faBook} />
                   <span>User Guide</span>
                 </a>
               </li>
               <li>
-                <a href="#contact" className={`${styles.sidebarLink} ${!contactFormEnabled ? styles.disabled : ''}`} onClick={(e) => {
-                  e.preventDefault();
-                  if (contactFormEnabled) {
-                    scrollToContactForm();
-                  }
-                }}>
+                <a
+                  href="#contact"
+                  className={`${styles.sidebarLink} ${!contactFormEnabled ? styles.disabled : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (contactFormEnabled) {
+                      scrollToContactForm();
+                    }
+                  }}
+                >
                   <FontAwesomeIcon icon={faEnvelope} />
                   <span>Contact Us</span>
                 </a>
               </li>
             </ul>
           </div>
-          
+
           <div className={styles.sidebarSection}>
             <h3 className={styles.sidebarTitle}>Direct Contact</h3>
             <div className={styles.contactInfo}>
@@ -286,61 +312,59 @@ const HelpAndSupport = () => {
                 <FontAwesomeIcon icon={faEnvelope} />
                 <span>support@throwback-connect.com</span>
               </div>
-              {/* <div className={styles.contactItem}>
-                <FontAwesomeIcon icon={faPhone} />
-                <span>+16468945095</span>
-              </div> */}
             </div>
           </div>
         </div>
-        
+
         <div className={styles.helpMain}>
           <section id="mission" className={styles.section} ref={missionRef}>
             <h2 className={styles.sectionTitle}>
               <FontAwesomeIcon icon={faGlobe} />
               <span>Our Mission</span>
             </h2>
-            
+
             <div className={styles.missionContainer}>
               <p className={styles.missionText}>
-                At Throwback-Connect, our mission is to unite generations and cultures through the 
-                timeless power of music by celebrating the golden eras and iconic sounds that shaped 
-                the past—from Motown, 90s Hip-Hop, and classic R&B to Rock 'n' Roll, Disco, Funk, 
+                At Throwback-Connect, our mission is to unite generations and cultures through the
+                timeless power of music by celebrating the golden eras and iconic sounds that shaped
+                the past—from Motown, 90s Hip-Hop, and classic R&B to Rock 'n' Roll, Disco, Funk,
                 Country, and beyond.
               </p>
-              
+
               <p className={styles.missionText}>
-                Curating and sharing music videos from around the world, we 
-                create a global digital space where memories come alive and rhythms spark 
-                connection. Whether you're vibing to Detroit soul, dancing to Kingston riddims, or 
-                reminiscing with Nashville twang, or exploring Afrobeat, Reggae, French chanson, Latin 
-                classics, and Japanese city pop, Throwback-Connect bridges cultures and generations, 
-                bringing people together through the soundtrack of their lives—across borders and time.
+                Curating and sharing music videos from around the world, we create a global digital
+                space where memories come alive and rhythms spark connection. Whether you're vibing
+                to Detroit soul, dancing to Kingston riddims, or reminiscing with Nashville twang,
+                or exploring Afrobeat, Reggae, French chanson, Latin classics, and Japanese city
+                pop, Throwback-Connect bridges cultures and generations, bringing people together
+                through the soundtrack of their lives—across borders and time.
               </p>
-              
+
               <p className={styles.missionTagline}>
                 Your memories. Your music. Let's connect!
               </p>
             </div>
           </section>
-          
+
           <section id="faq" className={styles.section} ref={faqRef}>
             <h2 className={styles.sectionTitle}>
               <FontAwesomeIcon icon={faQuestionCircle} />
               <span>Frequently Asked Questions</span>
             </h2>
-            
+
             <div className={styles.faqContainer}>
               {faqItems.map((item, index) => (
                 <div key={index} className={styles.faqItem}>
-                  <button 
-                    className={`${styles.faqQuestion} ${expandedFaq === index ? styles.expanded : ''}`}
+                  <button
+                    className={`${styles.faqQuestion} ${
+                      expandedFaq === index ? styles.expanded : ''
+                    }`}
                     onClick={() => toggleFaq(index)}
                   >
                     <span>{item.question}</span>
                     <FontAwesomeIcon icon={expandedFaq === index ? faAngleUp : faAngleDown} />
                   </button>
-                  
+
                   {expandedFaq === index && (
                     <div className={styles.faqAnswer}>
                       <p>{item.answer}</p>
@@ -350,59 +374,52 @@ const HelpAndSupport = () => {
               ))}
             </div>
           </section>
-          
+
           <section id="guide" className={styles.section} ref={guideRef}>
             <h2 className={styles.sectionTitle}>
               <FontAwesomeIcon icon={faBook} />
               <span>User Guide</span>
             </h2>
-            
+
             <div className={styles.guideGrid}>
               {guideItems.map((item, index) => (
                 <div key={index} className={styles.guideItem}>
                   <FontAwesomeIcon icon={item.icon} className={styles.guideIcon} />
                   <h3 className={styles.guideTitle}>{item.title}</h3>
                   <p className={styles.guideDescription}>{item.description}</p>
-                  <button 
-                    onClick={() => navigate(item.link)} 
-                    className={styles.guideLink}
-                  >
+                  <button onClick={() => navigate(item.link)} className={styles.guideLink}>
                     Go to Section
                   </button>
                 </div>
               ))}
             </div>
           </section>
-          
-          <section id="contact" className={`${styles.section} ${!contactFormEnabled ? styles.disabledSection : ''}`} ref={contactFormRef}>
+
+          <section
+            id="contact"
+            className={`${styles.section} ${!contactFormEnabled ? styles.disabledSection : ''}`}
+            ref={contactFormRef}
+          >
             <h2 className={styles.sectionTitle}>
               <FontAwesomeIcon icon={faEnvelope} />
               <span>Contact Us</span>
             </h2>
-            
+
             <div className={styles.contactFormContainer}>
-              {!contactFormEnabled ? (
-                <div className={styles.formDisabledMessage}>
-                  <FontAwesomeIcon icon={faTools} className={styles.maintenanceIcon} />
-                  <h3>Contact Form Coming Soon</h3>
-                  <p>Our contact form is currently under maintenance. Please email us directly at <strong>support@throwback-connect.com</strong> for assistance.</p>
-                </div>
-              ) : formSubmitted ? (
+              {formSubmitted ? (
                 <div className={styles.formSuccess}>
                   <h3>Thank you for your message!</h3>
                   <p>We have received your request and will respond as soon as possible.</p>
                 </div>
               ) : (
                 <form className={styles.contactForm} onSubmit={handleSubmit}>
-                  {formError && (
-                    <div className={styles.formError}>
-                      {formError}
-                    </div>
-                  )}
-                  
+                  {formError && <div className={styles.formError}>{formError}</div>}
+
                   <div className={styles.formGroup}>
-                    <label htmlFor="email" className={styles.formLabel}>Email</label>
-                    <input 
+                    <label htmlFor="email" className={styles.formLabel}>
+                      Email
+                    </label>
+                    <input
                       type="email"
                       id="email"
                       name="email"
@@ -413,10 +430,12 @@ const HelpAndSupport = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className={styles.formGroup}>
-                    <label htmlFor="subject" className={styles.formLabel}>Subject</label>
-                    <input 
+                    <label htmlFor="subject" className={styles.formLabel}>
+                      Subject
+                    </label>
+                    <input
                       type="text"
                       id="subject"
                       name="subject"
@@ -427,10 +446,12 @@ const HelpAndSupport = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className={styles.formGroup}>
-                    <label htmlFor="message" className={styles.formLabel}>Message</label>
-                    <textarea 
+                    <label htmlFor="message" className={styles.formLabel}>
+                      Message
+                    </label>
+                    <textarea
                       id="message"
                       name="message"
                       value={contactForm.message}
@@ -441,10 +462,14 @@ const HelpAndSupport = () => {
                       required
                     />
                   </div>
-                  
-                  <button type="submit" className={styles.submitButton}>
+
+                  <button
+                    type="submit"
+                    className={styles.submitButton}
+                    disabled={isSubmitting}
+                  >
                     <FontAwesomeIcon icon={faPaperPlane} />
-                    <span>Send</span>
+                    <span>{isSubmitting ? 'Sending...' : 'Send'}</span>
                   </button>
                 </form>
               )}

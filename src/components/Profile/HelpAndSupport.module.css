@@ -395,6 +395,12 @@
   pointer-events: none;
 }
 
+.submitButton:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+
 /* Responsive Styles */
 @media (max-width: 992px) {
   .helpContent {
