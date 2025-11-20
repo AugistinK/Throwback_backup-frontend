@@ -339,9 +339,7 @@ const AdminNotifications = () => {
                   if (!notif.read && notif.id) {
                     markAsRead(notif.id);
                   }
-                  if (notif.link) {
-                    window.location.href = notif.link;
-                  }
+                  // ⚠️ Plus de redirection ici, on ne fait QUE marquer comme lu
                 }}
               >
                 <div

@@ -1,4 +1,4 @@
-// src/components/Dashboard/UserDashboard/Friends/Friends.jsx - VERSION CORRIGÉE
+// src/components/Dashboard/UserDashboard/Friends/Friends.jsx - VERSION AVEC BLOQUÉS
 import React, { useState, useEffect } from 'react';
 import FriendCard from './FriendCard';
 import RequestCard from './RequestCard';
@@ -9,6 +9,7 @@ import FriendProfileModal from './FriendProfileModal';
 import GroupChatModal from './GroupChatModal';
 import UserSearchModal from './UserSearchModal';
 import ConfirmModal from './ConfirmModal';
+import BlockedFriendCard from './BlockedFriendCard';
 import { friendsAPI } from '../../../../utils/api';
 import { useSocket } from '../../../../contexts/SocketContext';
 import { useAuth } from '../../../../contexts/AuthContext';
@@ -21,7 +22,8 @@ import {
   faUserCheck,
   faMagnifyingGlass,
   faFilter,
-  faMessage
+  faMessage,
+  faBan
 } from '@fortawesome/free-solid-svg-icons';
 
 /**
@@ -124,6 +126,7 @@ const Friends = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [friendGroups, setFriendGroups] = useState([]);
   const [chatGroups, setChatGroups] = useState([]); // conversations de groupe
+  const [blockedFriends, setBlockedFriends] = useState([]); // ✅ utilisateurs bloqués
 
   const getImageUrl = (path) => {
     if (!path) return 'https://via.placeholder.com/150';
@@ -147,7 +150,8 @@ const Friends = () => {
         loadRequests(),
         loadSuggestions(),
         loadFriendGroups(),
-        loadChatGroups()
+        loadChatGroups(),
+        loadBlockedFriends()
       ]);
     } catch (err) {
       setError('Error loading data');
@@ -308,6 +312,33 @@ const Friends = () => {
     }
   };
 
+  /**
+   * Charger les utilisateurs bloqués par l'utilisateur courant
+   */
+  const loadBlockedFriends = async () => {
+    try {
+      if (typeof friendsAPI.getBlockedUsers !== 'function') {
+        console.warn('friendsAPI.getBlockedUsers is not defined');
+        return;
+      }
+
+      const res = await friendsAPI.getBlockedUsers();
+      if (res.success && Array.isArray(res.data)) {
+        const enrichedBlocked = res.data.map((u) => ({
+          id: u._id,
+          name: `${u.prenom} ${u.nom}`,
+          username: `@${u.email.split('@')[0]}`,
+          avatar: getImageUrl(u.photo_profil),
+          status: 'blocked',
+          location: u.ville || 'Unknown'
+        }));
+        setBlockedFriends(enrichedBlocked);
+      }
+    } catch (err) {
+      console.error('Error loading blocked users:', err);
+    }
+  };
+
   const formatDate = (date) => {
     if (!date) return 'Recently';
     const d = new Date(date);
@@ -322,7 +353,7 @@ const Friends = () => {
     return `${Math.floor(diffDays / 30)} months ago`;
   };
 
-  // --- Actions (accept/reject/add/remove) inchangées, je laisse tout tel quel ---
+  // --- Actions (accept/reject/add/remove) inchangées ---
 
   const handleAcceptRequest = async (friendshipId) => {
     try {
@@ -504,7 +535,9 @@ const Friends = () => {
   };
 
   const handleViewProfile = (friendId) => {
-    const friend = friends.find((f) => f.id === friendId);
+    const friend =
+      friends.find((f) => f.id === friendId) ||
+      blockedFriends.find((b) => b.id === friendId);
     if (friend) {
       setSelectedProfileFriend(friend);
       setShowProfileModal(true);
@@ -531,6 +564,57 @@ const Friends = () => {
     await Promise.all([loadFriendGroups(), loadChatGroups()]);
   };
 
+  /**
+   * Débloquer un utilisateur depuis l'onglet Blocked
+   */
+  const handleUnblockFriend = async (friendId) => {
+    const blocked = blockedFriends.find((b) => b.id === friendId);
+    setConfirmModal({
+      isOpen: true,
+      type: 'info',
+      data: {
+        title: 'Unblock User',
+        message: `Do you want to unblock ${blocked?.name || 'this user'}?`,
+        confirmText: 'Unblock',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+          try {
+            if (typeof friendsAPI.unblockUser !== 'function') {
+              throw new Error('friendsAPI.unblockUser is not defined');
+            }
+            const res = await friendsAPI.unblockUser(friendId);
+            if (!res.success) throw new Error(res.message || 'Failed to unblock');
+
+            setBlockedFriends((prev) => prev.filter((b) => b.id !== friendId));
+
+            setConfirmModal({
+              isOpen: true,
+              type: 'success',
+              data: {
+                title: 'User Unblocked',
+                message: 'This user has been unblocked successfully.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          } catch (err) {
+            console.error('Error unblocking user:', err);
+            setConfirmModal({
+              isOpen: true,
+              type: 'error',
+              data: {
+                title: 'Error',
+                message: 'Failed to unblock user. Please try again.',
+                showCancel: false,
+                confirmText: 'OK'
+              }
+            });
+          }
+        }
+      }
+    });
+  };
+
   // Filtrer les amis
   const filteredFriends = friends.filter((friend) => {
     const matchesSearch =
@@ -551,7 +635,8 @@ const Friends = () => {
   const tabs = [
     { id: 'friends', label: 'My Friends', icon: faUsers, count: friends.length },
     { id: 'requests', label: 'Requests', icon: faUserPlus, count: requests.length },
-    { id: 'suggestions', label: 'Suggestions', icon: faUserCheck, count: suggestions.length }
+    { id: 'suggestions', label: 'Suggestions', icon: faUserCheck, count: suggestions.length },
+    { id: 'blocked', label: 'Blocked', icon: faBan, count: blockedFriends.length }
   ];
 
   if (loading) {
@@ -774,6 +859,32 @@ const Friends = () => {
             )}
           </>
         )}
+
+        {activeTab === 'blocked' && (
+          <>
+            {blockedFriends.length > 0 ? (
+              <div className={styles.grid}>
+                {blockedFriends.map((user) => (
+                  <BlockedFriendCard
+                    key={user.id}
+                    user={user}
+                    onUnblock={handleUnblockFriend}
+                    onViewProfile={handleViewProfile}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={styles.emptyState}>
+                <FontAwesomeIcon
+                  icon={faBan}
+                  style={{ fontSize: 64, opacity: 0.5 }}
+                />
+                <h3>No blocked users</h3>
+                <p>You haven’t blocked anyone.</p>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Modals */}
@@ -801,7 +912,7 @@ const Friends = () => {
       {showGroupChatModal && selectedGroupChat && (
         <GroupChatModal
           group={selectedGroupChat}
-          friends={friends}          // ✅ on passe la liste des amis
+          friends={friends}
           onClose={handleCloseGroupChat}
           onUpdateGroup={handleGroupUpdated}
         />
