@@ -200,7 +200,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     }
   };
 
-  // 💡 Même logique que dans UserNotifications
+  // 💡 Route cible en fonction du type
   const resolveNotificationLink = (notification) => {
     if (!notification) return null;
     const { type, link } = notification;
@@ -218,15 +218,20 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
         case 'friend_request':
         case 'friend_request_accepted':
           return '/dashboard/friends';
+
+        // 👉 Messages privés + groupes → module Chat
         case 'message':
         case 'chat-group':
         case 'chat_group_created':
-          return '/dashboard/messages';
+          return '/dashboard/chat';
+
         case 'like':
         case 'comment':
           return '/dashboard/wall';
+
         case 'content':
           return '/dashboard/videos';
+
         case 'system':
         default:
           return '/dashboard/notifications';
@@ -315,7 +320,6 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       socket.off('notification:new', handleNewNotification);
     };
   }, [socket]);
-
 
   // ===========================
   //         RECHERCHE

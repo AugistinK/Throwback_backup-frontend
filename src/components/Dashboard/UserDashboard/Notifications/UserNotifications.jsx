@@ -43,6 +43,9 @@ const UserNotifications = () => {
         return faCommentDots;
       case 'message':
         return faCommentDots;
+      case 'chat-group':
+      case 'chat_group_created':
+        return faUsers;
       case 'content':
         return faPlayCircle;
       case 'system':
@@ -52,7 +55,7 @@ const UserNotifications = () => {
     }
   };
 
-  // 💡 Nouvelle fonction pour calculer la vraie route cible
+  // 💡 Route cible en fonction du type
   const resolveNotificationLink = (notification) => {
     if (!notification) return null;
     const { type, link } = notification;
@@ -73,16 +76,21 @@ const UserNotifications = () => {
         case 'friend_request':
         case 'friend_request_accepted':
           return '/dashboard/friends';
+
+        // 👉 Messages privés + groupes → module Chat
         case 'message':
         case 'chat-group':
         case 'chat_group_created':
-          return '/dashboard/messages';
+          return '/dashboard/chat';
+
         case 'like':
         case 'comment':
           return '/dashboard/wall';
+
         case 'content':
-          // Tu peux basculer vers /dashboard/videos ou /dashboard/live selon ton choix
+          // Tu peux basculer vers /dashboard/videos ou autre
           return '/dashboard/videos';
+
         case 'system':
         default:
           // Par défaut on reste dans le centre de notifications
@@ -213,6 +221,8 @@ const UserNotifications = () => {
           'like',
           'comment',
           'message',
+          'chat-group',
+          'chat_group_created',
         ].includes(n.type);
       }
       if (filter === 'content') {
