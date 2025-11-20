@@ -52,6 +52,54 @@ const UserNotifications = () => {
     }
   };
 
+  // 💡 Nouvelle fonction pour calculer la vraie route cible
+  const resolveNotificationLink = (notification) => {
+    if (!notification) return null;
+    const { type, link } = notification;
+
+    // 1) Si backend renvoie une URL externe → on la respecte
+    if (link && link.startsWith('http')) {
+      return link;
+    }
+
+    // 2) Si backend renvoie déjà un chemin complet /dashboard/... ou /admin/...
+    if (link && (link.startsWith('/dashboard') || link.startsWith('/admin'))) {
+      return link;
+    }
+
+    // 3) Si backend n'envoie PAS de link ou un truc vide → on décide côté frontend
+    if (!link || link.trim() === '') {
+      switch (type) {
+        case 'friend_request':
+        case 'friend_request_accepted':
+          return '/dashboard/friends';
+        case 'message':
+        case 'chat-group':
+        case 'chat_group_created':
+          return '/dashboard/messages';
+        case 'like':
+        case 'comment':
+          return '/dashboard/wall';
+        case 'content':
+          // Tu peux basculer vers /dashboard/videos ou /dashboard/live selon ton choix
+          return '/dashboard/videos';
+        case 'system':
+        default:
+          // Par défaut on reste dans le centre de notifications
+          return '/dashboard/notifications';
+      }
+    }
+
+    // 4) Si on a un link "interne" sans préfixe, on le met sous /dashboard
+    if (link.startsWith('/')) {
+      // ex: "/videos/123" → "/dashboard/videos/123"
+      return `/dashboard${link}`;
+    }
+
+    // ex: "videos/123" → "/dashboard/videos/123"
+    return `/dashboard/${link}`;
+  };
+
   const formatTimeAgo = (dateString) => {
     if (!dateString) return '';
     const now = new Date();
@@ -138,8 +186,9 @@ const UserNotifications = () => {
       console.error('Error marking notification as read:', err);
     }
 
-    if (notification.link) {
-      navigate(notification.link);
+    const target = resolveNotificationLink(notification);
+    if (target) {
+      navigate(target);
     }
   };
 
@@ -240,8 +289,8 @@ const UserNotifications = () => {
               <option value="all">All</option>
               <option value="unread">Unread</option>
               <option value="social">Social</option>
-              <option value="content">Content</option>
-              <option value="system">System</option>
+              {/* <option value="content">Content</option>
+              <option value="system">System</option> */}
             </select>
           </div>
 

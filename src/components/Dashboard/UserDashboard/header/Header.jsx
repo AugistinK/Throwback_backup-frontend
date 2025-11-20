@@ -1,3 +1,4 @@
+// src/components/Dashboard/UserDashboard/Header.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './header.module.css';
@@ -199,6 +200,46 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     }
   };
 
+  // 💡 Même logique que dans UserNotifications
+  const resolveNotificationLink = (notification) => {
+    if (!notification) return null;
+    const { type, link } = notification;
+
+    if (link && link.startsWith('http')) {
+      return link;
+    }
+
+    if (link && (link.startsWith('/dashboard') || link.startsWith('/admin'))) {
+      return link;
+    }
+
+    if (!link || link.trim() === '') {
+      switch (type) {
+        case 'friend_request':
+        case 'friend_request_accepted':
+          return '/dashboard/friends';
+        case 'message':
+        case 'chat-group':
+        case 'chat_group_created':
+          return '/dashboard/messages';
+        case 'like':
+        case 'comment':
+          return '/dashboard/wall';
+        case 'content':
+          return '/dashboard/videos';
+        case 'system':
+        default:
+          return '/dashboard/notifications';
+      }
+    }
+
+    if (link.startsWith('/')) {
+      return `/dashboard${link}`;
+    }
+
+    return `/dashboard/${link}`;
+  };
+
   const handleNotificationClick = async (notification) => {
     try {
       if (!notification.read) {
@@ -217,8 +258,9 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       );
     }
 
-    if (notification.link) {
-      navigate(notification.link);
+    const target = resolveNotificationLink(notification);
+    if (target) {
+      navigate(target);
       setIsNotificationsOpen(false);
     }
   };
@@ -273,6 +315,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       socket.off('notification:new', handleNewNotification);
     };
   }, [socket]);
+
 
   // ===========================
   //         RECHERCHE
