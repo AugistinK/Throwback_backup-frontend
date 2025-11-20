@@ -1,4 +1,3 @@
-// src/components/Dashboard/UserDashboard/Header.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './header.module.css';
@@ -200,51 +199,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     }
   };
 
-  // 💡 Route cible en fonction du type
-  const resolveNotificationLink = (notification) => {
-    if (!notification) return null;
-    const { type, link } = notification;
-
-    if (link && link.startsWith('http')) {
-      return link;
-    }
-
-    if (link && (link.startsWith('/dashboard') || link.startsWith('/admin'))) {
-      return link;
-    }
-
-    if (!link || link.trim() === '') {
-      switch (type) {
-        case 'friend_request':
-        case 'friend_request_accepted':
-          return '/dashboard/friends';
-
-        // 👉 Messages privés + groupes → module Chat
-        case 'message':
-        case 'chat-group':
-        case 'chat_group_created':
-          return '/dashboard/chat';
-
-        case 'like':
-        case 'comment':
-          return '/dashboard/wall';
-
-        case 'content':
-          return '/dashboard/videos';
-
-        case 'system':
-        default:
-          return '/dashboard/notifications';
-      }
-    }
-
-    if (link.startsWith('/')) {
-      return `/dashboard${link}`;
-    }
-
-    return `/dashboard/${link}`;
-  };
-
+  // 👉 ICI : plus aucune redirection, on marque juste comme lue
   const handleNotificationClick = async (notification) => {
     try {
       if (!notification.read) {
@@ -263,11 +218,8 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
       );
     }
 
-    const target = resolveNotificationLink(notification);
-    if (target) {
-      navigate(target);
-      setIsNotificationsOpen(false);
-    }
+    // On ferme simplement le menu de notifications, sans navigate()
+    setIsNotificationsOpen(false);
   };
 
   // Charger les notifications au montage

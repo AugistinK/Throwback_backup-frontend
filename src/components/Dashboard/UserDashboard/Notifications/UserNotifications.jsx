@@ -1,6 +1,5 @@
 // src/components/Dashboard/UserDashboard/Notifications/UserNotifications.jsx
 import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import styles from './Notifications.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -25,11 +24,10 @@ const UserNotifications = () => {
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all'); // all | unread | social | content | system
+  const [filter, setFilter] = useState('all'); // all | unread | social
   const [refreshing, setRefreshing] = useState(false);
 
   const { socket } = useSocket();
-  const navigate = useNavigate();
 
   const getNotificationIcon = (notification) => {
     switch (notification.type) {
@@ -53,59 +51,6 @@ const UserNotifications = () => {
       default:
         return faCircle;
     }
-  };
-
-  // 💡 Route cible en fonction du type
-  const resolveNotificationLink = (notification) => {
-    if (!notification) return null;
-    const { type, link } = notification;
-
-    // 1) Si backend renvoie une URL externe → on la respecte
-    if (link && link.startsWith('http')) {
-      return link;
-    }
-
-    // 2) Si backend renvoie déjà un chemin complet /dashboard/... ou /admin/...
-    if (link && (link.startsWith('/dashboard') || link.startsWith('/admin'))) {
-      return link;
-    }
-
-    // 3) Si backend n'envoie PAS de link ou un truc vide → on décide côté frontend
-    if (!link || link.trim() === '') {
-      switch (type) {
-        case 'friend_request':
-        case 'friend_request_accepted':
-          return '/dashboard/friends';
-
-        // 👉 Messages privés + groupes → module Chat
-        case 'message':
-        case 'chat-group':
-        case 'chat_group_created':
-          return '/dashboard/chat';
-
-        case 'like':
-        case 'comment':
-          return '/dashboard/wall';
-
-        case 'content':
-          // Tu peux basculer vers /dashboard/videos ou autre
-          return '/dashboard/videos';
-
-        case 'system':
-        default:
-          // Par défaut on reste dans le centre de notifications
-          return '/dashboard/notifications';
-      }
-    }
-
-    // 4) Si on a un link "interne" sans préfixe, on le met sous /dashboard
-    if (link.startsWith('/')) {
-      // ex: "/videos/123" → "/dashboard/videos/123"
-      return `/dashboard${link}`;
-    }
-
-    // ex: "videos/123" → "/dashboard/videos/123"
-    return `/dashboard/${link}`;
   };
 
   const formatTimeAgo = (dateString) => {
@@ -177,6 +122,7 @@ const UserNotifications = () => {
     }
   };
 
+  // 👉 Plus de navigate ici, on marque juste comme lu
   const handleNotificationClick = async (notification) => {
     try {
       if (!notification.read && notification.id) {
@@ -193,11 +139,6 @@ const UserNotifications = () => {
     } catch (err) {
       console.error('Error marking notification as read:', err);
     }
-
-    const target = resolveNotificationLink(notification);
-    if (target) {
-      navigate(target);
-    }
   };
 
   // Grouping by "Today / Yesterday / Earlier"
@@ -210,7 +151,9 @@ const UserNotifications = () => {
 
     const now = new Date();
     const todayStr = now.toDateString();
-    const yesterdayStr = new Date(now.getTime() - 24 * 60 * 60 * 1000).toDateString();
+    const yesterdayStr = new Date(
+      now.getTime() - 24 * 60 * 60 * 1000
+    ).toDateString();
 
     const filterPredicate = (n) => {
       if (filter === 'unread') return !n.read;
@@ -224,12 +167,6 @@ const UserNotifications = () => {
           'chat-group',
           'chat_group_created',
         ].includes(n.type);
-      }
-      if (filter === 'content') {
-        return n.type === 'content';
-      }
-      if (filter === 'system') {
-        return n.type === 'system';
       }
       return true;
     };
