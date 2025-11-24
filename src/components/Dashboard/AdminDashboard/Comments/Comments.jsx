@@ -105,30 +105,30 @@ const Comments = () => {
   };
 
   // Action essentielle : suppression d’un commentaire
-  const handleDeleteComment = async (commentId) => {
-    if (!window.confirm('Do you really want to delete this comment?')) return;
+  // const handleDeleteComment = async (commentId) => {
+  //   if (!window.confirm('Do you really want to delete this comment?')) return;
 
-    try {
-      setLoading(true);
-      setError(null);
+  //   try {
+  //     setLoading(true);
+  //     setError(null);
 
-      // On réutilise l’endpoint de modération côté backend uniquement pour l’action "delete"
-      const response = await adminAPI.moderateComment(commentId, 'delete');
+  //     // On réutilise l’endpoint de modération côté backend uniquement pour l’action "delete"
+  //     const response = await adminAPI.moderateComment(commentId, 'delete');
 
-      if (response.success) {
-        await loadComments();
-        await loadStats();
-        console.log('Comment deleted successfully');
-      } else {
-        setError('Error while deleting comment');
-      }
-    } catch (err) {
-      console.error('Error deleting comment:', err);
-      setError('Error while deleting comment');
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     if (response.success) {
+  //       await loadComments();
+  //       await loadStats();
+  //       console.log('Comment deleted successfully');
+  //     } else {
+  //       setError('Error while deleting comment');
+  //     }
+  //   } catch (err) {
+  //     console.error('Error deleting comment:', err);
+  //     setError('Error while deleting comment');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   if (loading && comments.length === 0) {
     return (
@@ -208,7 +208,7 @@ const Comments = () => {
               <div className={styles.authorColumn}>Author</div>
               <div className={styles.contextColumn}>Context</div>
               <div className={styles.dateColumn}>Date</div>
-              <div className={styles.actionsColumn}>Actions</div>
+              {/* <div className={styles.actionsColumn}>Actions</div> */}
             </div>
 
             {/* Lignes */}
@@ -222,7 +222,7 @@ const Comments = () => {
                   <CommentCard comment={comment} />
 
                   {/* Colonne Actions essentielles */}
-                  <div className={styles.rowActions}>
+                  {/* <div className={styles.rowActions}>
                     <button
                       className={styles.deleteBtn}
                       onClick={() => handleDeleteComment(comment._id)}
@@ -230,7 +230,7 @@ const Comments = () => {
                       <i className="fas fa-trash-alt" />
                       <span>Delete</span>
                     </button>
-                  </div>
+                  </div> */}
                 </div>
               ))}
             </div>
