@@ -21,18 +21,18 @@
 }
 
 .title {
-  fontSize: 2.5rem;
-  fontWeight: 700;
+  font-size: 2.5rem;
+  font-weight: 700;
   color: #1a1a1a;
   display: flex;
-  alignItems: center;
+  align-items: center;
   gap: 12px;
   margin: 0 0 8px 0;
 }
 
 .subtitle {
   color: #666;
-  fontSize: 1rem;
+  font-size: 1rem;
   margin: 0;
 }
 
@@ -86,8 +86,8 @@
   padding: 12px 24px;
   border: none;
   background: transparent;
-  fontSize: 16px;
-  fontWeight: 600;
+  font-size: 16px;
+  font-weight: 600;
   color: #666;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -114,8 +114,8 @@
   color: white;
   border-radius: 12px;
   padding: 2px 8px;
-  fontSize: 12px;
-  fontWeight: 600;
+  font-size: 12px;
+  font-weight: 600;
   min-width: 24px;
   text-align: center;
 }
@@ -150,7 +150,7 @@
   flex: 1;
   border: none;
   outline: none;
-  fontSize: 16px;
+  font-size: 16px;
   background: transparent;
 }
 
@@ -166,8 +166,8 @@
   background: white;
   border: 2px solid #eee;
   border-radius: 12px;
-  fontSize: 16px;
-  fontWeight: 600;
+  font-size: 16px;
+  font-weight: 600;
   color: #666;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -197,7 +197,7 @@
   border: none;
   background: transparent;
   text-align: left;
-  fontSize: 14px;
+  font-size: 14px;
   cursor: pointer;
   transition: background 0.2s ease;
   color: #333;
@@ -280,8 +280,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  fontSize: 28px;
-  fontWeight: 700;
+  font-size: 28px;
+  font-weight: 700;
 }
 
 .statusDot {
@@ -339,7 +339,7 @@
   border: none;
   background: transparent;
   text-align: left;
-  fontSize: 14px;
+  font-size: 14px;
   cursor: pointer;
   transition: background 0.2s ease;
   color: #333;
@@ -373,14 +373,14 @@
 }
 
 .cardName {
-  fontSize: 18px;
-  fontWeight: 700;
+  font-size: 18px;
+  font-weight: 700;
   color: #1a1a1a;
   margin: 0 0 4px 0;
 }
 
 .cardUsername {
-  fontSize: 14px;
+  font-size: 14px;
   color: #666;
   margin: 0 0 12px 0;
 }
@@ -394,7 +394,7 @@
 }
 
 .infoItem {
-  fontSize: 13px;
+  font-size: 13px;
   color: #888;
   display: flex;
   align-items: center;
@@ -402,7 +402,7 @@
 }
 
 .onlineStatus {
-  fontSize: 12px;
+  font-size: 12px;
   color: #10b981;
   font-weight: 600;
   padding: 4px 8px;
@@ -413,7 +413,7 @@
 }
 
 .offlineStatus {
-  fontSize: 12px;
+  font-size: 12px;
   color: #9ca3af;
   font-weight: 600;
   padding: 4px 8px;
@@ -435,7 +435,7 @@
 }
 
 .genreTag {
-  fontSize: 11px;
+  font-size: 11px;
   padding: 4px 8px;
   background: rgba(179, 18, 23, 0.1);
   color: #b31217;
@@ -456,8 +456,8 @@
   padding: 12px;
   border: none;
   border-radius: 8px;
-  fontSize: 14px;
-  fontWeight: 600;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
@@ -531,7 +531,7 @@
 }
 
 .requestTime {
-  fontSize: 12px;
+  font-size: 12px;
   color: #999;
   white-space: nowrap;
 }
@@ -547,8 +547,8 @@
   padding: 10px 20px;
   border: none;
   border-radius: 8px;
-  fontSize: 14px;
-  fontWeight: 600;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -587,8 +587,8 @@
   color: white;
   padding: 4px 12px;
   border-radius: 20px;
-  fontSize: 11px;
-  fontWeight: 700;
+  font-size: 11px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -600,7 +600,7 @@
   padding: 8px 12px;
   background: rgba(179, 18, 23, 0.05);
   border-radius: 8px;
-  fontSize: 13px;
+  font-size: 13px;
   color: #b31217;
   font-weight: 600;
   display: inline-block;
@@ -777,7 +777,7 @@
   padding: 12px 16px;
   border: 2px solid #eee;
   border-radius: 8px;
-  fontSize: 16px;
+  font-size: 16px;
   transition: all 0.3s ease;
 }
 
@@ -1063,6 +1063,7 @@
   height: 48px;
   border-radius: 50%;
   position: relative;
+  overflow: hidden;
 }
 
 .chatAvatar img {
@@ -1305,7 +1306,7 @@
   cursor: not-allowed;
 }
 
-/* Responsive Design */
+/* Responsive Design (global) */
 @media (max-width: 1200px) {
   .grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1435,9 +1436,7 @@
   }
 }
 
-
 /* Additional CSS for new Friends module components */
-
 /* ============================================ */
 /* CONFIRM MODAL */
 /* ============================================ */
@@ -1873,7 +1872,7 @@
 }
 
 /* ============================================ */
-/* RESPONSIVE DESIGN */
+/* RESPONSIVE DESIGN (emoji/search/buttons) */
 /* ============================================ */
 
 @media (max-width: 768px) {
@@ -1919,8 +1918,6 @@
     padding: 6px;
   }
 }
-
-
 
 /* Friends.module.css - STYLES ADDITIONNELS POUR LES NOUVELLES FONCTIONNALITÉS */
 
@@ -2050,7 +2047,7 @@
   font-style: italic;
 }
 
-/* ========== CHAT OPTIONS MENU ========== */
+/* ========== CHAT OPTIONS MENU (override) ========== */
 .chatOptionsMenu {
   position: absolute;
   top: 100%;
@@ -2242,7 +2239,7 @@
   color: #9ca3af;
 }
 
-/* ========== RESPONSIVE ========== */
+/* ========== RESPONSIVE (context menu etc.) ========== */
 @media (max-width: 768px) {
   .messageContextMenu {
     min-width: 140px;
@@ -2264,5 +2261,55 @@
 
   .forwardFriendsList {
     max-height: 250px;
+  }
+}
+
+/* ====== AJOUTS POUR LES MESSAGES DE GROUPE & CHAT RESPONSIVE ====== */
+
+.messageSender {
+  margin: 0 0 2px 0;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+@media (max-width: 1024px) {
+  .chatModal {
+    max-width: 540px;
+    height: 85vh;
+  }
+
+  .chatHeader {
+    padding: 12px 16px;
+  }
+
+  .chatMessages {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .chatHeader {
+    padding: 10px 12px;
+  }
+
+  .chatName {
+    font-size: 14px;
+  }
+
+  .chatStatus {
+    font-size: 11px;
+  }
+
+  .chatMessages {
+    padding: 12px;
+  }
+
+  .chatInput {
+    padding: 10px 12px;
+  }
+
+  .messageWrapper {
+    max-width: 90%;
   }
 }
