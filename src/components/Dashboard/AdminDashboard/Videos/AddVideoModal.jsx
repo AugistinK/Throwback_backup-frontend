@@ -36,7 +36,7 @@ const AddVideoModal = ({ isOpen, onClose, onVideoCreated }) => {
     decennie: '',
     duree: '',
     description: '',
-    sourceType: 'youtube' // Nouveau champ pour indiquer YouTube ou Vimeo
+    sourceType: 'youtube' 
   });
   
   const [loading, setLoading] = useState(false);
@@ -147,7 +147,6 @@ const AddVideoModal = ({ isOpen, onClose, onVideoCreated }) => {
       else if (year >= 1990 && year <= 1999) decade = '90s';
       else if (year >= 2000 && year <= 2009) decade = '2000s';
       else if (year >= 2010 && year <= 2019) decade = '2010s';
-      else if (year >= 2020 && year <= 2029) decade = '2020s';
       
       setFormData(prev => ({
         ...prev,
