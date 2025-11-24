@@ -25,7 +25,6 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
       status: 'all',
       type: 'all',
       sortBy: 'recent',
-      reported: 'all',
       page: 1
     });
   };
@@ -36,7 +35,6 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
     if (filters.search) count++;
     if (filters.status !== 'all') count++;
     if (filters.type !== 'all') count++;
-    if (filters.reported !== 'all') count++;
     if (filters.sortBy !== 'recent') count++;
     return count;
   };
@@ -214,13 +212,6 @@ const CommentFilters = ({ filters, onFilterChange, totalComments }) => {
       {/* Quick suggestions */}
       <div className={styles.quickSuggestions}>
         <span className={styles.suggestionsLabel}>Quick filters:</span>
-        <button
-          className={styles.suggestionBtn}
-          onClick={() => onFilterChange({ status: 'MODERE' })}
-        >
-          <i className="fas fa-eye-slash"></i>
-          Pending moderation
-        </button>
         <button
           className={styles.suggestionBtn}
           onClick={() => onFilterChange({ sortBy: 'most_liked', status: 'ACTIF' })}

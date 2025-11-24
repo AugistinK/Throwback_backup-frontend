@@ -1,18 +1,19 @@
 // components/Dashboard/AdminDashboard/Comments/CommentCard.jsx
 import React, { useState } from 'react';
 import styles from './CommentCard.module.css';
-import ModerationModal from './ModerationModal';
-import ReplyModal from './ReplyModal';
 
-const CommentCard = ({ 
-  comment, 
-  isSelected, 
-  onSelect, 
-  onModerate, 
-  onReply 
-}) => {
-  const [showModerationModal, setShowModerationModal] = useState(false);
-  const [showReplyModal, setShowReplyModal] = useState(false);
+// Helper to build absolute URL for profile pictures
+const toAbsoluteUrl = (url) => {
+  if (!url) return '/images/default-avatar.jpg';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+  const base = process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  const normalizedUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${normalizedBase}${normalizedUrl}`;
+};
+
+const CommentCard = ({ comment }) => {
   const [showFullContent, setShowFullContent] = useState(false);
 
   // Format date
@@ -51,9 +52,10 @@ const CommentCard = ({
         icon: 'fas fa-play-circle'
       };
     } else if (comment.post_id) {
+      const content = comment.post_id.contenu || '';
       return {
         type: 'post',
-        title: comment.post_id.contenu?.substring(0, 50) + '...',
+        title: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
         icon: 'fas fa-file-alt'
       };
     } else {
@@ -63,25 +65,6 @@ const CommentCard = ({
         icon: 'fas fa-heart'
       };
     }
-  };
-
-  // Status badge
-  const getStatusBadge = () => {
-    const statusConfig = {
-      ACTIF: { className: styles.statusActive, icon: 'fas fa-check-circle', label: 'Active' },
-      MODERE: { className: styles.statusModerated, icon: 'fas fa-exclamation-triangle', label: 'Moderated' },
-      SUPPRIME: { className: styles.statusDeleted, icon: 'fas fa-trash', label: 'Deleted' },
-      SIGNALE: { className: styles.statusReported, icon: 'fas fa-flag', label: 'Reported' }
-    };
-    
-    const config = statusConfig[comment.statut] || statusConfig.ACTIF;
-    
-    return (
-      <span className={`${styles.statusBadge} ${config.className}`}>
-        <i className={config.icon}></i>
-        {config.label}
-      </span>
-    );
   };
 
   // Author info
@@ -95,10 +78,12 @@ const CommentCard = ({
       };
     }
 
+    const rawAvatar = comment.auteur.photo_profil;
+
     return {
       name: `${comment.auteur.prenom || ''} ${comment.auteur.nom || ''}`.trim() || 'User',
       email: comment.auteur.email || '',
-      avatar: comment.auteur.photo_profil || '/images/default-avatar.jpg',
+      avatar: toAbsoluteUrl(rawAvatar),
       isActive: comment.auteur.statut_compte === 'ACTIF'
     };
   };
@@ -107,24 +92,14 @@ const CommentCard = ({
   const author = getAuthorInfo();
 
   return (
-    <div className={`${styles.commentCard} ${isSelected ? styles.selected : ''}`}>
-      {/* Selection checkbox */}
-      <div className={styles.checkboxColumn}>
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={onSelect}
-          className={styles.checkbox}
-        />
-      </div>
-
+    <div className={styles.commentCard}>
       {/* Comment content */}
       <div className={styles.contentColumn}>
         <div className={styles.commentContent}>
           <p className={showFullContent ? '' : styles.truncated}>
             {comment.contenu}
           </p>
-          {comment.contenu.length > 150 && (
+          {comment.contenu && comment.contenu.length > 150 && (
             <button
               className={styles.toggleContent}
               onClick={() => setShowFullContent(!showFullContent)}
@@ -150,12 +125,6 @@ const CommentCard = ({
               Reply
             </span>
           )}
-          {comment.signale_par?.length > 0 && (
-            <span className={`${styles.metaItem} ${styles.reported}`}>
-              <i className="fas fa-flag"></i>
-              {comment.signale_par.length} report{comment.signale_par.length > 1 ? 's' : ''}
-            </span>
-          )}
         </div>
       </div>
 
@@ -167,7 +136,7 @@ const CommentCard = ({
             alt={author.name}
             className={styles.authorAvatar}
             onError={(e) => {
-              e.target.src = '/images/default-avatar.jpg';
+              e.currentTarget.src = '/images/default-avatar.jpg';
             }}
           />
           <div className={styles.authorDetails}>
@@ -197,11 +166,6 @@ const CommentCard = ({
         </div>
       </div>
 
-      {/* Status */}
-      <div className={styles.statusColumn}>
-        {getStatusBadge()}
-      </div>
-
       {/* Date */}
       <div className={styles.dateColumn}>
         <div className={styles.dateInfo}>
@@ -219,73 +183,6 @@ const CommentCard = ({
           </div>
         </div>
       </div>
-
-      {/* Actions */}
-      <div className={styles.actionsColumn}>
-        <div className={styles.actionButtons}>
-          {/* Moderate button */}
-        <button
-            className={styles.actionBtn}
-            onClick={() => setShowModerationModal(true)}
-            title="Moderate this comment"
-          >
-            <i className="fas fa-gavel"></i>
-          </button> 
-
-          {/* Reply button 
-          <button
-            className={styles.actionBtn}
-            onClick={() => setShowReplyModal(true)}
-            title="Reply to this comment"
-          >
-            <i className="fas fa-reply"></i>
-          </button> */}
-
-          {/* Quick actions */}
-          {comment.statut !== 'ACTIF' && (
-            <button
-              className={`${styles.actionBtn} ${styles.approveBtn}`}
-              onClick={() => onModerate(comment._id, 'approve')}
-              title="Approve"
-            >
-              <i className="fas fa-check"></i>
-            </button>
-          )}
-
-          {comment.statut !== 'SUPPRIME' && (
-            <button
-              className={`${styles.actionBtn} ${styles.deleteBtn}`}
-              onClick={() => onModerate(comment._id, 'delete')}
-              title="Delete"
-            >
-              <i className="fas fa-trash"></i>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Modals */}
-      {showModerationModal && (
-        <ModerationModal
-          comment={comment}
-          onModerate={(action, reason) => {
-            onModerate(comment._id, action, reason);
-            setShowModerationModal(false);
-          }}
-          onClose={() => setShowModerationModal(false)}
-        />
-      )}
-
-      {showReplyModal && (
-        <ReplyModal
-          comment={comment}
-          onReply={(content) => {
-            onReply(comment._id, content);
-            setShowReplyModal(false);
-          }}
-          onClose={() => setShowReplyModal(false)}
-        />
-      )}
     </div>
   );
 };
