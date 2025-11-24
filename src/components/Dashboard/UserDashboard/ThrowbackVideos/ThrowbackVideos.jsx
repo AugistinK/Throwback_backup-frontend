@@ -90,7 +90,7 @@ const ThrowbackVideos = () => {
       {/* Colonne unique */}
       <div className={styles.mainContentOnly}>
         <main className={styles.mainContent}>
-          <h1 className={styles.title}>Today's Pick</h1>
+          <h1 className={styles.title}>All Music Videos</h1>
 
           <VideoFilters
             activeFilters={activeFilters}

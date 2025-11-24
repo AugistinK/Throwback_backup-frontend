@@ -792,7 +792,7 @@ const VideoDetail = () => {
 
           {/* Recommended */}
           <section className={styles.recommendedVideosSection}>
-            <div className={styles.recommendedSectionTitle}>All Music Videos</div>
+            <div className={styles.recommendedSectionTitle}>Today's Pick</div>
             <div className={styles.recommendedVideosGrid}>
               {videosLoading ? (
                 <div className={styles.recommendedLoading}>

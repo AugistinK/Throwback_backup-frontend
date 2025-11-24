@@ -405,7 +405,7 @@ const PlaylistForm = () => {
                     <FontAwesomeIcon icon={faLock} />
                   </div>
                   <div className={styles.visibilityInfo}>
-                    <span className={styles.visibilityTitle}>Privé</span>
+                    <span className={styles.visibilityTitle}>Private</span>
                     <span className={styles.visibilityDescription}>
                      Visible only to you
                     </span>
@@ -469,7 +469,7 @@ const PlaylistForm = () => {
 
           {/* Playlist videos */}
           <div className={styles.videosSection}>
-            <h2 className={styles.sectionTitle}>Vidéos</h2>
+            <h2 className={styles.sectionTitle}>Videos</h2>
             
             <div className={styles.searchContainer}>
               <div className={styles.searchInputContainer}>

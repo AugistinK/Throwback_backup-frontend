@@ -26,7 +26,7 @@ const PlaylistModal = ({ videoId, onClose, onSuccess }) => {
     const fetchUserPlaylists = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/api/playlists/user'); // Use api instead of axios
+        const response = await api.get('/api/playlists/user'); 
         if (response.data.success) {
           setUserPlaylists(response.data.data);
         } else {

@@ -18,10 +18,10 @@ const VideoFilters = ({ onFilterChange, activeFilters, videoCount = 0 }) => {
     'Polynesian', 'Australian Country', 'Australian Folk', 'World', 'Fusion', 'Reggae', 'Ska', 'Afro-Latin', 'Latin Jazz', 'Ethno-Jazz',
     'Afro-Jazz', 'Cross-Cultural Pop', 'Classical', 'Opera', 'Chamber', 'Choral', 'Contemporary Classical', 'Traditional Folk', 'Metal', 'Heavy Metal',
     'Punk', 'Alternative Metal', 'Hard Rock', 'Post-Punk', 'Soundtrack', 'Film Score', 'Musicals', 'Anime Music', 'Game Music', 'TV Themes',
-    'Experimental', 'Spoken Word', 'Champeta'
+    'Experimental', 'Spoken Word', 'Champeta', 'Ohter'
   ];
   
-  const decades = ['All decades', '60s', '70s', '80s', '90s', '2000s', '2010s', '2020s'];
+  const decades = ['All decades', '60s', '70s', '80s', '90s', '2000s', '2010s'];
 
   // Tri réduit : "All" (ordre récent) et "Most popular"
   const sortOptions = ['All', 'Most popular'];
