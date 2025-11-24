@@ -13,34 +13,50 @@ const Comments = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // Filters and pagination
+
+  // Filtres + pagination
   const [filters, setFilters] = useState({
     page: 1,
     limit: 20,
     search: '',
     status: 'all',
     type: 'all',
-    sortBy: 'recent'
+    sortBy: 'recent',
   });
-  
+
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
     total: 0,
-    totalPages: 0
+    totalPages: 0,
   });
 
-  // Load comments
+  // Charger les commentaires
   const loadComments = async () => {
     try {
       setLoading(true);
+      setError(null);
+
       const response = await adminAPI.getComments(filters);
-      
+
       if (response.success) {
-        setComments(response.data);
-        setPagination(response.pagination);
-        setStats(response.stats || stats);
+        setComments(response.data || []);
+        if (response.pagination) {
+          setPagination(response.pagination);
+        } else {
+          setPagination((prev) => ({
+            ...prev,
+            page: filters.page,
+            limit: filters.limit,
+            total: response.data ? response.data.length : 0,
+            totalPages: 1,
+          }));
+        }
+        if (response.stats && !stats) {
+          setStats(response.stats);
+        }
+      } else {
+        setError('Error while loading comments');
       }
     } catch (err) {
       console.error('Error loading comments:', err);
@@ -50,7 +66,7 @@ const Comments = () => {
     }
   };
 
-  // Load stats
+  // Charger les stats globales
   const loadStats = async () => {
     try {
       const response = await adminAPI.getCommentsStats();
@@ -71,25 +87,57 @@ const Comments = () => {
     loadStats();
   }, []);
 
-  // Handle filter change
+  // Changement des filtres
   const handleFilterChange = (newFilters) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       ...newFilters,
-      page: 1 // Reset page when filters change
+      page: 1, // reset page
     }));
   };
 
-  // Handle page change
+  // Changement de page
   const handlePageChange = (page) => {
-    setFilters(prev => ({ ...prev, page }));
+    setFilters((prev) => ({
+      ...prev,
+      page,
+    }));
+  };
+
+  // Action essentielle : suppression d’un commentaire
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Do you really want to delete this comment?')) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // On réutilise l’endpoint de modération côté backend uniquement pour l’action "delete"
+      const response = await adminAPI.moderateComment(commentId, 'delete');
+
+      if (response.success) {
+        await loadComments();
+        await loadStats();
+        console.log('Comment deleted successfully');
+      } else {
+        setError('Error while deleting comment');
+      }
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+      setError('Error while deleting comment');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading && comments.length === 0) {
     return (
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1>Comments</h1>
+          <div className={styles.headerLeft}>
+            <h1>Comments</h1>
+            <p>View all comments, memories, and replies on the platform</p>
+          </div>
         </div>
         <LoadingSpinner />
       </div>
@@ -100,23 +148,23 @@ const Comments = () => {
     <div className={styles.container}>
       {error && (
         <div className={styles.error}>
-          <i className="fas fa-exclamation-triangle"></i>
-          {error}
+          <div>
+            <i className="fas fa-exclamation-triangle" /> {error}
+          </div>
           <button onClick={() => setError(null)}>
-            <i className="fas fa-times"></i>
+            <i className="fas fa-times" />
           </button>
         </div>
       )}
 
+      {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h1>Comments</h1>
-          <p>
-            View all comments, memories, and replies on the platform
-          </p>
+          <p>View all comments, memories, and replies on the platform</p>
         </div>
         <div className={styles.headerActions}>
-          <button 
+          <button
             className={styles.refreshBtn}
             onClick={() => {
               loadComments();
@@ -124,7 +172,11 @@ const Comments = () => {
             }}
             disabled={loading}
           >
-            <i className={`fas fa-sync-alt ${loading ? styles.spinning : ''}`}></i>
+            <i
+              className={`fas fa-sync-alt ${
+                loading ? styles.spinning : ''
+              }`}
+            />
             Refresh
           </button>
         </div>
@@ -133,38 +185,53 @@ const Comments = () => {
       {/* Stats */}
       {stats && <CommentStats stats={stats} />}
 
-      {/* Filters */}
+      {/* Filtres */}
       <CommentFilters
         filters={filters}
         onFilterChange={handleFilterChange}
         totalComments={pagination.total}
       />
 
-      {/* Comments list */}
+      {/* Liste des commentaires */}
       <div className={styles.content}>
         {comments.length === 0 ? (
           <div className={styles.emptyState}>
-            <i className="fas fa-comments"></i>
+            <i className="fas fa-comments" />
             <h3>No comments found</h3>
             <p>No comments match the selected filters.</p>
           </div>
         ) : (
           <>
-            {/* Table header */}
+            {/* En-tête de table */}
             <div className={styles.tableHeader}>
               <div className={styles.contentColumn}>Content</div>
               <div className={styles.authorColumn}>Author</div>
               <div className={styles.contextColumn}>Context</div>
               <div className={styles.dateColumn}>Date</div>
+              <div className={styles.actionsColumn}>Actions</div>
             </div>
 
-            {/* Comments list */}
+            {/* Lignes */}
             <div className={styles.commentsList}>
-              {comments.map(comment => (
-                <CommentCard
+              {comments.map((comment) => (
+                <div
                   key={comment._id}
-                  comment={comment}
-                />
+                  className={styles.commentRow}
+                >
+                  {/* Contenu principal */}
+                  <CommentCard comment={comment} />
+
+                  {/* Colonne Actions essentielles */}
+                  <div className={styles.rowActions}>
+                    <button
+                      className={styles.deleteBtn}
+                      onClick={() => handleDeleteComment(comment._id)}
+                    >
+                      <i className="fas fa-trash-alt" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
 
