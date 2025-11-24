@@ -177,7 +177,6 @@ const UserSearchModal = ({ onClose, onSendRequest, currentUser }) => {
                       </div>
                       <div className={styles.userSearchDetails}>
                         <h3 className={styles.userSearchName}>{user.name}</h3>
-                        <p className={styles.userSearchUsername}>{user.username}</p>
                         {user.location && (
                           <p className={styles.userSearchLocation}>
                             <FontAwesomeIcon icon={faLocationDot} style={{ fontSize: 12 }} />

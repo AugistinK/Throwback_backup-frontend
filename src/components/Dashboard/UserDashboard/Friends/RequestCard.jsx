@@ -27,7 +27,7 @@ const RequestCard = ({ request, onAccept, onReject }) => {
         <div className={styles.requestHeader}>
           <div>
             <h3 className={styles.cardName}>{request.name}</h3>
-            <p className={styles.cardUsername}>{request.username}</p>
+            
           </div>
           <span className={styles.requestTime}>{request.date}</span>
         </div>

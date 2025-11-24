@@ -135,7 +135,7 @@ export default function Profile() {
               className={`${styles.friendlyBtn} ${activeBtn === 'friendly' ? styles.active : ''}`} 
               onClick={handleFriendlyClick}
             >
-              Friendly
+              Friends
             </button>
             
             <button 
@@ -183,7 +183,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className={styles.rightStatic}>
+      {/* <div className={styles.rightStatic}>
         <div className={styles.verticalTicker}>
           <div className={styles.tickerContent}>
             {memoriesLoading ? (
@@ -220,7 +220,7 @@ export default function Profile() {
             )}
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

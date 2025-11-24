@@ -46,7 +46,7 @@ const BlockedFriendCard = ({ user, onUnblock, onViewProfile }) => {
 
       <div className={styles.cardBody}>
         <h3 className={styles.cardName}>{user.name}</h3>
-        <p className={styles.cardUsername}>{user.username}</p>
+        
 
         <div className={styles.cardInfo}>
           <span className={styles.infoItem}>

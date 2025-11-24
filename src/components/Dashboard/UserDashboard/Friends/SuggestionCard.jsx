@@ -30,7 +30,6 @@ const SuggestionCard = ({ suggestion, onAdd }) => {
       
       <div className={styles.cardBody}>
         <h3 className={styles.cardName}>{suggestion.name}</h3>
-        <p className={styles.cardUsername}>{suggestion.username}</p>
         
         <div className={styles.cardInfo}>
           <span className={styles.infoItem}>

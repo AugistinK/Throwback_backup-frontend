@@ -42,7 +42,7 @@ const FriendCard = ({ friend, onRemove, onMessage, onViewProfile }) => {
 
       <div className={styles.cardBody}>
         <h3 className={styles.cardName}>{friend.name}</h3>
-        <p className={styles.cardUsername}>{friend.username}</p>
+        
 
         <div className={styles.cardInfo}>
           <span className={styles.infoItem}>
