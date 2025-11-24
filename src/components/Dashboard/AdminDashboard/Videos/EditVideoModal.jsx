@@ -20,10 +20,10 @@ const GENRES = [
     'Polynesian', 'Australian Country', 'Australian Folk', 'World', 'Fusion', 'Reggae', 'Ska', 'Afro-Latin', 'Latin Jazz', 'Ethno-Jazz',
     'Afro-Jazz', 'Cross-Cultural Pop', 'Classical', 'Opera', 'Chamber', 'Choral', 'Contemporary Classical', 'Traditional Folk', 'Metal', 'Heavy Metal',
     'Punk', 'Alternative Metal', 'Hard Rock', 'Post-Punk', 'Soundtrack', 'Film Score', 'Musicals', 'Anime Music', 'Game Music', 'TV Themes',
-    'Experimental', 'Spoken Word', 'Champeta'
+    'Experimental', 'Spoken Word', 'Champeta', 'Other'
 ];
 
-const DECADES = ['60s', '70s', '80s', '90s', '2000s', '2010s', '2020s'];
+const DECADES = ['60s', '70s', '80s', '90s', '2000s', '2010s'];
 
 const EditVideoModal = ({ isOpen, onClose, video, onVideoUpdated }) => {
   const [formData, setFormData] = useState({
@@ -111,8 +111,7 @@ const EditVideoModal = ({ isOpen, onClose, video, onVideoUpdated }) => {
       else if (year >= 1990 && year <= 1999) decade = '90s';
       else if (year >= 2000 && year <= 2009) decade = '2000s';
       else if (year >= 2010 && year <= 2019) decade = '2010s';
-      else if (year >= 2020 && year <= 2029) decade = '2020s';
-      
+    
       setFormData(prev => ({
         ...prev,
         decennie: decade

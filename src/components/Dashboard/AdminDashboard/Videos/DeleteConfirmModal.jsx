@@ -11,9 +11,9 @@ const DeleteConfirmModal = ({ isOpen, onClose, videoId, videoTitle, onVideoDelet
 
   // On couvre les différents montages possibles des routes
   const endpoints = [
-    `/api/admin/videos/${videoId}`,            // 1) route admin classique
-    `/api/videos/admin/videos/${videoId}`,     // 2) route admin sous /api/videos
-    `/api/videos/${videoId}`                   // 3) fallback (protégée)
+    `/api/admin/videos/${videoId}`,            
+    `/api/videos/admin/videos/${videoId}`,     
+    `/api/videos/${videoId}`                   
   ];
 
   const handleDelete = async () => {
