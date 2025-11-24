@@ -8,7 +8,7 @@ const TABS = {
   OVERVIEW: 'overview',
   FRIENDSHIPS: 'friendships',
   CONVERSATIONS: 'conversations',
-  REPORTS: 'reports'
+  BLOCKS: 'blocks'
 };
 
 const AdminFriendsChat = () => {
@@ -24,8 +24,7 @@ const AdminFriendsChat = () => {
   const [conversationMessages, setConversationMessages] = useState([]);
   const [conversationPagination, setConversationPagination] = useState(null);
 
-  const [reports, setReports] = useState([]);
-  const [reportsPagination, setReportsPagination] = useState(null);
+  const [blocks, setBlocks] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,8 +37,8 @@ const AdminFriendsChat = () => {
       loadFriendships();
     } else if (activeTab === TABS.CONVERSATIONS) {
       loadConversations();
-    } else if (activeTab === TABS.REPORTS) {
-      loadReports();
+    } else if (activeTab === TABS.BLOCKS) {
+      loadBlocks();
     }
   }, [activeTab]);
 
@@ -55,7 +54,8 @@ const AdminFriendsChat = () => {
       setLoading(true);
       setError('');
       const res = await adminFriendsChatAPI.getOverview();
-      setOverview(res.data.data);
+      // backend: { data: { data: { friendships, messages, groups, ... } } }
+      setOverview(res.data.data || res.data);
     } catch (err) {
       handleError(err);
     } finally {
@@ -68,8 +68,8 @@ const AdminFriendsChat = () => {
       setLoading(true);
       setError('');
       const res = await adminFriendsChatAPI.getFriendships({ page, limit: 25 });
-      setFriendships(res.data.data || []);
-      setFriendshipsPagination(res.data.pagination || null);
+      setFriendships(res.data.data || res.data.friendships || []);
+      setFriendshipsPagination(res.data.pagination || res.data.meta || null);
     } catch (err) {
       handleError(err);
     } finally {
@@ -82,9 +82,10 @@ const AdminFriendsChat = () => {
       setLoading(true);
       setError('');
       const res = await adminFriendsChatAPI.getConversations();
-      setConversations(res.data.data || []);
+      setConversations(res.data.data || res.data.conversations || []);
       setSelectedConversation(null);
       setConversationMessages([]);
+      setConversationPagination(null);
     } catch (err) {
       handleError(err);
     } finally {
@@ -100,8 +101,9 @@ const AdminFriendsChat = () => {
         conversationId,
         { page, limit: 50 }
       );
-      setConversationMessages(res.data.data?.messages || []);
-      setConversationPagination(res.data.data?.pagination || null);
+      const data = res.data.data || res.data;
+      setConversationMessages(data?.messages || []);
+      setConversationPagination(data?.pagination || null);
     } catch (err) {
       handleError(err);
     } finally {
@@ -109,13 +111,17 @@ const AdminFriendsChat = () => {
     }
   };
 
-  const loadReports = async (page = 1) => {
+  const loadBlocks = async () => {
     try {
       setLoading(true);
       setError('');
-      const res = await adminFriendsChatAPI.getReports({ page, limit: 25 });
-      setReports(res.data.data || []);
-      setReportsPagination(res.data.pagination || null);
+      const res = await adminFriendsChatAPI.getBlocks();
+      // On essaie d’être défensif sur la forme des données
+      setBlocks(
+        res.data.data ||
+          res.data.blocks ||
+          (Array.isArray(res.data) ? res.data : [])
+      );
     } catch (err) {
       handleError(err);
     } finally {
@@ -149,57 +155,162 @@ const AdminFriendsChat = () => {
     }
   };
 
-  const handleUpdateReport = async (reportId, status, resolution) => {
-    try {
-      await adminFriendsChatAPI.updateReport(reportId, {
-        status,
-        resolution
-      });
-      await loadReports(reportsPagination?.page || 1);
-    } catch (err) {
-      handleError(err);
-    }
-  };
-
+  // =========================
+  // RENDER OVERVIEW + GRAPHIQUES
+  // =========================
   const renderOverview = () => {
     if (!overview) return null;
 
-    const { friendships, messages, groups, reports: reportsStats } = overview;
+    const friendshipsStats = overview.friendships || {};
+    const messagesStats = overview.messages || {};
+    const groupsStats = overview.groups || {};
+
+    const totalFriends = friendshipsStats.total || 0;
+    const pendingFriends = friendshipsStats.pendingRequests || 0;
+    const blockedRelations = friendshipsStats.blockedRelations || 0;
+    const acceptedFriends = Math.max(
+      totalFriends - pendingFriends - blockedRelations,
+      0
+    );
+
+    const totalMessages = messagesStats.total || 0;
+    const last24hMessages = messagesStats.last24h || 0;
+    const olderMessages = Math.max(totalMessages - last24hMessages, 0);
+
+    const percent = (part, total) =>
+      total > 0 ? Math.round((part / total) * 100) : 0;
 
     return (
-      <div className={styles.cardsGrid}>
-        <div className={styles.card}>
-          <h3>Friends</h3>
-          <p className={styles.cardNumber}>{friendships.total}</p>
-          <p className={styles.cardMeta}>
-            Pending: {friendships.pendingRequests} • Blocked:{' '}
-            {friendships.blockedRelations}
-          </p>
+      <div className={styles.overviewWrapper}>
+        {/* Cartes principales */}
+        <div className={styles.cardsGrid}>
+          <div className={styles.card}>
+            <h3>Friends</h3>
+            <p className={styles.cardNumber}>{totalFriends}</p>
+            <p className={styles.cardMeta}>
+              Accepted: {acceptedFriends} • Pending: {pendingFriends} • Blocked:{' '}
+              {blockedRelations}
+            </p>
+          </div>
+
+          <div className={styles.card}>
+            <h3>Messages</h3>
+            <p className={styles.cardNumber}>{totalMessages}</p>
+            <p className={styles.cardMeta}>Last 24h: {last24hMessages}</p>
+          </div>
+
+          <div className={styles.card}>
+            <h3>Groups & Conversations</h3>
+            <p className={styles.cardNumber}>
+              {(groupsStats.friendGroups || 0) +
+                (groupsStats.conversations || 0)}
+            </p>
+            <p className={styles.cardMeta}>
+              Friend groups: {groupsStats.friendGroups || 0} • Conversations:{' '}
+              {groupsStats.conversations || 0}
+            </p>
+          </div>
         </div>
 
-        <div className={styles.card}>
-          <h3>Messages</h3>
-          <p className={styles.cardNumber}>{messages.total}</p>
-          <p className={styles.cardMeta}>Last 24h: {messages.last24h}</p>
-        </div>
+        {/* Graphiques simples */}
+        <div className={styles.chartsRow}>
+          {/* Répartition amitiés */}
+          <div className={styles.chartCard}>
+            <div className={styles.chartHeader}>
+              <h4>Friendships distribution</h4>
+              <span className={styles.chartSubtitle}>
+                Accepted / Pending / Blocked
+              </span>
+            </div>
+            <div className={styles.chartBody}>
+              <div className={styles.chartRowItem}>
+                <div className={styles.chartRowLabel}>
+                  <span className={`${styles.dot} ${styles.dotAccepted}`} />
+                  Accepted
+                </div>
+                <div className={styles.chartBarWrapper}>
+                  <div
+                    className={`${styles.chartBarFill} ${styles.chartBarAccepted}`}
+                    style={{ width: `${percent(acceptedFriends, totalFriends)}%` }}
+                  />
+                </div>
+                <span className={styles.chartValue}>{acceptedFriends}</span>
+              </div>
 
-        <div className={styles.card}>
-          <h3>Groups & Conversations</h3>
-          <p className={styles.cardNumber}>
-            {groups.friendGroups + groups.conversations}
-          </p>
-          <p className={styles.cardMeta}>
-            Friend groups: {groups.friendGroups} • Conversations:{' '}
-            {groups.conversations}
-          </p>
-        </div>
+              <div className={styles.chartRowItem}>
+                <div className={styles.chartRowLabel}>
+                  <span className={`${styles.dot} ${styles.dotPending}`} />
+                  Pending
+                </div>
+                <div className={styles.chartBarWrapper}>
+                  <div
+                    className={`${styles.chartBarFill} ${styles.chartBarPending}`}
+                    style={{ width: `${percent(pendingFriends, totalFriends)}%` }}
+                  />
+                </div>
+                <span className={styles.chartValue}>{pendingFriends}</span>
+              </div>
 
-        <div className={styles.card}>
-          <h3>Reports</h3>
-          <p className={styles.cardNumber}>{reportsStats.open}</p>
-          <p className={styles.cardMeta}>
-            Open • Resolved: {reportsStats.resolved}
-          </p>
+              <div className={styles.chartRowItem}>
+                <div className={styles.chartRowLabel}>
+                  <span className={`${styles.dot} ${styles.dotBlocked}`} />
+                  Blocked
+                </div>
+                <div className={styles.chartBarWrapper}>
+                  <div
+                    className={`${styles.chartBarFill} ${styles.chartBarBlocked}`}
+                    style={{
+                      width: `${percent(blockedRelations, totalFriends)}%`
+                    }}
+                  />
+                </div>
+                <span className={styles.chartValue}>{blockedRelations}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Messages : activité */}
+          <div className={styles.chartCard}>
+            <div className={styles.chartHeader}>
+              <h4>Messages activity</h4>
+              <span className={styles.chartSubtitle}>
+                Last 24h vs older messages
+              </span>
+            </div>
+            <div className={styles.chartBody}>
+              <div className={styles.chartRowItem}>
+                <div className={styles.chartRowLabel}>
+                  <span className={`${styles.dot} ${styles.dot24h}`} />
+                  Last 24h
+                </div>
+                <div className={styles.chartBarWrapper}>
+                  <div
+                    className={`${styles.chartBarFill} ${styles.chartBar24h}`}
+                    style={{
+                      width: `${percent(last24hMessages, totalMessages)}%`
+                    }}
+                  />
+                </div>
+                <span className={styles.chartValue}>{last24hMessages}</span>
+              </div>
+
+              <div className={styles.chartRowItem}>
+                <div className={styles.chartRowLabel}>
+                  <span className={`${styles.dot} ${styles.dotOlder}`} />
+                  Older
+                </div>
+                <div className={styles.chartBarWrapper}>
+                  <div
+                    className={`${styles.chartBarFill} ${styles.chartBarOlder}`}
+                    style={{
+                      width: `${percent(olderMessages, totalMessages)}%`
+                    }}
+                  />
+                </div>
+                <span className={styles.chartValue}>{olderMessages}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -251,7 +362,11 @@ const AdminFriendsChat = () => {
                     </span>
                   </td>
                   <td>
-                    <span className={`${styles.badge} ${styles[`badge_${f.status}`]}`}>
+                    <span
+                      className={`${styles.badge} ${
+                        styles[`badge_${f.status}`] || ''
+                      }`}
+                    >
                       {f.status}
                     </span>
                   </td>
@@ -287,7 +402,8 @@ const AdminFriendsChat = () => {
               </span>
               <button
                 disabled={
-                  friendshipsPagination.page >= friendshipsPagination.totalPages
+                  friendshipsPagination.page >=
+                  friendshipsPagination.totalPages
                 }
                 onClick={() => loadFriendships(friendshipsPagination.page + 1)}
               >
@@ -319,13 +435,15 @@ const AdminFriendsChat = () => {
             )}
             {conversations.map((conv) => {
               const participants =
-                conv.participants?.map((p) => `${p.prenom} ${p.nom}`).join(', ') ||
-                '-';
+                conv.participants
+                  ?.map((p) => `${p.prenom} ${p.nom}`)
+                  .join(', ') || '-';
               return (
                 <li
                   key={conv._id}
                   className={`${styles.conversationItem} ${
-                    selectedConversation && selectedConversation._id === conv._id
+                    selectedConversation &&
+                    selectedConversation._id === conv._id
                       ? styles.conversationItemActive
                       : ''
                   }`}
@@ -346,10 +464,13 @@ const AdminFriendsChat = () => {
                     {conv.lastMessageAt && (
                       <span className={styles.muted}>
                         •{' '}
-                        {new Date(conv.lastMessageAt).toLocaleString(undefined, {
-                          dateStyle: 'short',
-                          timeStyle: 'short'
-                        })}
+                        {new Date(conv.lastMessageAt).toLocaleString(
+                          undefined,
+                          {
+                            dateStyle: 'short',
+                            timeStyle: 'short'
+                          }
+                        )}
                       </span>
                     )}
                   </div>
@@ -393,7 +514,9 @@ const AdminFriendsChat = () => {
                         {m.sender?.prenom} {m.sender?.nom}
                       </strong>
                       <span className={styles.muted}>
-                        {new Date(m.created_date).toLocaleString()}
+                        {m.created_date
+                          ? new Date(m.created_date).toLocaleString()
+                          : ''}
                       </span>
                     </div>
                     <div className={styles.messageContent}>{m.content}</div>
@@ -450,22 +573,13 @@ const AdminFriendsChat = () => {
     );
   };
 
-  const renderReports = () => {
-    const allowedStatus = ['pending', 'reviewing', 'resolved', 'dismissed'];
-    const allowedResolutions = [
-      'no_action',
-      'warning',
-      'temporary_ban',
-      'permanent_ban',
-      'deleted_content'
-    ];
-
+  const renderBlocks = () => {
     return (
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h3>Reports</h3>
+          <h3>Blocks</h3>
           <span className={styles.sectionSub}>
-            Signalements liés au module Chat / Friends
+            Liste des utilisateurs bloqués dans Friends & Chat
           </span>
         </div>
 
@@ -473,122 +587,53 @@ const AdminFriendsChat = () => {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Reporter</th>
-                <th>Reported user</th>
+                <th>Blocker</th>
+                <th>Blocked user</th>
                 <th>Reason</th>
-                <th>Status</th>
-                <th>Resolution</th>
-                <th>Message</th>
-                <th>Updated</th>
+                <th>Since</th>
               </tr>
             </thead>
             <tbody>
-              {reports.length === 0 && (
+              {blocks.length === 0 && (
                 <tr>
-                  <td colSpan="7" className={styles.emptyCell}>
-                    Aucun report trouvé
+                  <td colSpan="4" className={styles.emptyCell}>
+                    Aucun blocage enregistré
                   </td>
                 </tr>
               )}
-              {reports.map((r) => (
-                <tr key={r._id}>
-                  <td>
-                    {r.reporter?.prenom} {r.reporter?.nom}
-                    <br />
-                    <span className={styles.muted}>
-                      {r.reporter?.email || '-'}
-                    </span>
-                  </td>
-                  <td>
-                    {r.reportedUser?.prenom} {r.reportedUser?.nom}
-                    <br />
-                    <span className={styles.muted}>
-                      {r.reportedUser?.email || '-'}
-                    </span>
-                  </td>
-                  <td>{r.reason}</td>
-                  <td>
-                    <select
-                      className={styles.select}
-                      value={r.status}
-                      onChange={(e) =>
-                        handleUpdateReport(
-                          r._id,
-                          e.target.value,
-                          r.resolution || 'no_action'
-                        )
-                      }
-                    >
-                      {allowedStatus.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <select
-                      className={styles.select}
-                      value={r.resolution || 'no_action'}
-                      onChange={(e) =>
-                        handleUpdateReport(
-                          r._id,
-                          r.status,
-                          e.target.value
-                        )
-                      }
-                    >
-                      {allowedResolutions.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    {r.messageId?.content ? (
-                      <span className={styles.messagePreview}>
-                        {r.messageId.content.length > 80
-                          ? r.messageId.content.slice(0, 80) + '…'
-                          : r.messageId.content}
+
+              {blocks.map((b) => {
+                const blocker = b.blocker || b.blockerUser || b.user || {};
+                const blocked =
+                  b.blocked || b.blockedUser || b.targetUser || {};
+                const date =
+                  b.createdAt || b.created_date || b.blockedAt || null;
+
+                return (
+                  <tr key={b._id}>
+                    <td>
+                      {blocker.prenom} {blocker.nom}
+                      <br />
+                      <span className={styles.muted}>
+                        {blocker.email || '-'}
                       </span>
-                    ) : (
-                      <span className={styles.muted}>-</span>
-                    )}
-                  </td>
-                  <td>
-                    {r.updatedAt
-                      ? new Date(r.updatedAt).toLocaleString()
-                      : r.createdAt
-                      ? new Date(r.createdAt).toLocaleString()
-                      : '-'}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td>
+                      {blocked.prenom} {blocked.nom}
+                      <br />
+                      <span className={styles.muted}>
+                        {blocked.email || '-'}
+                      </span>
+                    </td>
+                    <td>{b.reason || '-'}</td>
+                    <td>
+                      {date ? new Date(date).toLocaleString() : '-'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-
-          {reportsPagination && reportsPagination.totalPages > 1 && (
-            <div className={styles.pagination}>
-              <button
-                disabled={reportsPagination.page <= 1}
-                onClick={() => loadReports(reportsPagination.page - 1)}
-              >
-                Prev
-              </button>
-              <span>
-                Page {reportsPagination.page} / {reportsPagination.totalPages}
-              </span>
-              <button
-                disabled={
-                  reportsPagination.page >= reportsPagination.totalPages
-                }
-                onClick={() => loadReports(reportsPagination.page + 1)}
-              >
-                Next
-              </button>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -599,7 +644,7 @@ const AdminFriendsChat = () => {
       <div className={styles.headerRow}>
         <h2>Friends & Chat – Admin</h2>
         <span className={styles.headerSub}>
-          Monitoring & moderation du social (amis, conversations, reports)
+          Monitoring du social (amis, conversations, blocages)
         </span>
       </div>
 
@@ -630,11 +675,11 @@ const AdminFriendsChat = () => {
         </button>
         <button
           className={`${styles.tab} ${
-            activeTab === TABS.REPORTS ? styles.tabActive : ''
+            activeTab === TABS.BLOCKS ? styles.tabActive : ''
           }`}
-          onClick={() => setActiveTab(TABS.REPORTS)}
+          onClick={() => setActiveTab(TABS.BLOCKS)}
         >
-          Reports
+          Blocks
         </button>
       </div>
 
@@ -644,10 +689,9 @@ const AdminFriendsChat = () => {
       {!loading && activeTab === TABS.OVERVIEW && renderOverview()}
       {!loading && activeTab === TABS.FRIENDSHIPS && renderFriendships()}
       {!loading && activeTab === TABS.CONVERSATIONS && renderConversations()}
-      {!loading && activeTab === TABS.REPORTS && renderReports()}
+      {!loading && activeTab === TABS.BLOCKS && renderBlocks()}
     </div>
   );
 };
 
 export default AdminFriendsChat;
-  
