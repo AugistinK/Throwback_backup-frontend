@@ -1447,28 +1447,33 @@
 @media (max-width: 768px) {
   .chatContainer {
     height: calc(100vh - 60px);
+    flex-direction: column;
   }
-  
+
   .sidebar {
     width: 100%;
-    position: absolute;
-    left: 0;
-    top: 0;
-    z-index: 10;
+    min-width: 100%;
+    position: relative;
+    left: auto;
+    top: auto;
+    z-index: auto;
+    border-right: none;
+    border-bottom: 1px solid #e5e5e5;
   }
-  
+
   .chatArea {
     width: 100%;
   }
-  
+
   .messageBubble {
     max-width: 80%;
   }
-  
+
   .emptyChatFeatures {
     grid-template-columns: 1fr;
   }
 }
+
 
 @media (max-width: 480px) {
   .sidebarHeader,

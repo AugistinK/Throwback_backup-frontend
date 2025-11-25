@@ -21,26 +21,36 @@ const Chat = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showGroupModal, setShowGroupModal] = useState(false);
 
+  // 👉 Ajout : détection du mobile
+  const [isMobile, setIsMobile] = useState(false);
+
   const currentUserId = user?.id || user?._id;
 
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const getImageUrl = (path) => {
-    if (!path) return null; // Retourner null pour ne pas afficher d'image cassée
+    if (!path) return null;
     if (path.startsWith('http')) return path;
 
     const backendUrl =
       process.env.REACT_APP_API_URL || 'https://api.throwback-connect.com';
-    
-    // Si le path commence déjà par /uploads, l'utiliser tel quel
+
     if (path.startsWith('/uploads')) {
       return `${backendUrl}${path}`;
     }
-    
-    // Si c'est juste un nom de fichier, essayer /uploads/profiles/
+
     if (!path.includes('/')) {
       return `${backendUrl}/uploads/profiles/${path}`;
     }
-    
-    // Sinon, normaliser le path
+
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     return `${backendUrl}${normalizedPath}`;
   };
@@ -357,9 +367,7 @@ const Chat = () => {
     if (conversation.unreadCount > 0) {
       setConversations((prev) =>
         prev.map((conv) =>
-          conv._id === conversation._id
-            ? { ...conv, unreadCount: 0 }
-            : conv
+          conv._id === conversation._id ? { ...conv, unreadCount: 0 } : conv
         )
       );
       setUnreadCount((prev) =>
@@ -401,9 +409,7 @@ const Chat = () => {
     const matchesSearch =
       !q ||
       displayName.toLowerCase().includes(q) ||
-      (conv.lastMessage?.content || '')
-        .toLowerCase()
-        .includes(q);
+      (conv.lastMessage?.content || '').toLowerCase().includes(q);
 
     if (!matchesSearch) return false;
 
@@ -425,32 +431,39 @@ const Chat = () => {
     selectedConversation.participant &&
     onlineUsers.has(selectedConversation.participant._id);
 
+  // 👉 Logique d'affichage responsive
+  const showSidebar = !isMobile || !selectedConversation;
+  const showChatArea = !isMobile || !!selectedConversation;
+
   return (
     <div className={styles.chatContainer}>
-      <ConversationSidebar
-        conversations={filteredConversations}
-        selectedConversation={selectedConversation}
-        onSelectConversation={handleSelectConversation}
-        onSearch={handleSearch}
-        searchQuery={searchQuery}
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        unreadCount={unreadCount}
-        loading={loading}
-        onlineUsers={onlineUsers}
-        onCreateGroup={handleCreateGroup}
-      />
-
-      {selectedConversation ? (
-        <ChatArea
-          conversation={selectedConversation}
-          onBack={() => setSelectedConversation(null)}
-          isOnline={isSelectedOnline}
-          onConversationUpdated={loadConversations}
+      {showSidebar && (
+        <ConversationSidebar
+          conversations={filteredConversations}
+          selectedConversation={selectedConversation}
+          onSelectConversation={handleSelectConversation}
+          onSearch={handleSearch}
+          searchQuery={searchQuery}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          unreadCount={unreadCount}
+          loading={loading}
+          onlineUsers={onlineUsers}
+          onCreateGroup={handleCreateGroup}
         />
-      ) : (
-        <EmptyChat />
       )}
+
+      {showChatArea &&
+        (selectedConversation ? (
+          <ChatArea
+            conversation={selectedConversation}
+            onBack={() => setSelectedConversation(null)}
+            isOnline={isSelectedOnline}
+            onConversationUpdated={loadConversations}
+          />
+        ) : (
+          <EmptyChat />
+        ))}
 
       <GroupChatModal
         isOpen={showGroupModal}

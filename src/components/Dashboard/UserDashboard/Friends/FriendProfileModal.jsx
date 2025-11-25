@@ -56,9 +56,9 @@ const FriendProfileModal = ({ friend, onClose, onMessage, onRemove }) => {
               <h3 className={styles.cardName} style={{ fontSize: 22, marginBottom: 6 }}>
                 {friend.name}
               </h3>
-              <p className={styles.cardUsername} style={{ marginBottom: 10 }}>
+              {/* <p className={styles.cardUsername} style={{ marginBottom: 10 }}>
                 <FontAwesomeIcon icon={faEnvelope} /> {friend.username}
-              </p>
+              </p> */}
 
               <div className={styles.cardInfo} style={{ gap: 12 }}>
                 <span className={styles.infoItem}>

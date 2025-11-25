@@ -432,6 +432,10 @@ export default function Shorts() {
       video.currentTime = 0;
     });
 
+    // Toujours remettre l'état central en pause quand on change de short
+    setIsCenterPlaying(false);
+    setIsCenterPaused(true);
+
     if (shorts.length > 0 && centerIdx >= 0 && centerIdx < shorts.length) {
       setActiveShortId(shorts[centerIdx]._id);
       setIsCommentsVisible(false);
@@ -445,39 +449,26 @@ export default function Shorts() {
     }
   }, [activeShortId, isCommentsVisible]);
 
-  // Handle play/pause events
-  useEffect(() => {
-    const video = centerVideoRef.current;
-    if (!video) return;
+  // Central video play/pause/ended handlers
+  const handleVideoPlay = useCallback(() => {
+    setIsCenterPaused(false);
+    setIsCenterPlaying(true);
+  }, []);
 
-    const handlePause = () => {
-      setIsCenterPaused(true);
-      setIsCenterPlaying(false);
-    };
+  const handleVideoPause = useCallback(() => {
+    setIsCenterPaused(true);
+    setIsCenterPlaying(false);
+  }, []);
 
-    const handlePlay = () => {
-      setIsCenterPaused(false);
-      setIsCenterPlaying(true);
-    };
+  const handleVideoEnded = useCallback(() => {
+    setIsCenterPaused(true);
+    setIsCenterPlaying(false);
 
-    const handleEnded = () => {
-      setIsCenterPaused(true);
-      setIsCenterPlaying(false);
-      if (centerIdx < shorts.length - 1) {
-        handleHorizontalScroll('right');
-      }
-    };
-
-    video.addEventListener('pause', handlePause);
-    video.addEventListener('play', handlePlay);
-    video.addEventListener('ended', handleEnded);
-
-    return () => {
-      video.removeEventListener('pause', handlePause);
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('ended', handleEnded);
-    };
-  }, [centerIdx, shorts, handleHorizontalScroll]);
+    // When the current short finishes, automatically go to the next one (if any)
+    if (centerIdx < shorts.length - 1) {
+      handleHorizontalScroll('right');
+    }
+  }, [centerIdx, shorts.length, handleHorizontalScroll]);
 
   // Handle video progress
   useEffect(() => {
@@ -722,7 +713,7 @@ export default function Shorts() {
     }
   };
 
-  // Handle play/pause
+  // Handle play/pause (button)
   const handlePlayPause = () => {
     if (!centerVideoRef.current) return;
 
@@ -945,42 +936,45 @@ export default function Shorts() {
                     // Center card
                     return (
                       <div className={styles.centerCard} key={short._id}>
-                     <div
-                        className={`${styles.centerImgWrap} ${isCenterPlaying ? styles.playing : styles.paused}`}
-                        onMouseEnter={() => setShowControls(true)}
-                        onMouseLeave={() => setShowControls(false)}
-                      >
-                        <video
-                          key={short._id}
-                          ref={centerVideoRef}
-                          src={short.youtubeUrl}
-                          controls={false}
-                          className={styles.centerImg}
-                          autoPlay={false}
-                          muted={isMuted}
-                          loop
-                          playsInline
-                          crossOrigin="anonymous"
-                        />
-                        <div className={styles.centerOverlay}></div>
-                        
-                        {/* Le bouton est toujours rendu, le CSS gère la visibilité */}
-                        <button
-                          className={styles.playBtn}
-                          onClick={handlePlayPause}
-                          aria-label={isCenterPlaying ? "Pause" : "Play"}
+                        <div
+                          className={`${styles.centerImgWrap} ${isCenterPlaying ? styles.playing : styles.paused}`}
+                          onMouseEnter={() => setShowControls(true)}
+                          onMouseLeave={() => setShowControls(false)}
                         >
-                          {isCenterPlaying ? <FaPause /> : <FaPlay />}
-                        </button>
-                        
-                        <button
-                          className={styles.muteBtn}
-                          onClick={handleMuteToggle}
-                          aria-label={isMuted ? "Unmute" : "Mute"}
-                        >
-                          {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
-                        </button>
-                      </div>
+                          <video
+                            key={short._id}
+                            ref={centerVideoRef}
+                            src={short.youtubeUrl}
+                            controls={false}
+                            className={styles.centerImg}
+                            autoPlay={false}
+                            muted={isMuted}
+                            loop
+                            playsInline
+                            crossOrigin="anonymous"
+                            onPlay={handleVideoPlay}
+                            onPause={handleVideoPause}
+                            onEnded={handleVideoEnded}
+                          />
+                          <div className={styles.centerOverlay}></div>
+
+                          {/* Le bouton est toujours rendu, le CSS gère la visibilité */}
+                          <button
+                            className={styles.playBtn}
+                            onClick={handlePlayPause}
+                            aria-label={isCenterPlaying ? "Pause" : "Play"}
+                          >
+                            {isCenterPlaying ? <FaPause /> : <FaPlay />}
+                          </button>
+
+                          <button
+                            className={styles.muteBtn}
+                            onClick={handleMuteToggle}
+                            aria-label={isMuted ? "Unmute" : "Mute"}
+                          >
+                            {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
+                          </button>
+                        </div>
 
                         {/* Progress bar */}
                         <div className={styles.progressContainer}>
@@ -1012,16 +1006,16 @@ export default function Shorts() {
                         </div>
 
                         <div className={styles.centerInfo}>
-                            {/* Titre principal */}
+                          {/* Titre principal */}
                           <div className={styles.centerUserRow}>
                             <span className={styles.title}>{short.titre || 'Untitled'}</span>
                           </div>
-                          
+
                           {/* Description si disponible */}
                           {short.description && (
                             <div className={styles.centerDesc}>{short.description}</div>
                           )}
-                          
+
                           {/* Artiste affiché une seule fois */}
                           <div className={styles.centerMusic}>🎵 {short.artiste || 'Unknown artist'}</div>
                           <div className={styles.centerActions}>
