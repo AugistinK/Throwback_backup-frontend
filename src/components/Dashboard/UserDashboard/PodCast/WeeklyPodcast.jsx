@@ -102,7 +102,7 @@ const WeeklyPodcast = () => {
     <div className={styles.weeklyPodcastContainer}>
       <header className={styles.pageHeader}>
         <div className={styles.titleSection}>
-          <h1 className={styles.pageTitle}><FontAwesomeIcon icon={faHeadphones} className={styles.pageTitleIcon} />Weekly Podcast</h1>
+          <h1 className={styles.pageTitle}>Weekly Podcast</h1>
           <p className={styles.pageSubtitle}>Discover our weekly podcasts with industry professionals and artists</p>
         </div>
       </header>

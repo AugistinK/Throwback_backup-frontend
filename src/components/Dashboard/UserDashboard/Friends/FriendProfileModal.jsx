@@ -93,9 +93,9 @@ const FriendProfileModal = ({ friend, onClose, onMessage, onRemove }) => {
 
         {/* Footer */}
         <div className={styles.modalFooter}>
-          <button className={styles.footerButton} onClick={onClose}>
+          {/* <button className={styles.footerButton} onClick={onClose}>
             Close
-          </button>
+          </button> */}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
             <button
               className={styles.footerButtonPrimary}

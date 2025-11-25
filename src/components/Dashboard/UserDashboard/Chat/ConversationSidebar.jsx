@@ -20,7 +20,6 @@ const ConversationSidebar = ({
   const tabs = [
     { id: 'all', label: 'All', count: conversations.length },
     { id: 'unread', label: 'Unread', count: unreadCount },
-    { id: 'favorites', label: 'Favorites' },
     { id: 'groups', label: 'Groups' }
   ];
 
