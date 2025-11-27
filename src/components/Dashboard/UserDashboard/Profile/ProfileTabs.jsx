@@ -118,7 +118,7 @@ const ProfileTabs = () => {
         setPreferencesData(response.data.data);
       }
     } catch (err) {
-      setError('Impossible de charger les préférences: ' + (err.response?.data?.message || err.message));
+      setError('Unable to load preferences: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsLoading(false);
     }
@@ -187,10 +187,10 @@ const ProfileTabs = () => {
         setIsEditing(false);
         const current = JSON.parse(localStorage.getItem('user') || '{}');
         localStorage.setItem('user', JSON.stringify({ ...current, ...resp.data.data }));
-        setSuccess('Profil mis à jour avec succès');
+        setSuccess('Profile successfully updated');
       }
     } catch (err) {
-      setError('Erreur lors de la mise à jour: ' + (err.response?.data?.message || err.message));
+      setError('Error during update: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsLoading(false);
     }
@@ -229,10 +229,10 @@ const ProfileTabs = () => {
         const current = JSON.parse(localStorage.getItem('user') || '{}');
         localStorage.setItem('user', JSON.stringify({ ...current, ...resp.data.data }));
         setIsEditingBio(false);
-        setSuccess('Bio mise à jour avec succès');
+        setSuccess('Bio successfully updated');
       }
     } catch (err) {
-      setError('Erreur lors de la mise à jour: ' + (err.response?.data?.message || err.message));
+      setError('Error during update: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsLoading(false);
     }
@@ -249,10 +249,10 @@ const ProfileTabs = () => {
       if (resp?.data?.success) {
         setPreferencesData(resp.data.data);
         setIsEditingPreferences(false);
-        setSuccess('Préférences mises à jour avec succès');
+        setSuccess('Preferences successfully updated');
       }
     } catch (err) {
-      setError('Erreur lors de la mise à jour: ' + (err.response?.data?.message || err.message));
+      setError('Error during update: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsLoading(false);
     }
